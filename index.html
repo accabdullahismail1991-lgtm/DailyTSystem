@@ -423,7 +423,7 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
 
 
 <!-- ================================================================ LOGIN SCREEN -->
-<div id="login-screen">
+<div id="login-screen" class="hidden">
   <div class="login-card">
     <div class="login-logo">
       <div class="login-logo-ic" id="login-logo-emoji">🏦</div>
@@ -579,6 +579,7 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
       <div class="pill"><div class="v" id="hdr-month">0.00</div><div class="l">إجمالي الشهر</div></div>
       <div class="pill"><div class="v" id="hdr-debt">0.00</div><div class="l">إجمالي المديونيات</div></div>
       <div class="badge-d" id="hdr-date"></div>
+      <div class="lang-btn" id="hdr-user-chip" style="cursor:pointer;" onclick="showTab('users')" title="إدارة المستخدمين"></div>
       <div style="display:flex;gap:4px;"><button class="lang-btn active" id="lang-ar" onclick="setLang('ar')">عربي</button><button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button></div>
     </div>
   </div>
@@ -896,11 +897,11 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
   <div class="settings-card" style="margin-top:4px;">
     <h4>📋 إدارة البيانات</h4>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;">
-      <button class="btn btn-teal" onclick="exportAllData()">📤 تصدير كل البيانات (JSON)</button>
-      <button class="btn btn-outline" onclick="importData()">📥 استيراد بيانات</button>
+      <button class="btn btn-teal" onclick="exportData()">📤 تصدير كل البيانات (JSON)</button>
+      <button class="btn btn-outline" onclick="document.getElementById('import-file').click()">📥 استيراد بيانات</button>
       <button class="btn btn-danger" onclick="resetAll()">⚠️ مسح كل البيانات</button>
     </div>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(this)">
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
   </div>
 </div>
 
@@ -1509,7 +1510,6 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
 <div class="overlay" id="supplier-qv-modal">
   <div class="preview-modal" style="max-width:900px;">
     <div class="pv-header">
@@ -1530,7 +1530,7 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<div class="overlay" id="stmt-modal">
   <div class="preview-modal" style="max-width:860px;">
     <div class="pv-header">
       <h3 id="stmt-title">📄 كشف حساب مورد</h3>
@@ -1542,25 +1542,8 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
     <div class="pv-body"><div style="padding:16px;" id="stmt-content"></div></div>
   </div>
 </div>
+</div>
 
-<script>
-// Force supplier refresh from PRESETS when version changes
-(function(){
-  var SK='bat_v5';
-  var VER='v5-suppliers-64-final';
-  try{
-    var raw=localStorage.getItem(SK);
-    if(raw){
-      var d=JSON.parse(raw);
-      if(d._suppliersVer!==VER){
-        d.suppliers=[];
-        d._suppliersVer=VER;
-        localStorage.setItem(SK,JSON.stringify(d));
-      }
-    }
-  }catch(e){}
-})();
-</script>
 <script>
 const SK='bat_v5';
 const BANKS=['بنك الراجحي','البنك الأهلي','بنك البلاد','بنك الإنماء','بنك الانماء','مدفوعات سداد','البنك الاهلي','بنك الرياض','البنك العربي','بنك ساب','بنك الجزيرة','البنك السعودي الفرنسي'];
@@ -1640,47 +1623,6 @@ let state={
 };
 
 // ================================================================ INIT
-function init(){
-  const saved=localStorage.getItem(SK);
-  if(saved){
-    try{
-      const p=JSON.parse(saved);
-      state={...state,...p};
-      if(!state.debts)state.debts=[];
-      if(!state.paymentPlan)state.paymentPlan=[];
-      if(!state.company)state.company={name:'الشركة العربية للوجبات',sub:'نظام الحوالات البنكية اليومية',vat:'',emoji:'🏦',bankName:'بنك الراجحي',bankAccount:'',bankOwner:''};
-      // Always sync from PRESETS: update existing + add missing
-      const supMap={};
-      state.suppliers.forEach(s=>{supMap[s.account]=s;});
-      PRESETS.forEach(p=>{
-        if(supMap[p.account]){
-          supMap[p.account].name=p.name;
-          supMap[p.account].bank=p.bank;
-          supMap[p.account].type=p.type||supMap[p.account].type||'';
-        } else {
-          state.suppliers.push({...p,id:uid()});
-        }
-      });
-      for(const d in state.days){const v=state.days[d];if(Array.isArray(v)&&v.length>0&&!v[0].rows)state.days[d]=[{id:uid(),label:'السجل الأول',rows:v,savedAt:d}];}
-    }catch(e){state.suppliers=PRESETS.map(p=>({...p,id:uid()}));}
-  }else{state.suppliers=PRESETS.map(p=>({...p,id:uid()}));}
-  applyCompanyUI();
-  populateFilters();
-  populateBankSelect();
-  ensureSession();
-  document.getElementById('transfer-date').value=state.currentDate;
-  document.getElementById('hdr-date').textContent=fmtDateAr(state.currentDate);
-  if(state.sigFinanceName)document.getElementById('sig-finance-name').value=state.sigFinanceName;
-  if(state.sigManagerName)document.getElementById('sig-manager-name').value=state.sigManagerName;
-  loadSettingsForm();
-  requestAnimationFrame(()=>{initSigCanvas('finance');initSigCanvas('manager');});
-  renderSessionTabs();renderRows();updateHdrMonth();updateHdrDebt();
-  ['m-bank','e-bank'].forEach(id=>{document.getElementById(id).innerHTML=bankOpts('بنك الراجحي');});
-  document.getElementById('set-bank-name').addEventListener('change',function(){
-    document.getElementById('set-bank-other').style.display=this.value==='other'?'block':'none';
-  });
-}
-
 function applyCompanyUI(){
   const c=state.company;
   document.getElementById('hdr-company-name').textContent=c.name||'نظام الحوالات';
@@ -2808,12 +2750,13 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function today(){return new Date().toISOString().slice(0,10);}
 function fmt(n){return(parseFloat(n)||0).toLocaleString('en-SA',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtDateAr(d){if(!d)return'';try{return new Date(d+'T00:00:00').toLocaleDateString('ar-SA',{weekday:'short',year:'numeric',month:'long',day:'numeric'});}catch(e){return d;}}
+function bankOpts(sel){return BANKS.map(b=>`<option${b===sel?' selected':''}>${b}</option>`).join('');}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function scoreMatch(obj,q){const s=q.toLowerCase();return Object.values(obj).some(v=>String(v).toLowerCase().includes(s))?1:0;}
 function persist(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn(e);}}
 function load(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):null;}catch(e){return null;}}
 function bankBg(b){const m={'بنك الراجحي':'rgba(0,100,0,.15)','البنك الأهلي':'rgba(0,60,120,.15)','بنك البلاد':'rgba(120,0,0,.15)','بنك الإنماء':'rgba(0,100,120,.15)','بنك الرياض':'rgba(180,140,0,.15)'};return m[b]||'rgba(100,100,100,.12)';}
 function bankEmoji(b){const m={'بنك الراجحي':'🟩','البنك الأهلي':'🟦','بنك البلاد':'🟥','بنك الإنماء':'🔷','بنك الرياض':'🟡'};return m[b]||'🏦';}
+function bbc(b){if(b==='بنك الراجحي')return'bb-r';if(b==='البنك الأهلي'||b==='البنك الاهلي')return'bb-a';if(b==='بنك البلاد')return'bb-b';if(b==='بنك الإنماء'||b==='بنك الانماء')return'bb-i';return'bb-s';}
 
 function showToast(msg,dur=2800){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('show'),dur);}
 function openModal(id){const el=document.getElementById(id);if(el){el.classList.add('open');el.style.display='flex';}}
@@ -2831,165 +2774,22 @@ function initState(){
   if(!state.debts)state.debts=[];
   if(!state.suppliers)state.suppliers=[];
   if(!state.days)state.days={};
-}
-
-// ================================================================ TAB SYSTEM
-function showTab(n){
-  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('active'));
-  const pg=document.getElementById('pg-'+n);if(pg)pg.classList.add('active');
-  document.querySelectorAll('.tab').forEach(b=>{if(b.onclick&&b.onclick.toString().includes("'"+n+"'"))b.classList.add('active');else b.classList.remove('active');});
-  document.querySelectorAll('.pnav-btn').forEach(b=>{b.classList.toggle('pnav-active',b.id==='pnav-'+n);});
-}
-
-// ================================================================ DAILY ROWS
-function getCurrentSession(){const d=state.days[state.currentDate]||[];return d[d.length-1]||null;}
-function getRows(){const s=getCurrentSession();return s?s.rows:[];}
-function collectDOM(){}
-function getSigDataURL(type){const c=document.getElementById('sig-'+type);if(!c||c.dataset.empty==='1')return null;return c.toDataURL();}
-
-function getAllRowsFlat(){
-  const result=[];
-  Object.entries(state.days).forEach(([date,ss])=>{(Array.isArray(ss)?ss:[]).forEach(s=>(s.rows||[]).forEach(r=>{result.push({...r,_date:date,_sessionLabel:s.label||'',_sessionId:s.id||''});}));});
-  return result;
-}
-
-function loadSession(date,sessionId){
-  state.currentDate=date;
-  const sessions=state.days[date]||[];
-  const sess=sessions.find(s=>s.id===sessionId)||sessions[sessions.length-1];
-  if(sess)state._activeSessionId=sess.id;
-  renderRows();updateHdrKPIs();showTab('daily');
-}
-
-function renderRows(){
-  const tbody=document.getElementById('rows-body');if(!tbody)return;
-  const rows=getRows();
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="8" class="empty-state">لا توجد حوالات — اضغط + لإضافة حوالة</td></tr>';return;}
-  tbody.innerHTML='';
-  rows.forEach((row,i)=>appendRowDOM(row,i));
-}
-
-function appendRowDOM(row,i){
-  const tbody=document.getElementById('rows-body');if(!tbody)return;
-  const tr=document.createElement('tr');
-  tr.id='row-'+row.id;
-  const nm=esc(row.name||''), nt=esc(row.notes||'');
-  tr.innerHTML=`<td class="rnum">${i+1}</td>
-    <td style="position:relative;min-width:185px;"><div class="ac-wrap"><div style="display:flex;align-items:center;gap:4px;">
-      <input class="ci" type="text" value="${nm}" placeholder="ابحث عن مورد..." autocomplete="off"
-        oninput="onNameInput(this,'${row.id}')" onblur="delayCloseAC('${row.id}')" onfocus="onNameInput(this,'${row.id}')"
-        onchange="updateRow('${row.id}','name',this.value)" style="flex:1;">
-      ${row.name?`<button title="كشف حساب" style="background:rgba(77,184,174,.12);border:1px solid rgba(77,184,174,.3);color:var(--teal);border-radius:4px;padding:2px 5px;cursor:pointer;font-size:10px;flex-shrink:0;" data-rname="${nm}" onclick="openSupplierQuickView(this.dataset.rname)">📄</button>`:''}
-    </div><div class="ac-dd" id="ac-${row.id}"></div></div></td>
-    <td><input class="ci mono" type="text" value="${esc(row.account||'')}" placeholder="رقم الحساب" onchange="updateRow('${row.id}','account',this.value)"></td>
-    <td><select class="ci" onchange="updateRow('${row.id}','bank',this.value)">${BANKS.map(b=>`<option${b===row.bank?' selected':''}>${b}</option>`).join('')}</select></td>
-    <td><input class="ci amt" type="number" step="0.01" value="${row.amount||''}" placeholder="0.00" oninput="updateRow('${row.id}','amount',this.value)"></td>
-    <td><input class="ci" type="text" value="${esc(row.invoice||'')}" placeholder="رقم الفاتورة" onchange="updateRow('${row.id}','invoice',this.value)"></td>
-    <td><input class="ci" type="text" value="${nt}" placeholder="ملاحظات" onchange="updateRow('${row.id}','notes',this.value)"></td>
-    <td><button class="del-btn" onclick="deleteRow('${row.id}')">🗑</button></td>`;
-  tbody.appendChild(tr);
-}
-
-function createSession(label){
-  if(!state.days[state.currentDate])state.days[state.currentDate]=[];
-  const s={id:uid(),label:label||'سجل '+(state.days[state.currentDate].length+1),rows:[],savedAt:new Date().toISOString()};
-  state.days[state.currentDate].push(s);state._activeSessionId=s.id;persist();return s;
-}
-
-function addRow(){
-  const session=getCurrentSession()||createSession();
-  const row={id:uid(),name:'',account:'',bank:BANKS[0],amount:'',invoice:'',notes:''};
-  session.rows.push(row);persist();
-  const tbody=document.getElementById('rows-body');
-  if(tbody&&tbody.querySelector('.empty-state'))tbody.innerHTML='';
-  appendRowDOM(row,session.rows.length-1);
-  document.getElementById('rows-body')?.lastElementChild?.querySelector('input')?.focus();
-  updateHdrKPIs();
-}
-
-function deleteRow(id){const s=getCurrentSession();if(!s)return;s.rows=s.rows.filter(r=>r.id!==id);persist();renderRows();updateHdrKPIs();}
-function updateRow(id,field,val){const s=getCurrentSession();if(!s)return;const r=s.rows.find(r=>r.id===id);if(!r)return;r[field]=val;persist();updateHdrKPIs();if(field==='amount'||field==='name')renderSessionTotals();}
-function renderSessionTotals(){const rows=getRows();const total=rows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);const el=document.getElementById('session-total-val');if(el)el.textContent=fmt(total)+' ر.س';}
-
-// Autocomplete
-function onNameInput(inp,rowId){
-  const q=inp.value.toLowerCase().trim();const dd=document.getElementById('ac-'+rowId);if(!dd)return;
-  if(!q){dd.style.display='none';return;}
-  const matches=(state.suppliers||[]).filter(s=>s.name.toLowerCase().includes(q)||s.account.includes(q)).slice(0,8);
-  if(!matches.length){dd.style.display='none';return;}
-  dd.innerHTML=matches.map(s=>`<div class="ac-item" onmousedown="pickSupplier('${s.id}','${rowId}')" style="padding:7px 11px;cursor:pointer;border-bottom:1px solid var(--border);font-size:11px;"><div style="font-weight:700;">${s.name}</div><div style="font-size:9px;color:var(--muted);">${s.account} • ${s.bank}</div></div>`).join('');
-  dd.style.display='block';
-}
-function pickSupplier(sid,rowId){
-  const s=(state.suppliers||[]).find(s=>s.id===sid);if(!s)return;
-  const tr=document.getElementById('row-'+rowId);if(!tr)return;
-  const inputs=tr.querySelectorAll('input');
-  if(inputs[0])inputs[0].value=s.name;if(inputs[1])inputs[1].value=s.account||'';
-  const sel=tr.querySelector('select');if(sel)sel.value=s.bank||BANKS[0];
-  updateRow(rowId,'name',s.name);updateRow(rowId,'account',s.account||'');updateRow(rowId,'bank',s.bank||BANKS[0]);
-  const dd=document.getElementById('ac-'+rowId);if(dd)dd.style.display='none';
-}
-function delayCloseAC(rowId){setTimeout(()=>{const dd=document.getElementById('ac-'+rowId);if(dd)dd.style.display='none';},200);}
-function onDebtNameInput(inp){const q=inp.value.toLowerCase().trim();const dd=document.getElementById('debt-ac-dd');if(!dd)return;if(!q){dd.style.display='none';return;}const matches=(state.suppliers||[]).filter(s=>s.name.toLowerCase().includes(q)).slice(0,8);if(!matches.length){dd.style.display='none';return;}dd.innerHTML=matches.map(s=>`<div style="padding:7px 11px;cursor:pointer;border-bottom:1px solid var(--border);font-size:11px;" onmousedown="pickDebtName('${esc(s.name)}')">${s.name}<div style="font-size:9px;color:var(--muted);">${s.account}</div></div>`).join('');dd.style.display='block';}
-function pickDebtName(name){const inp=document.getElementById('d-name');if(inp)inp.value=name;const dd=document.getElementById('debt-ac-dd');if(dd)dd.style.display='none';}
-function delayCloseDebtAC(){setTimeout(()=>{const dd=document.getElementById('debt-ac-dd');if(dd)dd.style.display='none';},200);}
-
-function updateHdrKPIs(){
-  const rows=getRows();const total=rows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
-  const month=today().slice(0,7);const monthTotal=getAllRowsFlat().filter(r=>r._date.startsWith(month)).reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
-  const debtTotal=(state.debts||[]).reduce((s,d)=>s+(parseFloat(d.amount)||0),0);
-  const G=id=>document.getElementById(id);
-  if(G('hdr-total'))G('hdr-total').textContent=fmt(total);
-  if(G('hdr-count'))G('hdr-count').textContent=rows.filter(r=>r.name).length;
-  if(G('hdr-month'))G('hdr-month').textContent=fmt(monthTotal);
-  if(G('hdr-debt'))G('hdr-debt').textContent=fmt(debtTotal);
-  if(G('hdr-date'))G('hdr-date').textContent=fmtDateAr(state.currentDate);
-  renderSessionTotals();
-}
-
-
-// ================================================================ SUPPLIERS
-function filterSuppliers(v){renderSuppliers(v);}
-function doSupEdit(el){const id=el.closest('[data-sid]')?.dataset?.sid||el.dataset?.sid;if(id)openEditSupplier(id);}
-function openDebtModalForSupplier(name){openDebtModal();setTimeout(()=>{const dn=document.getElementById('d-name');if(dn)dn.value=name;const tp=document.getElementById('d-type');if(tp)tp.value='مستحقات موردين';},60);}
-
-function renderSuppliers(filter=''){
-  const bankF=document.getElementById('sup-bank-filter')?.value||'';
-  const list=(state.suppliers||[]).filter(s=>(!filter||scoreMatch(s,filter)>0)&&(!bankF||s.bank===bankF));
-  const grid=document.getElementById('sup-grid');if(!grid)return;
-  if(!list.length){grid.innerHTML='<div class="empty-state">لا توجد نتائج</div>';return;}
-  grid.innerHTML=list.map(s=>{
-    const ld=_calcLedger(s.name);const closing=ld.closing;
-    const nameEnc=esc(s.name);
-    const hasBalance=Math.abs(closing)>0.01||ld.debts.length>0||ld.totTrans>0||ld.soArr.length>0;
-    let balSection='';
-    if(hasBalance){
-      const bC=closing>0.01?'#991b1b':closing<-0.01?'#166534':'#374151';
-      const bBg=closing>0.01?'rgba(153,27,27,.08)':closing<-0.01?'rgba(22,101,52,.08)':'rgba(55,65,81,.06)';
-      const bTxt=closing>0.01?'دائن '+fmt(closing)+' ر.س':closing<-0.01?'مدين '+fmt(-closing)+' ر.س':'رصيد صفر';
-      balSection='<div style="margin-top:5px;padding:5px 7px;background:'+bBg+';border-radius:6px;border-right:2px solid '+bC+';">'
-        +'<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px;"><span style="color:#888;">إجمالي مدين</span><span style="font-family:monospace;font-weight:700;color:#991b1b;">'+fmt(ld.totDr)+'</span></div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:9px;margin-bottom:2px;"><span style="color:#888;">إجمالي دائن</span><span style="font-family:monospace;font-weight:700;color:#166534;">'+fmt(ld.totCr)+'</span></div>'
-        +'<div style="display:flex;justify-content:space-between;font-size:9px;font-weight:700;border-top:1px solid rgba(0,0,0,.08);padding-top:3px;margin-top:2px;"><span style="color:'+bC+';">الرصيد الختامي</span><span style="font-family:monospace;color:'+bC+';">'+bTxt+'</span></div>'
-        +'</div>';
+  for(const d in state.days){const v=state.days[d];if(Array.isArray(v)&&v.length>0&&!v[0].rows)state.days[d]=[{id:uid(),label:'السجل الأول',rows:v,savedAt:d}];}
+  const supMap={};
+  state.suppliers.forEach(s=>{supMap[s.account]=s;});
+  PRESETS.forEach(p=>{
+    if(supMap[p.account]){
+      supMap[p.account].name=p.name;
+      supMap[p.account].bank=p.bank;
+      supMap[p.account].type=p.type||supMap[p.account].type||'';
+    }else{
+      state.suppliers.push({...p,id:uid()});
     }
-    return '<div class="sup-card" style="flex-direction:column;align-items:stretch;padding:10px 13px;" data-sid="'+s.id+'" onclick="doSupEdit(this)">'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:'+(hasBalance?'6px':'0px')+';">'
-        +'<div class="sup-icon" style="background:'+bankBg(s.bank)+'">'+bankEmoji(s.bank)+'</div>'
-        +'<div class="sup-info" style="flex:1;min-width:0;"><div class="sup-name">'+s.name+'</div><div class="sup-acc">'+s.account+'</div><div class="sup-type">'+(s.type||'')+' • '+s.bank+'</div></div>'
-        +'<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;flex-shrink:0;">'
-          +'<button class="btn btn-teal" style="font-size:8px;padding:2px 7px;" data-rname="'+nameEnc+'" onclick="event.stopPropagation();openSupplierQuickView(this.dataset.rname)">📄 كشف</button>'
-          +'<button class="btn btn-gold" style="font-size:8px;padding:2px 7px;" data-rname="'+nameEnc+'" onclick="event.stopPropagation();openSupplierOpeningModal(this.dataset.rname)">📊 رصيد</button>'
-          +'<span class="add-ic" data-sid="'+s.id+'" onclick="event.stopPropagation();addSupplierToTable(this.dataset.sid)" style="font-size:8px;padding:2px 7px;">+ حوالة</span>'
-        +'</div>'
-      +'</div>'+balSection+'</div>';
-  }).join('');
+  });
 }
 
-function addSupplierToTable(sid){const s=(state.suppliers||[]).find(s=>s.id===sid);if(!s)return;if(!getCurrentSession())createSession();const session=getCurrentSession();const row={id:uid(),name:s.name,account:s.account||'',bank:s.bank||BANKS[0],amount:'',invoice:'',notes:''};session.rows.push(row);persist();renderRows();showTab('daily');showToast('✅ تمت إضافة '+s.name);}
-function openEditSupplier(id){const s=(state.suppliers||[]).find(s=>s.id===id);if(!s)return;document.getElementById('sm-eid').value=id;document.getElementById('sm-name').value=s.name||'';document.getElementById('sm-account').value=s.account||'';document.getElementById('sm-bank').value=s.bank||BANKS[0];document.getElementById('sm-type').value=s.type||'مورد';document.getElementById('sm-notes').value=s.notes||'';document.getElementById('supplier-modal-title').textContent='✏️ تعديل بيانات المورد';openModal('supplier-modal');}
-function openAddSupplier(){['sm-eid','sm-name','sm-account','sm-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});document.getElementById('sm-bank').value=BANKS[0];document.getElementById('sm-type').value='مورد';document.getElementById('supplier-modal-title').textContent='➕ إضافة مورد جديد';openModal('supplier-modal');}
-function saveSupplier(){if(!state.suppliers)state.suppliers=[];const id=document.getElementById('sm-eid').value;const data={name:document.getElementById('sm-name').value.trim(),account:document.getElementById('sm-account').value.trim(),bank:document.getElementById('sm-bank').value,type:document.getElementById('sm-type').value,notes:document.getElementById('sm-notes').value.trim()};if(!data.name){alert('أدخل اسم المورد');return;}if(id){const s=state.suppliers.find(s=>s.id===id);if(s)Object.assign(s,data);}else state.suppliers.push({...data,id:uid()});persist();closeModal('supplier-modal');renderSuppliers();showToast('✅ تم حفظ المورد');}
+function pickDebtName(name){const inp=document.getElementById('d-name');if(inp)inp.value=name;const dd=document.getElementById('debt-ac-dd');if(dd)dd.style.display='none';}
+
 function deleteSupplier(id){if(!confirm('حذف هذا المورد؟'))return;state.suppliers=state.suppliers.filter(s=>s.id!==id);persist();closeModal('supplier-modal');renderSuppliers();showToast('🗑 تم الحذف');}
 
 // ================================================================ SHARED LEDGER
@@ -3012,91 +2812,163 @@ function _calcLedger(name){
 }
 function _getSupplierBalances(){const allNames=new Set();(state.suppliers||[]).forEach(s=>allNames.add(s.name));(state.debts||[]).forEach(d=>{if(d.name)allNames.add(d.name);});(state.supplierOpenings||[]).forEach(o=>{if(o.name)allNames.add(o.name);});return Array.from(allNames).map(name=>_calcLedger(name));}
 
-// ================================================================ DEBTS
-function updateDebtTypeUI(){
-  const isCr=document.getElementById('d-type-debtor')?.checked;
-  const dl=document.getElementById('d-type-debtor-label');const cl=document.getElementById('d-type-creditor-label');const hint=document.getElementById('d-balance-type-hint');
-  if(dl){dl.style.borderColor=isCr?'var(--red)':'var(--border)';dl.style.color=isCr?'var(--red)':'var(--muted)';dl.style.background=isCr?'rgba(224,96,112,.08)':'transparent';}
-  if(cl){cl.style.borderColor=!isCr?'var(--green)':'var(--border)';cl.style.color=!isCr?'var(--green)':'var(--muted)';cl.style.background=!isCr?'rgba(76,175,130,.08)':'transparent';}
-  if(hint){if(isCr){hint.innerHTML='<strong>رصيد دائن (Cr):</strong> المبلغ مستحق علينا لهذا الحساب';hint.style.borderRightColor='var(--red)';hint.style.color='var(--red)';}else{hint.innerHTML='<strong>رصيد مدين (Dr):</strong> المبلغ مستحق لنا من هذا الحساب';hint.style.borderRightColor='var(--green)';hint.style.color='var(--green)';}}
-}
-
-function openDebtModal(id){
-  document.getElementById('debt-modal-title').textContent=id?'✏️ تعديل مديونية':'➕ إضافة مديونية جديدة';
-  if(id){
-    const d=state.debts.find(d=>d.id===id);if(!d)return;
-    document.getElementById('d-name').value=d.name||'';document.getElementById('d-type').value=d.type||'أخرى';
-    document.getElementById('d-amount').value=d.amount||0;document.getElementById('d-paid').value=d.paid||0;
-    document.getElementById('d-due').value=d.due||'';document.getElementById('d-priority').value=d.priority||'medium';
-    document.getElementById('d-notes').value=d.notes||'';document.getElementById('d-eid').value=id;
-    const bt=d.balanceType||'debtor';const dbEl=document.getElementById('d-type-debtor');if(dbEl)dbEl.checked=bt==='debtor';const crEl=document.getElementById('d-type-creditor');if(crEl)crEl.checked=bt==='creditor';
-    const ob=d.openingBalance;const obt=document.getElementById('d-opening-type');const oba=document.getElementById('d-opening-amount');const obd=document.getElementById('d-opening-date');
-    if(ob&&ob.amount>0){if(obt)obt.value=ob.type||'';if(oba)oba.value=ob.amount||0;if(obd)obd.value=ob.date||'';}
-    else{if(obt)obt.value='';if(oba)oba.value='';if(obd)obd.value=today();}
-  }else{
-    ['d-name','d-notes'].forEach(i=>{const el=document.getElementById(i);if(el)el.value='';});
-    document.getElementById('d-amount').value=0;document.getElementById('d-paid').value=0;document.getElementById('d-due').value='';document.getElementById('d-priority').value='medium';document.getElementById('d-eid').value='';
-    const dbEl=document.getElementById('d-type-debtor');if(dbEl)dbEl.checked=true;const crEl=document.getElementById('d-type-creditor');if(crEl)crEl.checked=false;
-    const obt=document.getElementById('d-opening-type');if(obt)obt.value='';const oba=document.getElementById('d-opening-amount');if(oba)oba.value='';const obd=document.getElementById('d-opening-date');if(obd)obd.value=today();
-  }
-  updateDebtTypeUI();openModal('debt-modal');
-}
-
-function saveDebt(){
-  if(!state.debts)state.debts=[];
-  const id=document.getElementById('d-eid').value;
-  const balanceType=document.getElementById('d-type-creditor')?.checked?'creditor':'debtor';
-  const openingType=document.getElementById('d-opening-type')?.value||'';
-  const openingAmount=parseFloat(document.getElementById('d-opening-amount')?.value)||0;
-  const openingDate=document.getElementById('d-opening-date')?.value||'';
-  const data={name:document.getElementById('d-name').value.trim(),type:document.getElementById('d-type').value,balanceType,amount:parseFloat(document.getElementById('d-amount').value)||0,paid:parseFloat(document.getElementById('d-paid').value)||0,due:document.getElementById('d-due').value,priority:document.getElementById('d-priority').value,notes:document.getElementById('d-notes').value.trim(),payments:[],openingBalance:openingType&&openingAmount>0?{type:openingType,amount:openingAmount,date:openingDate}:null};
-  if(!data.name){alert('أدخل اسم الجهة');return;}
-  if(id){const d=state.debts.find(d=>d.id===id);if(d){Object.assign(d,data);if(!d.payments)d.payments=[];}}
-  else state.debts.push({...data,id:uid(),createdAt:today()});
-  persist();closeModal('debt-modal');renderDebts();showToast('✅ تم حفظ المديونية');
-}
-
-function renderDebts(){
-  const tbody=document.getElementById('debts-body');if(!tbody)return;
-  const debts=state.debts||[];
-  if(!debts.length){tbody.innerHTML='<tr><td colspan="8" class="empty-state">لا توجد مديونيات</td></tr>';return;}
-  tbody.innerHTML=debts.map(d=>{
-    const rem=Math.max(0,(parseFloat(d.amount)||0)-(parseFloat(d.paid)||0));
-    const prioLabel={high:'🔴 عالية',medium:'🟡 متوسطة',low:'🟢 منخفضة'};
-    const balLabel=d.balanceType==='creditor'?'رصيد مدين (Dr)':'رصيد دائن (Cr)';
-    const balC=d.balanceType==='creditor'?'var(--green)':'var(--red)';
-    const nameEnc=esc(d.name||'');
-    return`<tr><td style="font-weight:600;"><span style="cursor:pointer;color:var(--teal);text-decoration:underline dotted;" data-dn="${nameEnc}" onclick="openSupplierQuickView(this.dataset.dn)">${d.name}</span></td>
-      <td style="font-size:10px;">${d.type||''}<div style="margin-top:3px;"><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:4px;color:${balC};border:1px solid ${balC}33;background:${balC}11;">${balLabel}</span></div></td>
-      <td style="font-family:monospace;font-weight:700;">${fmt(parseFloat(d.amount)||0)}</td>
-      <td style="font-family:monospace;color:var(--green);">${fmt(parseFloat(d.paid)||0)}</td>
-      <td style="font-family:monospace;font-weight:700;color:${rem>0?'var(--red)':'var(--green)'};">${fmt(rem)}</td>
-      <td>${prioLabel[d.priority]||'—'}</td><td>${d.due||'—'}</td>
-      <td><button class="btn btn-teal" style="font-size:9px;padding:2px 6px;" onclick="openDebtModal('${d.id}')">✏</button>
-      <button class="btn btn-gold" style="font-size:9px;padding:2px 6px;" onclick="openPayDebt('${d.id}')">💰</button>
-      <button class="btn btn-outline" style="font-size:9px;padding:2px 6px;" onclick="openDebtStatement('${d.id}')">📄</button>
-      <button class="btn btn-danger" style="font-size:9px;padding:2px 6px;" onclick="deleteDebt('${d.id}')">🗑</button></td></tr>`;
-  }).join('');
-}
-
-function deleteDebt(id){if(!confirm('حذف هذه المديونية؟'))return;state.debts=state.debts.filter(d=>d.id!==id);persist();renderDebts();showToast('🗑 تم الحذف');}
-function openPayDebt(id){const d=state.debts.find(d=>d.id===id);if(!d)return;document.getElementById('pd-eid').value=id;document.getElementById('pd-name').textContent=d.name;document.getElementById('pd-rem').textContent=fmt(Math.max(0,(d.amount||0)-(d.paid||0)))+' ر.س';document.getElementById('pd-amount').value='';document.getElementById('pd-date').value=today();document.getElementById('pd-notes').value='';openModal('pay-debt-modal');}
-function saveDebtPayment(){const id=document.getElementById('pd-eid').value;const d=state.debts.find(d=>d.id===id);if(!d)return;const amount=parseFloat(document.getElementById('pd-amount').value)||0;const date=document.getElementById('pd-date').value||today();const notes=document.getElementById('pd-notes').value;if(amount<=0){alert('أدخل مبلغاً صحيحاً');return;}if(!d.payments)d.payments=[];const payment={id:uid(),amount,date,notes,savedAt:new Date().toISOString()};d.payments.push(payment);d.paid=(parseFloat(d.paid)||0)+amount;if(!getCurrentSession())createSession();const s=getCurrentSession();const row={id:uid(),name:d.name,account:'',bank:BANKS[0],amount,invoice:'',notes:'سداد مديونية'+(notes?' — '+notes:''),_fromDebt:true,_paymentId:payment.id};s.rows.push(row);persist();closeModal('pay-debt-modal');renderDebts();renderRows();updateHdrKPIs();showToast('✅ تم تسجيل الدفعة '+fmt(amount)+' ر.س');}
+// ================================================================ DEBT STATEMENT
 function openDebtStatement(id){openDebtStatementById(id);}
+function printDebtStatement(){const content=document.getElementById('stmt-content');if(!content)return;const co=state.company||{};const title=document.getElementById('stmt-title')?.textContent||'';const w=window.open('','_blank');w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;font-family:Tajawal,sans-serif}body{background:#fff;color:#111;direction:rtl;padding:22px;font-size:11px}table{width:100%;border-collapse:collapse;margin-bottom:12px}th{background:#0a1628;color:#e8c96d;padding:5px 8px;text-align:right;border:1px solid #334;font-weight:700}td{padding:4px 7px;border:1px solid #ccc}tr:nth-child(even) td{background:#f9f7f2}h1{font-size:16px;font-weight:900;color:#0a1628;text-align:center;margin-bottom:4px}@page{size:A4;margin:14mm}</style></head><body>');w.document.write('<h1>'+co.name+'</h1><p style="text-align:center;font-size:10px;color:#666;margin-bottom:12px;">'+title+' — '+fmtDateAr(today())+'</p>');w.document.write(content.innerHTML);w.document.write('</body></html>');w.document.close();w.onload=()=>w.print();}
+
+// ================================================================ INSTALLMENT SCHEDULE
+function openInstallmentModal(debtId){
+  const d=state.debts.find(x=>x.id===debtId);if(!d)return;
+  document.getElementById('inst-debt-id').value=debtId;
+  ['auto-count','auto-amount','auto-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('auto-interval').value='30';
+  document.getElementById('auto-day').value='';
+  document.getElementById('auto-start').value=today();
+  const prevEl=document.getElementById('auto-preview');prevEl.style.display='none';delete prevEl.dataset.dates;
+  document.getElementById('auto-error').style.display='none';
+  const hintEl=document.getElementById('auto-amount-hint');if(hintEl)hintEl.textContent='';
+  ['inst-amount','inst-due','inst-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderInstallmentList(d);
+  openModal('installment-modal');
+}
+function renderInstallmentList(d){
+  const rem=Math.max(0,(parseFloat(d.amount)||0)-(parseFloat(d.paid)||0));
+  document.getElementById('inst-debt-name').textContent=d.name;
+  document.getElementById('inst-total').textContent=fmt(d.amount||0);
+  document.getElementById('inst-paid-disp').textContent=fmt(d.paid||0);
+  document.getElementById('inst-rem').textContent=fmt(rem);
+  const insts=(d.installments||[]).slice().sort((a,b)=>(a.due||'').localeCompare(b.due||''));
+  document.getElementById('inst-count-badge').textContent=insts.length;
+  const tbody=document.getElementById('inst-list');
+  if(!insts.length){
+    tbody.innerHTML='<tr><td colspan="7" class="empty-state">لا توجد أقساط — استخدم الجدولة التلقائية أو أضف قسطاً يدوياً</td></tr>';
+  }else{
+    const first=insts[0]?.due;
+    tbody.innerHTML=insts.map((i,idx)=>{
+      const diffDays=(first&&i.due)?Math.round((new Date(i.due)-new Date(first))/86400000):0;
+      const diffLabel=idx===0?'—':(diffDays%30===0&&diffDays>0?'+'+(diffDays/30)+' شهر':'+'+diffDays+' يوم');
+      return`<tr>
+        <td class="rnum">${idx+1}</td>
+        <td style="font-family:monospace;font-weight:700;">${fmt(i.amount)}</td>
+        <td style="font-size:10px;">${i.due?fmtDateAr(i.due):'—'}</td>
+        <td style="font-size:9px;color:var(--muted);">${diffLabel}</td>
+        <td>${i.paid?'<span class="debt-status-paid">✅ مسدد</span>':'<span class="debt-status-pending">⏳ غير مسدد</span>'}</td>
+        <td style="font-size:10px;color:var(--muted);">${esc(i.notes||'')}</td>
+        <td><div style="display:flex;gap:4px;">${!i.paid?`<button class="btn btn-success" style="font-size:9px;padding:2px 6px;" onclick="payInstallment('${i.id}')">💰</button>`:''}<button class="btn btn-danger" style="font-size:9px;padding:2px 6px;" onclick="deleteInstallment('${i.id}')">🗑</button></div></td>
+      </tr>`;
+    }).join('');
+  }
+  const schedTotal=insts.filter(i=>!i.paid).reduce((s,i)=>s+(parseFloat(i.amount)||0),0);
+  document.getElementById('inst-sched-total').textContent=fmt(schedTotal);
+}
+function previewSchedule(){
+  const debtId=document.getElementById('inst-debt-id').value;
+  const d=state.debts.find(x=>x.id===debtId);if(!d)return;
+  const errEl=document.getElementById('auto-error');const prevEl=document.getElementById('auto-preview');
+  errEl.style.display='none';
+  const count=parseInt(document.getElementById('auto-count').value)||0;
+  let amount=parseFloat(document.getElementById('auto-amount').value)||0;
+  const startStr=document.getElementById('auto-start').value;
+  const interval=parseInt(document.getElementById('auto-interval').value)||30;
+  const fixedDay=parseInt(document.getElementById('auto-day').value)||0;
+  const rem=Math.max(0,(parseFloat(d.amount)||0)-(parseFloat(d.paid)||0));
+  const hintEl=document.getElementById('auto-amount-hint');
+  if(!count||count<1){prevEl.style.display='none';delete prevEl.dataset.dates;if(hintEl)hintEl.textContent='';return;}
+  if(!amount){amount=rem>0?+(rem/count).toFixed(2):0;if(hintEl)hintEl.textContent='محسوب تلقائياً: '+fmt(amount)+' ر.س للقسط (المتبقي ÷ العدد)';}
+  else if(hintEl)hintEl.textContent='';
+  if(amount<=0){prevEl.style.display='none';delete prevEl.dataset.dates;errEl.textContent='⚠️ لا يوجد مبلغ متبقٍ لجدولته على هذه المديونية';errEl.style.display='block';return;}
+  const start=startStr?new Date(startStr+'T00:00:00'):new Date();
+  const dates=[];
+  for(let i=0;i<count;i++){
+    let dt;
+    if(fixedDay){dt=new Date(start.getFullYear(),start.getMonth()+i,1);const lastDay=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();dt.setDate(Math.min(fixedDay,lastDay));}
+    else{dt=new Date(start);dt.setDate(dt.getDate()+interval*i);}
+    dates.push(dt.toISOString().slice(0,10));
+  }
+  const total=amount*count;
+  const grid=document.getElementById('auto-preview-grid');
+  grid.innerHTML=dates.map((dt,i)=>'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:10px;"><div style="color:var(--muted);">قسط '+(i+1)+'</div><div style="font-family:monospace;font-weight:700;color:var(--gold-l);">'+fmt(amount)+'</div><div style="font-size:9px;color:var(--muted);">'+fmtDateAr(dt)+'</div></div>').join('');
+  document.getElementById('auto-preview-summary').textContent=count+' قسط × '+fmt(amount)+' ر.س = '+fmt(total)+' ر.س';
+  if(total-rem>0.5){errEl.textContent='⚠️ إجمالي الجدولة ('+fmt(total)+' ر.س) أكبر من المتبقي على المديونية ('+fmt(rem)+' ر.س)';errEl.style.display='block';}
+  prevEl.style.display='block';
+  prevEl.dataset.dates=JSON.stringify(dates);prevEl.dataset.amount=amount;
+}
+function applyAutoSchedule(){
+  const debtId=document.getElementById('inst-debt-id').value;
+  const d=state.debts.find(x=>x.id===debtId);if(!d)return;
+  const prevEl=document.getElementById('auto-preview');
+  if(prevEl.style.display==='none'||!prevEl.dataset.dates){alert('أدخل بيانات الجدولة أولاً');return;}
+  const dates=JSON.parse(prevEl.dataset.dates);const amount=parseFloat(prevEl.dataset.amount)||0;
+  const notes=document.getElementById('auto-notes').value.trim();
+  if(!d.installments)d.installments=[];
+  dates.forEach(dt=>{d.installments.push({id:uid(),amount,due:dt,notes,paid:false});});
+  persist();
+  ['auto-count','auto-amount','auto-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  prevEl.style.display='none';delete prevEl.dataset.dates;
+  const hintEl=document.getElementById('auto-amount-hint');if(hintEl)hintEl.textContent='';
+  renderInstallmentList(d);
+  logActivity('debt','جدولة '+dates.length+' قسط تلقائياً: '+d.name);
+  showToast('✅ تم إنشاء '+dates.length+' قسط');
+}
+function addInstallment(){
+  const debtId=document.getElementById('inst-debt-id').value;
+  const d=state.debts.find(x=>x.id===debtId);if(!d)return;
+  const amount=parseFloat(document.getElementById('inst-amount').value)||0;
+  if(amount<=0){alert('أدخل مبلغاً صحيحاً');return;}
+  const due=document.getElementById('inst-due').value||today();
+  const notes=document.getElementById('inst-notes').value.trim();
+  if(!d.installments)d.installments=[];
+  d.installments.push({id:uid(),amount,due,notes,paid:false});
+  persist();
+  ['inst-amount','inst-due','inst-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderInstallmentList(d);
+  showToast('✅ تم إضافة القسط');
+}
+function deleteInstallment(instId){
+  const debtId=document.getElementById('inst-debt-id').value;
+  const d=state.debts.find(x=>x.id===debtId);if(!d)return;
+  d.installments=(d.installments||[]).filter(i=>i.id!==instId);
+  persist();renderInstallmentList(d);
+}
+function clearAllInstallments(){
+  const debtId=document.getElementById('inst-debt-id').value;
+  const d=state.debts.find(x=>x.id===debtId);if(!d)return;
+  if(!confirm('مسح جميع الأقساط غير المسددة؟'))return;
+  d.installments=(d.installments||[]).filter(i=>i.paid);
+  persist();renderInstallmentList(d);showToast('🗑 تم مسح الأقساط غير المسددة');
+}
+function payInstallment(instId){
+  const debtId=document.getElementById('inst-debt-id').value;
+  const d=state.debts.find(x=>x.id===debtId);if(!d)return;
+  const inst=(d.installments||[]).find(i=>i.id===instId);if(!inst)return;
+  openPayDebt(debtId);
+  const amtEl=document.getElementById('pay-amount');if(amtEl)amtEl.value=inst.amount;
+  const piid=document.getElementById('pay-inst-id');if(piid)piid.value=instId;
+}
 function openDebtStatementById(debtId){const d=state.debts.find(d=>d.id===debtId);if(!d)return;const t=document.getElementById('stmt-title');if(t)t.textContent='📄 كشف حساب: '+d.name;const content=document.getElementById('stmt-content');if(!content)return;const payments=d.payments||[];const rem=Math.max(0,(d.amount||0)-(d.paid||0));content.innerHTML='<div style="margin-bottom:12px;padding:10px;background:rgba(200,164,94,.07);border-radius:8px;"><div style="font-size:14px;font-weight:800;">'+d.name+'</div><div style="font-size:10px;color:var(--muted);">'+d.type+' | '+(d.balanceType==='creditor'?'رصيد مدين':'رصيد دائن')+'</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;"><div style="text-align:center;"><div style="font-size:8px;color:var(--muted);">المبلغ الأصلي</div><div style="font-family:monospace;font-weight:700;">'+fmt(d.amount||0)+'</div></div><div style="text-align:center;"><div style="font-size:8px;color:var(--muted);">المسدد</div><div style="font-family:monospace;font-weight:700;color:var(--green);">'+fmt(d.paid||0)+'</div></div><div style="text-align:center;"><div style="font-size:8px;color:var(--muted);">المتبقي</div><div style="font-family:monospace;font-weight:700;color:var(--red);">'+fmt(rem)+'</div></div></div></div>'+(payments.length?'<table style="width:100%;border-collapse:collapse;font-size:11px;"><thead><tr><th style="text-align:right;padding:5px 8px;background:var(--bg3);">التاريخ</th><th style="text-align:left;direction:ltr;padding:5px 8px;background:var(--bg3);">المبلغ</th><th style="text-align:right;padding:5px 8px;background:var(--bg3);">ملاحظات</th></tr></thead><tbody>'+payments.map(p=>'<tr><td style="padding:4px 8px;border-bottom:1px solid var(--border);">'+p.date+'</td><td style="padding:4px 8px;border-bottom:1px solid var(--border);font-family:monospace;text-align:left;direction:ltr;color:var(--green);">'+fmt(p.amount)+'</td><td style="padding:4px 8px;border-bottom:1px solid var(--border);">'+(p.notes||'—')+'</td></tr>').join('')+'</tbody></table>':'<div class="empty-state">لا توجد دفعات مسجلة</div>');openModal('stmt-modal');}
 
 
 // ================================================================ BANK ACCOUNTS
 function renderBankPage(){if(!state.bankAccounts)state.bankAccounts=[];renderBankKPIs();renderBankCards();}
-function renderBankKPIs(){}
-function renderBankKPIsWithNet(){renderBankKPIs();}
+function renderBankKPIs(){
+  const el=document.getElementById('bank-kpis');if(!el)return;
+  const accs=state.bankAccounts||[];
+  const totalBal=accs.reduce((s,a)=>s+getLatestBalance(a.id),0);
+  const totalOut=accs.reduce((s,a)=>s+getTodayOutflow(a.id),0);
+  const primary=accs.find(a=>a.isPrimary)||accs[0];
+  el.innerHTML=`
+    <div class="card"><div class="cl">عدد الحسابات</div><div class="cv">${accs.length}</div><div class="cs">حساب بنكي</div></div>
+    <div class="card"><div class="cl">إجمالي الأرصدة</div><div class="cv">${fmt(totalBal)}</div><div class="cs">ريال سعودي</div></div>
+    <div class="card"><div class="cl">مصروفات اليوم</div><div class="cv" style="color:var(--red)">${fmt(totalOut)}</div><div class="cs">ريال سعودي</div></div>
+    <div class="card"><div class="cl">الحساب الرئيسي</div><div class="cv" style="font-size:12px;">${primary?esc(primary.label):'—'}</div></div>`;
+}
 
 function getLatestBalance(aid){const es=(state.balanceEntries||[]).filter(e=>e.accountId===aid&&!e.isOpening).sort((a,b)=>b.date.localeCompare(a.date));return es.length?parseFloat(es[0].balance)||0:parseFloat((state.bankAccounts||[]).find(a=>a.id===aid)?.openingBalance)||0;}
 function getDayTransTotal(date){return(state.days[date]||[]).flatMap(s=>s.rows||[]).reduce((s,r)=>s+(parseFloat(r.amount)||0),0);}
 function getTodayOutflow(aid){const acc=(state.bankAccounts||[]).find(a=>a.id===aid);if(!acc)return 0;const accs=state.bankAccounts||[];const isPrimary=acc.isPrimary||accs.length===1;return(state.days[state.currentDate]||[]).flatMap(s=>s.rows||[]).filter(r=>{const amt=parseFloat(r.amount)||0;if(!amt)return false;if(r.bankAccountId)return r.bankAccountId===aid;if(accs.length===1)return true;return isPrimary;}).reduce((s,r)=>s+(parseFloat(r.amount)||0),0);}
 
 function renderBankCards(){
-  const grid=document.getElementById('bank-cards-grid');if(!grid)return;
+  const grid=document.getElementById('bank-accounts-grid');if(!grid)return;
   const accs=state.bankAccounts||[];
   if(!accs.length){grid.innerHTML='<div class="empty-state">لا توجد حسابات — اضغط إضافة حساب بنكي</div>';return;}
   grid.innerHTML=accs.map(acc=>{
@@ -3202,10 +3074,12 @@ function saveBalanceEntry(){
 
 function renderBalanceSummaryChips(){const chips=document.getElementById('bal-summary-chips');if(!chips)return;const accs=state.bankAccounts||[];const totalBal=accs.reduce((s,a)=>s+getLatestBalance(a.id),0);const todayOut=getDayTransTotal(state.currentDate);chips.innerHTML='<div class="bal-chip"><div class="bc-l">إجمالي الأرصدة</div><div class="bc-v">'+fmt(totalBal)+'</div></div><div class="bal-chip"><div class="bc-l">صادر اليوم</div><div class="bc-v" style="color:var(--red);">'+fmt(todayOut)+'</div></div><div class="bal-chip"><div class="bc-l">الرصيد بعد التحويلات</div><div class="bc-v" style="color:'+(totalBal-todayOut>=0?'var(--green)':'var(--red)')+';">'+fmt(totalBal-todayOut)+'</div></div>';}
 
-function renderBalanceHistory(){const accF=document.getElementById('bal-hist-account')?.value||'';const mF=document.getElementById('bal-hist-month')?.value||'';const entries=(state.balanceEntries||[]).filter(e=>(!accF||e.accountId===accF)&&(!mF||e.date.startsWith(mF))&&!e.isOpening).sort((a,b)=>b.date.localeCompare(a.date)||b.savedAt?.localeCompare(a.savedAt||''));const tbody=document.getElementById('balance-hist-body');if(!tbody)return;if(!entries.length){tbody.innerHTML='<tr><td colspan="5" class="empty-state">لا توجد سجلات</td></tr>';return;}tbody.innerHTML=entries.map(e=>{const acc=(state.bankAccounts||[]).find(a=>a.id===e.accountId);return`<tr><td>${fmtDateAr(e.date)}</td><td style="font-size:10px;">${acc?.label||'—'} <span style="color:var(--muted);font-size:9px;">${acc?.bank||''}</span></td><td style="font-family:monospace;font-weight:700;color:var(--gold-l);">${fmt(parseFloat(e.balance)||0)}</td><td style="font-size:10px;">${e.notes||''}</td><td><button class="btn btn-danger" style="font-size:9px;padding:2px 6px;" onclick="deleteBalEntry('${e.id}')">🗑</button></td></tr>`;}).join('');}
+function renderBalanceHistory(){const accF=document.getElementById('bal-hist-account')?.value||'';const mF=document.getElementById('bal-hist-month')?.value||'';const entries=(state.balanceEntries||[]).filter(e=>(!accF||e.accountId===accF)&&(!mF||e.date.startsWith(mF))&&!e.isOpening).sort((a,b)=>b.date.localeCompare(a.date)||b.savedAt?.localeCompare(a.savedAt||''));const tbody=document.getElementById('bal-hist-body');if(!tbody)return;if(!entries.length){tbody.innerHTML='<tr><td colspan="5" class="empty-state">لا توجد سجلات</td></tr>';return;}tbody.innerHTML=entries.map(e=>{const acc=(state.bankAccounts||[]).find(a=>a.id===e.accountId);return`<tr><td>${fmtDateAr(e.date)}</td><td style="font-size:10px;">${acc?.label||'—'} <span style="color:var(--muted);font-size:9px;">${acc?.bank||''}</span></td><td style="font-family:monospace;font-weight:700;color:var(--gold-l);">${fmt(parseFloat(e.balance)||0)}</td><td style="font-size:10px;">${e.notes||''}</td><td><button class="btn btn-danger" style="font-size:9px;padding:2px 6px;" onclick="deleteBalEntry('${e.id}')">🗑</button></td></tr>`;}).join('');}
 
 function deleteBalEntry(entryId){state.balanceEntries=(state.balanceEntries||[]).filter(e=>e.id!==entryId);persist();renderBalanceHistory();renderBalanceSummaryChips();renderBankPage();}
 function shiftBalDate(delta){const el=document.getElementById('bal-date');if(!el)return;const d=new Date(el.value||today());d.setDate(d.getDate()+delta);el.value=d.toISOString().slice(0,10);loadBalanceForDate();}
+function printBalanceReport(){renderBalanceHistory();setTimeout(()=>{const tbody=document.getElementById('bal-hist-body');const tbl=tbody?.closest('table');if(!tbl)return;const co=state.company||{};const w=window.open('','_blank');w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;font-family:Tajawal,sans-serif}body{background:#fff;color:#111;direction:rtl;padding:18px;font-size:10px}h1{font-size:15px;font-weight:900;color:#0a1628;text-align:center;margin-bottom:3px}table{width:100%;border-collapse:collapse}th{background:#0a1628;color:#e8c96d;padding:5px 8px;text-align:right;border:1px solid #334;font-weight:700}td{padding:4px 8px;border:1px solid #e5e7eb}@page{size:A4;margin:12mm}</style></head><body>');w.document.write('<h1>'+co.name+'</h1><p style="text-align:center;font-size:9px;color:#666;margin-bottom:8px;">سجل الأرصدة البنكية — '+fmtDateAr(today())+'</p>');w.document.write(tbl.outerHTML);w.document.write('</body></html>');w.document.close();w.onload=()=>w.print();},250);}
+function setBalToday(){const el=document.getElementById('bal-date');if(!el)return;el.value=today();loadBalanceForDate();}
 function copyPrevBalance(){const date=document.getElementById('bal-date')?.value||today();(state.bankAccounts||[]).forEach(acc=>{const inp=document.getElementById('bal-'+acc.id);if(!inp||inp.value)return;const prev=(state.balanceEntries||[]).filter(e=>e.accountId===acc.id&&!e.isOpening&&e.date<date).sort((a,b)=>b.date.localeCompare(a.date))[0];if(prev)inp.value=prev.balance;});}
 function populateReconcileSelects(){const sel=document.getElementById('rec-account');const accs=state.bankAccounts||[];if(sel)sel.innerHTML='<option value="">كل الحسابات</option>'+accs.map(a=>'<option value="'+a.id+'">'+a.label+'</option>').join('');}
 
@@ -3443,35 +3317,6 @@ function printBalancesReport(){renderBalancesReport();setTimeout(()=>{const tbl=
 // ================================================================ REPORTS & HISTORY
 function switchReportTab(tab){currentReportTab=tab;['analytics','balances'].forEach(t=>{const v=document.getElementById('rview-'+t);if(v)v.classList.toggle('hidden',t!==tab);const b=document.getElementById('rtab-'+t);if(b)b.classList.toggle('active',t===tab);});const acts=document.getElementById('rpt-actions');if(acts)acts.style.display=tab==='balances'?'flex':'none';if(tab==='balances')renderBalancesReport();}
 
-function renderReportList(){
-  const q=(document.getElementById('rpt-search')?.value||'').toLowerCase();const m=document.getElementById('rpt-month')?.value||'';
-  const names=new Set(getAllRowsFlat().filter(r=>r.name&&(!m||r._date.startsWith(m))).map(r=>r.name));
-  const filtered=Array.from(names).filter(n=>!q||n.toLowerCase().includes(q)).sort();
-  const grid=document.getElementById('rpt-grid');if(!grid)return;
-  if(!filtered.length){grid.innerHTML='<div class="empty-state">لا توجد بيانات</div>';return;}
-  grid.innerHTML=filtered.map(name=>{const rows=getAllRowsFlat().filter(r=>r.name===name&&parseFloat(r.amount)>0&&(!m||r._date.startsWith(m)));const total=rows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);const count=rows.length;const nameEnc=esc(name);return'<div class="sup-report-card" data-rname="'+nameEnc+'" onclick="openSupplierReport(this.dataset.rname)" style="cursor:pointer;"><div class="src-name">'+name+'</div><div class="src-total">'+fmt(total)+' ر.س</div><div class="src-count">'+count+' حوالة</div></div>';}).join('');
-  const allMonths=new Set(getAllRowsFlat().map(r=>r._date.slice(0,7)));const mEl=document.getElementById('rpt-month');if(mEl&&mEl.options.length<=1){Array.from(allMonths).sort().reverse().forEach(mo=>{const o=document.createElement('option');o.value=mo;o.textContent=mo;mEl.appendChild(o);});}
-}
-
-_currentReportName='';
-function openSupplierReport(name){document.getElementById('rpt-list')?.classList.add('hidden');document.getElementById('rpt-detail')?.classList.remove('hidden');document.getElementById('rpt-detail-name').textContent=name;_currentReportName=name;renderSupplierReportDetail(name);}
-function renderSupplierReportDetail(name){
-  if(!name)return;
-  const rows=getAllRowsFlat().filter(r=>r.name===name&&parseFloat(r.amount)>0).sort((a,b)=>b._date.localeCompare(a._date));
-  const total=rows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);const count=rows.length;const max=count?Math.max(...rows.map(r=>parseFloat(r.amount)||0)):0;
-  const debts=(state.debts||[]).filter(d=>d.name===name);const totalDebtOrig=debts.reduce((s,d)=>s+(parseFloat(d.amount)||0),0);const totalDebtRem=debts.reduce((s,d)=>s+Math.max(0,(parseFloat(d.amount)||0)-(parseFloat(d.paid)||0)),0);
-  document.getElementById('rpt-detail-kpis').innerHTML='<div class="card"><div class="cl">إجمالي التحويلات</div><div class="cv">'+fmt(total)+'</div><div class="cs">ريال</div></div><div class="card"><div class="cl">عدد العمليات</div><div class="cv">'+count+'</div></div><div class="card"><div class="cl">متوسط الدفعة</div><div class="cv">'+fmt(count?total/count:0)+'</div></div><div class="card"><div class="cl">أعلى دفعة</div><div class="cv">'+fmt(max)+'</div></div>'+(debts.length?'<div class="card" style="border-color:rgba(212,150,90,.4);"><div class="cl" style="color:var(--amber);">مديونيات</div><div class="cv" style="color:var(--amber);">'+fmt(totalDebtOrig)+'</div></div>':'')+(totalDebtRem>0?'<div class="card" style="border-color:rgba(224,96,112,.4);"><div class="cl" style="color:var(--red);">متبقي</div><div class="cv" style="color:var(--red);">'+fmt(totalDebtRem)+'</div></div>':'');
-  const mMap={};rows.forEach(r=>{const m=r._date.slice(0,7);if(!mMap[m])mMap[m]=0;mMap[m]+=parseFloat(r.amount)||0;});const mEntries=Object.entries(mMap).sort(([a],[b])=>a.localeCompare(b));const maxM=mEntries.length?Math.max(...mEntries.map(e=>e[1])):1;const mn=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-  document.getElementById('rpt-detail-bars').innerHTML=mEntries.map(([m,v])=>{const[y,mo]=m.split('-');return'<div class="bar-row"><div class="bar-label">'+mn[parseInt(mo)-1]+' '+y+'</div><div class="bar-track"><div class="bar-fill" style="width:'+(v/maxM*100).toFixed(1)+'%;background:var(--gold)"></div></div><div class="bar-val">'+fmt(v)+'</div></div>';}).join('')||'<div class="empty-state">لا توجد بيانات</div>';
-  const nameEnc=esc(name);
-  document.getElementById('rpt-detail-rows').innerHTML=rows.map(r=>'<tr><td style="font-family:monospace;font-size:10px;">'+r._date+'</td><td style="font-size:10px;">'+(r._sessionLabel||'')+'</td><td style="font-family:monospace;color:var(--gold-l);font-weight:700;">'+fmt(parseFloat(r.amount)||0)+'</td><td style="font-size:10px;">'+(r.invoice||'—')+'</td><td style="font-size:10px;">'+(r.notes||'')+'</td><td><button class="btn btn-teal" style="font-size:9px;padding:2px 7px;" onclick="loadSession(\''+r._date+'\',\''+r._sessionId+'\')">📋</button><button class="btn btn-outline" style="font-size:9px;padding:2px 7px;" data-rname="'+nameEnc+'" onclick="openSupplierQuickView(this.dataset.rname)">📄</button></td></tr>').join('')||'<tr><td colspan="6" class="empty-state">لا توجد سجلات</td></tr>';
-  const debtSec=document.getElementById('rpt-debts-section');if(debtSec&&debts.length){debtSec.innerHTML='<div class="sec-title" style="margin-top:14px;">💳 المديونيات</div><div class="tbl-wrap" style="margin-bottom:12px;"><table style="min-width:480px;"><thead><tr><th>النوع</th><th>المبلغ</th><th>المسدد</th><th>المتبقي</th><th>الوضع</th><th>إجراء</th></tr></thead><tbody>'+debts.map(d=>{const rem=Math.max(0,(parseFloat(d.amount)||0)-(parseFloat(d.paid)||0));return'<tr><td style="font-size:10px;">'+(d.type||'—')+'</td><td style="font-family:monospace;font-weight:700;">'+fmt(parseFloat(d.amount)||0)+'</td><td style="font-family:monospace;color:var(--green);">'+fmt(parseFloat(d.paid)||0)+'</td><td style="font-family:monospace;font-weight:700;color:'+(rem>0?'var(--red)':'var(--green)')+';">'+fmt(rem)+'</td><td><span style="font-size:9px;color:'+(rem>0?'var(--red)':'var(--green)')+';">'+(rem>0?'🔴 مدين':'✅ مسدد')+'</span></td><td><button class="btn btn-gold" style="font-size:9px;padding:2px 6px;" onclick="openPayDebt(\''+d.id+'\')">💰</button><button class="btn btn-outline" style="font-size:9px;padding:2px 6px;" onclick="openDebtStatement(\''+d.id+'\')">📄</button></td></tr>';}).join('')+'</tbody></table></div>';}else if(debtSec)debtSec.innerHTML='';
-}
-
-function backToReportList(){document.getElementById('rpt-detail')?.classList.add('hidden');document.getElementById('rpt-list')?.classList.remove('hidden');}
-function openDebtForCurrentSupplier(){openDebtModalForSupplier(_currentReportName);}
-function openDebtForSupplier(){openDebtForCurrentSupplier();}
-
 function renderHistoryList(){
   const q=(document.getElementById('hist-search')?.value||'').toLowerCase();const m=document.getElementById('hist-month')?.value||'';
   const container=document.getElementById('hist-list');if(!container)return;
@@ -3481,7 +3326,6 @@ function renderHistoryList(){
   const allM=new Set(Object.keys(state.days||{}).map(d=>d.slice(0,7)));const mEl=document.getElementById('hist-month');if(mEl&&mEl.options.length<=1){Array.from(allM).sort().reverse().forEach(mo=>{const o=document.createElement('option');o.value=mo;o.textContent=mo;mEl.appendChild(o);});}
 }
 
-function renderDashboard(){const allRows=getAllRowsFlat();const today2=today();const thisMonth=today2.slice(0,7);const monthRows=allRows.filter(r=>r._date.startsWith(thisMonth));const debtTotal=(state.debts||[]).reduce((s,d)=>s+(parseFloat(d.amount)||0),0);const G=id=>document.getElementById(id);if(G('dash-today'))G('dash-today').textContent=fmt(allRows.filter(r=>r._date===today2).reduce((s,r)=>s+(parseFloat(r.amount)||0),0));if(G('dash-month'))G('dash-month').textContent=fmt(monthRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0));if(G('dash-total'))G('dash-total').textContent=fmt(allRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0));if(G('dash-debts'))G('dash-debts').textContent=fmt(debtTotal);}
 
 
 // ================================================================ USERS & AUTH
@@ -3518,6 +3362,33 @@ function renderUsersPage(){
   const grid=document.getElementById('users-grid');if(!grid)return;
   const users=state.users||[];if(!users.length){grid.innerHTML='<div class="empty-state">لا يوجد مستخدمون — أضف مستخدماً أولاً</div>';return;}
   grid.innerHTML=users.map(u=>'<div class="user-card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><div style="width:38px;height:38px;border-radius:50%;background:'+(u.color||'rgba(200,164,94,.2)')+';display:flex;align-items:center;justify-content:center;font-size:20px;">'+(u.avatar||'👤')+'</div><div><div style="font-weight:800;font-size:13px;">'+u.name+'</div><div style="font-size:9px;color:var(--muted);">@'+u.username+' · '+(u.role||'—')+'</div>'+(u.securityQuestion?'<div style="font-size:8px;color:var(--teal);">🔐 لديه سؤال أمان</div>':'')+'</div></div><div style="display:flex;gap:5px;flex-wrap:wrap;"><button class="btn btn-outline" style="font-size:9px;padding:2px 8px;" onclick="openUserModal(\''+u.id+'\')">✏ تعديل</button><button class="btn btn-danger" style="font-size:9px;padding:2px 8px;" onclick="deleteUser(\''+u.id+'\')">🗑</button></div></div>').join('');
+}
+
+function clearLogFilters(){
+  ['log-user-filter','log-type-filter','log-date-filter'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  renderActivityLog();
+}
+function renderActivityLog(){
+  const uf=document.getElementById('log-user-filter');
+  if(uf&&uf.options.length<=1){uf.innerHTML='<option value="">كل المستخدمين</option>'+(state.users||[]).map(u=>'<option value="'+u.id+'">'+u.name+'</option>').join('');}
+  const userF=uf?.value||'';
+  const typeF=document.getElementById('log-type-filter')?.value||'';
+  const dateF=document.getElementById('log-date-filter')?.value||'';
+  const typeIcon={transfer:'📋',balance:'🏦',debt:'💳',login:'🔑',security:'🔐',setting:'⚙️',other:'📝'};
+  const log=(state.activityLog||[]).filter(l=>(!userF||l.userId===userF)&&(!typeF||l.type===typeF)&&(!dateF||(l.timestamp||'').slice(0,10)===dateF));
+  const cnt=document.getElementById('log-count');if(cnt)cnt.textContent='('+log.length+')';
+  const tbody=document.getElementById('activity-log-body');if(!tbody)return;
+  if(!log.length){tbody.innerHTML='<tr><td colspan="4" class="empty-state">لا توجد أنشطة مسجلة</td></tr>';return;}
+  tbody.innerHTML=log.map(l=>{
+    const d=l.timestamp?new Date(l.timestamp):null;
+    const timeStr=d?fmtDateAr(l.timestamp.slice(0,10))+' — '+d.toLocaleTimeString('ar-SA'):'—';
+    return`<tr>
+      <td style="font-size:10px;white-space:nowrap;">${timeStr}</td>
+      <td style="font-size:11px;">${esc(l.userName||'نظام')}</td>
+      <td style="font-size:11px;">${typeIcon[l.type]||'📝'} ${esc(l.details||'')}</td>
+      <td style="font-size:10px;color:var(--muted);">${esc(String(l.extra||''))}</td>
+    </tr>`;
+  }).join('');
 }
 
 // Password Recovery
@@ -3579,20 +3450,20 @@ function doLogout(){const cu=getCurrentUser();if(cu)logActivity('login','تسج�
 function logActivity(type,details,extra){if(!state.activityLog)state.activityLog=[];const cu=getCurrentUser();state.activityLog.unshift({id:uid(),type,details,extra,userId:cu?.id||null,userName:cu?.name||'نظام',userRole:cu?.role||'system',timestamp:new Date().toISOString()});if(state.activityLog.length>500)state.activityLog=state.activityLog.slice(0,500);persist();}
 
 // ================================================================ SETTINGS
-function saveCompany(){state.company={name:(document.getElementById('co-name')?.value||'نظام الحوالات').trim(),sub:(document.getElementById('co-sub')?.value||'').trim(),vat:(document.getElementById('co-vat')?.value||'').trim(),emoji:(document.getElementById('co-emoji')?.value||'🏦').trim(),bankName:(document.getElementById('co-bank-name')?.value||'').trim(),bankAccount:(document.getElementById('co-bank-acc')?.value||'').trim(),bankOwner:(document.getElementById('co-bank-owner')?.value||'').trim()};persist();const logoEl=document.getElementById('logo-emoji');if(logoEl)logoEl.textContent=state.company.emoji;const nameEl=document.getElementById('hdr-company-name');if(nameEl)nameEl.textContent=state.company.name;showToast('✅ تم حفظ بيانات الشركة');}
-function loadCompanyToForm(){const c=state.company||{};const ne=document.getElementById('co-name');if(ne)ne.value=c.name||'';const se=document.getElementById('co-sub');if(se)se.value=c.sub||'';const ve=document.getElementById('co-vat');if(ve)ve.value=c.vat||'';const ee=document.getElementById('co-emoji');if(ee)ee.value=c.emoji||'🏦';const bn=document.getElementById('co-bank-name');if(bn)bn.value=c.bankName||'';const ba=document.getElementById('co-bank-acc');if(ba)ba.value=c.bankAccount||'';const bo=document.getElementById('co-bank-owner');if(bo)bo.value=c.bankOwner||'';}
 function exportData(){const blob=new Blob([JSON.stringify(state)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='نظام_الحوالات_backup_'+today()+'.json';a.click();}
-function importData(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);Object.assign(state,d);persist();init();showToast('✅ تم استيراد البيانات');}catch{showToast('❌ خطأ في الملف');}};r.readAsText(file);}
+function importData(el){const file=(el.files||(el.target&&el.target.files)||[])[0];if(!file)return;const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!confirm('سيتم استبدال جميع بيانات النظام الحالية ببيانات الملف المستورد. متابعة؟'))return;Object.assign(state,d);persist();init();showToast('✅ تم استيراد البيانات');}catch{showToast('❌ خطأ في الملف');}};r.readAsText(file);el.value='';}
+function resetAll(){
+  if(!confirm('⚠️ سيتم حذف جميع بيانات النظام نهائياً (التحويلات، الموردين، المديونيات، الحسابات البنكية، المستخدمين...) ولا يمكن التراجع عن هذا الإجراء.\n\nهل أنت متأكد؟'))return;
+  if(!confirm('تأكيد نهائي: هل تريد فعلاً مسح كل البيانات؟'))return;
+  localStorage.removeItem(SK);
+  location.reload();
+}
 
 // ================================================================ LANGUAGE
 const I18N={ar:{tab_daily:'📋 التحويلات اليومية',tab_dashboard:'📊 لوحة التحكم',tab_history:'📅 السجل التاريخي',tab_suppliers:'👥 الموردون',tab_reports:'📈 التقارير',tab_debts:'💳 المديونيات',tab_banks:'🏦 الحسابات البنكية',tab_users:'👤 إدارة المستخدمين',tab_settings:'⚙️ الإعدادات'},en:{tab_daily:'📋 Daily Transfers',tab_dashboard:'📊 Dashboard',tab_history:'📅 History',tab_suppliers:'👥 Suppliers',tab_reports:'📈 Reports',tab_debts:'💳 Debts',tab_banks:'🏦 Bank Accounts',tab_users:'👤 Users',tab_settings:'⚙️ Settings'}};
 function t(key){return I18N[currentLang]?.[key]||I18N.ar[key]||key;}
 function setLang(lang){currentLang=lang;state.lang=lang;persist();applyLangToUI();document.getElementById('lang-ar')?.classList.toggle('active',lang==='ar');document.getElementById('lang-en')?.classList.toggle('active',lang==='en');}
 function applyLangToUI(){document.documentElement.dir=currentLang==='en'?'ltr':'rtl';const tabs=document.querySelectorAll('.tab');const keys=['daily','dashboard','history','suppliers','reports','debts','banks','users','settings'];tabs.forEach((tab,i)=>{if(keys[i])tab.textContent=t('tab_'+keys[i]);});if(document.getElementById('supplier-qv-modal')?.classList.contains('open')&&_sqvCurrentName)renderSupplierQV(_sqvCurrentName);updateDebtTypeUI();}
-
-// ================================================================ SIGNATURES
-function initSig(canvasId){const canvas=document.getElementById(canvasId);if(!canvas)return;canvas.dataset.empty='1';let drawing=false;const ctx=canvas.getContext('2d');ctx.strokeStyle='#0a1628';ctx.lineWidth=2;ctx.lineCap='round';const getPos=e=>{const r=canvas.getBoundingClientRect();const src=e.touches?e.touches[0]:e;return{x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};};canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);canvas.dataset.empty='0';});canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke();});canvas.addEventListener('mouseup',()=>drawing=false);canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);ctx.beginPath();ctx.moveTo(p.x,p.y);canvas.dataset.empty='0';},{passive:false});canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.lineTo(p.x,p.y);ctx.stroke();},{passive:false});canvas.addEventListener('touchend',()=>drawing=false);}
-function clearSig(canvasId){const c=document.getElementById(canvasId);if(!c)return;c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.empty='1';}
 
 // ================================================================ NAV HELPER
 function mvOpenSession(el){const d=el.dataset.date,s=el.dataset.sid;if(d&&s){loadSession(d,s);showTab('daily');}}
@@ -3602,12 +3473,12 @@ const _origST=showTab;
 showTab=function(n){
   _origST(n);
   if(n==='banks'){if(!state.bankAccounts)state.bankAccounts=[];renderBankPage();}
-  if(n==='users'){if(!state.users)state.users=[];renderUsersPage();}
+  if(n==='users'){if(!state.users)state.users=[];renderUsersPage();renderActivityLog();}
   if(n==='suppliers')renderSuppliers();
   if(n==='history')renderHistoryList();
   if(n==='dashboard')renderDashboard();
   if(n==='reports'){renderReportList();document.getElementById('rpt-list')?.classList.remove('hidden');document.getElementById('rpt-detail')?.classList.add('hidden');}
-  if(n==='settings')loadCompanyToForm();
+  if(n==='settings')loadSettingsForm();
   if(n==='debts')renderDebts();
   document.querySelectorAll('.pnav-btn').forEach(b=>{const tabId=b.id.replace('pnav-','');b.classList.toggle('pnav-active',tabId===n);});
   const pnav=document.getElementById('page-nav-bar');if(pnav){const ls=document.getElementById('login-screen');pnav.style.display=(ls&&!ls.classList.contains('hidden'))?'none':'flex';}
@@ -3615,15 +3486,24 @@ showTab=function(n){
 
 function init(){
   initState();
-  const co=state.company||{};
-  const logoEl=document.getElementById('logo-emoji');if(logoEl)logoEl.textContent=co.emoji||'🏦';
-  const nameEl=document.getElementById('hdr-company-name');if(nameEl)nameEl.textContent=co.name||'نظام الحوالات البنكية';
   currentLang=state.lang||'ar';
-  if(!state.currentDate)state.currentDate=today();
-  renderRows();updateHdrKPIs();
+  applyCompanyUI();
+  populateFilters();
+  populateBankSelect();
+  ensureSession();
+  document.getElementById('transfer-date').value=state.currentDate;
+  document.getElementById('hdr-date').textContent=fmtDateAr(state.currentDate);
+  if(state.sigFinanceName)document.getElementById('sig-finance-name').value=state.sigFinanceName;
+  if(state.sigManagerName)document.getElementById('sig-manager-name').value=state.sigManagerName;
+  loadSettingsForm();
+  requestAnimationFrame(()=>{initSigCanvas('finance');initSigCanvas('manager');});
+  renderSessionTabs();renderRows();updateHdrMonth();updateHdrDebt();
+  ['m-bank','e-bank'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=bankOpts('بنك الراجحي');});
+  document.getElementById('set-bank-name').addEventListener('change',function(){
+    document.getElementById('set-bank-other').style.display=this.value==='other'?'block':'none';
+  });
   if((state.users||[]).length>0)showLoginScreen();
   else updateHdrUserChip();
-  setTimeout(()=>{document.getElementById('hdr-date').textContent=fmtDateAr(state.currentDate);['sig-finance','sig-manager'].forEach(id=>initSig(id));},100);
 }
 
 init();
