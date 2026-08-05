@@ -1372,7 +1372,7 @@ tbody tr:hover{background:var(--g50)}
  <div class="fg" style="grid-template-columns:repeat(4,1fr)">
   <div class="fgrp"><label>كود الصنف</label><input id="inv-item-code" type="text" placeholder="P-001"></div>
   <div class="fgrp s3"><label>اسم الصنف *</label><input id="inv-item-name" type="text" placeholder="اسم الصنف"></div>
-  <div class="fgrp"><label>الوحدة</label><input id="inv-item-unit" type="text" placeholder="قطعة، كيلو..."></div>
+  <div class="fgrp"><label>الوحدة الأساسية</label><input id="inv-item-unit" type="text" placeholder="قطعة، كيلو..." oninput="renderItemUomList()"></div>
   <div class="fgrp"><label>التصنيف</label><input id="inv-item-cat" type="text" placeholder="مواد خام، بضاعة..."></div>
   <div class="fgrp"><label>سعر التكلفة</label><input id="inv-item-cost" type="number" step="0.01" min="0" placeholder="0.00"></div>
   <div class="fgrp"><label>سعر البيع</label><input id="inv-item-sale" type="number" step="0.01" min="0" placeholder="0.00"></div>
@@ -1389,6 +1389,13 @@ tbody tr:hover{background:var(--g50)}
   <div class="fgrp s2"><label>حساب المخزون</label><select id="inv-item-acc"></select></div>
   <div class="fgrp s2"><label>حساب تكلفة البضاعة المباعة</label><select id="inv-item-cogs"></select></div>
  </div>
+ <div class="fgrp" style="margin-top:4px">
+  <label style="display:flex;align-items:center;justify-content:space-between">
+   <span>📐 وحدات القياس البديلة (مصفوفة التحويل)</span>
+   <a href="#" onclick="addItemUom();return false" style="color:var(--teal);font-size:11.5px">+ إضافة وحدة</a>
+  </label>
+  <div id="item-uom-list" style="margin-top:4px"></div>
+ </div>
  <div class="mact"><button class="btn bo" onclick="CM('m-inv-item')">إلغاء</button><button class="btn bp" onclick="saveItem()">💾 حفظ</button></div>
 </div></div>
 
@@ -1402,7 +1409,8 @@ tbody tr:hover{background:var(--g50)}
   <div class="fgrp"><label>المرجع</label><input id="stk-ref" type="text" placeholder="رقم المستند"></div>
   <div class="fgrp"><label>المستودع *</label><select id="stk-wh" class="wh-select" style="font-size:11.5px;padding:7px;border:1px solid var(--g200);border-radius:var(--rs)"></select></div>
   <div class="fgrp"><label>الكمية *</label><input id="stk-qty" type="number" step="0.01" min="0" placeholder="0"></div>
-  <div class="fgrp"><label>سعر الوحدة</label><input id="stk-price" type="number" step="0.01" min="0" placeholder="سعر التكلفة الافتراضي"></div>
+  <div class="fgrp"><label>الوحدة</label><select id="stk-unit" style="font-size:11.5px;padding:7px;border:1px solid var(--g200);border-radius:var(--rs)"></select></div>
+  <div class="fgrp"><label>سعر الوحدة (بالوحدة المختارة)</label><input id="stk-price" type="number" step="0.01" min="0" placeholder="سعر التكلفة الافتراضي"></div>
  </div>
  <div class="mact"><button class="btn bo" onclick="CM('m-stk')">إلغاء</button><button class="btn bp" onclick="saveStockMove()">💾 تأكيد + قيد</button></div>
 </div></div>
@@ -1873,8 +1881,8 @@ tbody tr:hover{background:var(--g50)}
  <div class="fgrp" style="margin-bottom:8px"><label>ملاحظات</label><input id="stkadj-notes" type="text" placeholder="سبب التسوية..."></div>
  <!-- Lines -->
  <div style="padding:10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px">
-  <div id="stkadj-lines-hdr" style="display:grid;grid-template-columns:2fr 0.9fr 0.9fr 0.9fr 1.3fr 28px;gap:5px;font-size:9.5px;font-weight:800;color:var(--g5);padding:3px 2px;margin-bottom:4px">
-   <span>الصنف</span><span>الرصيد الدفتري</span><span id="stkadj-qty-lbl">الكمية الفعلية</span><span>الفرق</span><span>ملاحظات السطر</span><span></span>
+  <div id="stkadj-lines-hdr" style="display:grid;grid-template-columns:1.8fr 0.8fr 0.9fr 0.8fr 0.8fr 1.1fr 28px;gap:5px;font-size:9.5px;font-weight:800;color:var(--g5);padding:3px 2px;margin-bottom:4px">
+   <span>الصنف</span><span>الرصيد الدفتري</span><span id="stkadj-qty-lbl">الكمية الفعلية</span><span>الوحدة</span><span>الفرق</span><span>ملاحظات السطر</span><span></span>
   </div>
   <div id="stkadj-lines"></div>
   <button class="btn bo bsm" onclick="addAdjLine()" style="margin-top:6px">＋ صنف</button>
@@ -2372,6 +2380,7 @@ let stockIssues = [], nxtIssueId = 1;
 let inventoryMethod = "periodic";
 let invAdjustments = [], nxtInvAdjId = 1;
 let invAdjLines = [];
+let itemUomAlts = [];
 
 let trMode = "full", fsTab = "is", subType = "customer", subQ = "";
 let accQ = "", entQ = "";
@@ -6178,6 +6187,42 @@ function notify(msg,type,dur){
 // ════════════════════════════════════════════════════════════════
 // INVENTORY / WAREHOUSE MODULE (مديول المخازن)
 // ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// UNITS OF MEASURE (UoM) CONVERSION MATRIX — per item
+// ════════════════════════════════════════════════════════════════
+function getItemUnits(item){
+  const units=[{name:(item&&item.unit)||"وحدة",factor:1}];
+  ((item&&item.uomAlts)||[]).forEach(function(u){
+    if(u&&u.name&&parseFloat(u.factor)>0) units.push({name:u.name,factor:parseFloat(u.factor)});
+  });
+  return units;
+}
+function uomEsc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");}
+function uomUnitOptionsHtml(item,selectedUnit){
+  return getItemUnits(item).map(function(u){
+    return '<option value="'+uomEsc(u.name)+'" '+(u.name===selectedUnit?"selected":"")+'>'+uomEsc(u.name)+'</option>';
+  }).join("");
+}
+function renderItemUomList(){
+  const el=document.getElementById("item-uom-list");if(!el)return;
+  const baseUnit=(document.getElementById("inv-item-unit")||{}).value.trim()||"الوحدة الأساسية";
+  if(!itemUomAlts.length){
+    el.innerHTML='<div style="font-size:11px;color:var(--g4);padding:4px 0">لا توجد وحدات بديلة — مثال: كرتون = 12 '+uomEsc(baseUnit)+'</div>';
+    return;
+  }
+  el.innerHTML=itemUomAlts.map(function(u,idx){
+    return '<div style="display:grid;grid-template-columns:1.4fr auto 0.8fr 1.4fr 26px;gap:6px;align-items:center;margin-bottom:5px;font-size:11.5px">'+
+      '<input type="text" placeholder="مثال: كرتون" value="'+uomEsc(u.name||"")+'" oninput="updItemUom('+idx+',\'name\',this.value)">'+
+      '<span style="color:var(--g4)">=</span>'+
+      '<input type="number" min="0.0001" step="0.0001" placeholder="12" value="'+(u.factor===undefined||u.factor===""?"":u.factor)+'" oninput="updItemUom('+idx+',\'factor\',this.value)">'+
+      '<span style="color:var(--g5)">'+uomEsc(baseUnit)+'</span>'+
+      '<div onclick="itemUomAlts.splice('+idx+',1);renderItemUomList()" style="cursor:pointer;color:var(--rd);text-align:center">✕</div>'+
+    '</div>';
+  }).join("");
+}
+function addItemUom(){itemUomAlts.push({name:"",factor:""});renderItemUomList();}
+function updItemUom(idx,f,v){if(itemUomAlts[idx])itemUomAlts[idx][f]=v;}
+
 function openItemForm(editId){
   try{
 
@@ -6191,6 +6236,8 @@ function openItemForm(editId){
   document.getElementById("inv-item-sale").value=item?item.salePrice:"";
   document.getElementById("inv-item-qty").value=item?item.qty:0;
   document.getElementById("inv-item-min").value=item?item.minQty:0;
+  itemUomAlts=(item&&item.uomAlts)?JSON.parse(JSON.stringify(item.uomAlts)):[];
+  renderItemUomList();
   // Populate accounts
   const leafAccs=accounts.filter(a=>isLeaf(a.id));
   const opts=leafAccs.map(a=>'<option value="'+a.id+'">'+fmtCode(a.code)+' - '+a.name+'</option>').join('');
@@ -6220,6 +6267,9 @@ function addStockIn(itemId){
   document.getElementById("stk-date").value=today();
   document.getElementById("stk-ref").value="";
   document.getElementById("stk-type-lbl").textContent="إدخال مخزن";
+  const item=inventory.find(function(i){return i.id===itemId;});
+  const unitSel=document.getElementById("stk-unit");
+  if(unitSel)unitSel.innerHTML=item?uomUnitOptionsHtml(item,item.unit):"";
   document.getElementById("m-stk").style.display="flex";
 }
 function addStockOut(itemId){
@@ -6232,19 +6282,28 @@ function addStockOut(itemId){
   document.getElementById("stk-date").value=today();
   document.getElementById("stk-ref").value="";
   document.getElementById("stk-type-lbl").textContent="إخراج مخزن";
+  const item=inventory.find(function(i){return i.id===itemId;});
+  const unitSel=document.getElementById("stk-unit");
+  if(unitSel)unitSel.innerHTML=item?uomUnitOptionsHtml(item,item.unit):"";
   document.getElementById("m-stk").style.display="flex";
 }
 function saveStockMove(){
   const itemId=parseInt(document.getElementById("stk-item-id").value)||0;
   const type=document.getElementById("stk-type").value;
-  const qty=parseFloat(document.getElementById("stk-qty").value)||0;
-  const price=parseFloat(document.getElementById("stk-price").value)||0;
+  const enteredQty=parseFloat(document.getElementById("stk-qty").value)||0;
+  const enteredPrice=parseFloat(document.getElementById("stk-price").value)||0;
   const date=document.getElementById("stk-date").value;
   const ref=document.getElementById("stk-ref").value.trim();
   const whId=parseInt(document.getElementById("stk-wh").value)||0;
   const item=inventory.find(i=>i.id===itemId);
-  if(!item||!qty||!date){showAlert("يرجى إكمال البيانات","err");return;}
+  if(!item||!enteredQty||!date){showAlert("يرجى إكمال البيانات","err");return;}
   if(!whId){showAlert("يرجى تحديد المستودع","err");return;}
+  // تحويل الكمية/السعر المُدخلين (بالوحدة المختارة) إلى الوحدة الأساسية للصنف
+  const selUnit=(document.getElementById("stk-unit")||{}).value||item.unit;
+  const uMatch=getItemUnits(item).find(function(u){return u.name===selUnit;});
+  const factor=uMatch?uMatch.factor:1;
+  const qty=enteredQty*factor;
+  const price=factor&&enteredPrice?+(enteredPrice/factor).toFixed(4):enteredPrice;
   if(type==="out"&&item.qty<qty){showAlert("الكمية المتاحة: "+item.qty+" "+item.unit,"err");return;}
   if(type==="out"&&getItemQtyInWarehouse(itemId,whId)<qty){
     if(!confirm("⚠ الكمية المتاحة لهذا الصنف بهذا المستودع أقل من الكمية المطلوب إخراجها (حسب حركات المخزون المسجّلة). هل تريد المتابعة؟"))return;
@@ -6447,8 +6506,9 @@ function renderGrItems() {
       '</div>'+
       '<input type="number" placeholder="الكمية" value="'+it.qty+'" min="0" step="0.01"'+
       ' oninput="updGrItem('+it.id+',\'qty\',this.value)" style="font-size:11.5px">'+
-      '<input type="text" placeholder="وحدة" value="'+(it.unit||'')+'"'+
-      ' onchange="updGrItem('+it.id+',\'unit\',this.value)" style="font-size:11.5px">'+
+      (item&&getItemUnits(item).length>1
+        ?'<select onchange="updGrItemUnit('+it.id+',this.value)" style="font-size:11px;padding:6px">'+uomUnitOptionsHtml(item,it.unit)+'</select>'
+        :'<input type="text" placeholder="وحدة" value="'+(it.unit||'')+'" onchange="updGrItem('+it.id+',\'unit\',this.value)" style="font-size:11.5px">')+
       '<input type="number" placeholder="التكلفة" value="'+it.cost+'" min="0" step="0.01"'+
       ' oninput="updGrItem('+it.id+',\'cost\',this.value)" style="font-size:11.5px">'+
       '<input type="number" value="'+fmtNum(it.qty*it.cost)+'" readonly style="font-size:11.5px;background:var(--g50);color:var(--teal);font-weight:700">'+
@@ -6487,6 +6547,19 @@ function selectGrItem(lid,itemId) {
   if(pop) pop.style.display = "none";
   renderGrItems();
 }
+// عند تغيير الوحدة (من مصفوفة تحويل الصنف) — نقترح تكلفة مكافئة بنفس القيمة الأساسية
+function updGrItemUnit(id,unitName){
+  const it = grItems.find(function(x){return x.id===id;});
+  if(!it||!it.itemId) return;
+  const item = inventory.find(function(i){return i.id===it.itemId;});
+  if(!item) return;
+  const units = getItemUnits(item);
+  const u = units.find(function(x){return x.name===unitName;})||units[0];
+  it.unit = u.name;
+  it.cost = +((item.costPrice||0)*u.factor).toFixed(4);
+  it.total = it.qty * it.cost;
+  calcGrTotal();
+}
 function updGrItem(id,f,v) {
   const it = grItems.find(function(x){return x.id===id;});
   if(!it) return;
@@ -6515,7 +6588,14 @@ function saveGoodsReceipt(mode) {
   if(!validItems.length){showAlert("يرجى إضافة صنف واحد على الأقل","err");return;}
   const total = validItems.reduce(function(s,it){return s+it.qty*it.cost;},0);
   const gr = {id:nxtGRId++,date,ref,whId,vendorName,vendorSubId:subId,notes,
-    items:validItems.map(function(it){return {itemId:it.itemId,qty:it.qty,unit:it.unit,cost:it.cost,total:it.qty*it.cost};}),
+    items:validItems.map(function(it){
+      // تحويل الكمية/التكلفة المُدخلة (بالوحدة المختارة) إلى الوحدة الأساسية للتخزين والترحيل
+      const item=inventory.find(function(i){return i.id===it.itemId;});
+      const u=item?getItemUnits(item).find(function(x){return x.name===it.unit;}):null;
+      const factor=u?u.factor:1;
+      return {itemId:it.itemId,qty:it.qty,unit:it.unit,cost:it.cost,total:it.qty*it.cost,
+        baseQty:it.qty*factor, baseCost:factor?+(it.cost/factor).toFixed(4):it.cost};
+    }),
     total,status:"draft",entryId:null};
   goodsReceipts.push(gr);
   if(mode==="post") postGoodsReceipt(gr.id);
@@ -6689,7 +6769,9 @@ function saveItem() {
     qty:parseFloat(document.getElementById("inv-item-qty").value)||0,
     minQty:parseFloat(document.getElementById("inv-item-min").value)||0,
     accId:parseInt(document.getElementById("inv-item-acc").value)||null,
-    cogsAccId:parseInt(document.getElementById("inv-item-cogs").value)||null};
+    cogsAccId:parseInt(document.getElementById("inv-item-cogs").value)||null,
+    uomAlts:itemUomAlts.filter(function(u){return u.name&&u.name.trim()&&parseFloat(u.factor)>0;})
+      .map(function(u){return {name:u.name.trim(),factor:parseFloat(u.factor)};})};
   if(editId){const idx=inventory.findIndex(function(i){return i.id===editId;});if(idx>=0)inventory[idx]=item;}
   else inventory.push(item);
   const ctx = document.getElementById("m-inv-item").getAttribute("data-return-ctx");
@@ -8753,16 +8835,20 @@ function postGoodsReceipt(id){
   gr.entryId=entId;
   // ── Update inventory quantities ──
   gr.items.forEach(function(it){
+    // baseQty/baseCost = القيمة بالوحدة الأساسية للصنف (بعد تحويل مصفوفة الوحدات)؛
+    // fallback إلى qty/cost مباشرة لأذونات الاستلام القديمة المحفوظة قبل إضافة الوحدات البديلة
+    const baseQty=it.baseQty!==undefined?it.baseQty:(parseFloat(it.qty)||0);
+    const baseCost=it.baseCost!==undefined?it.baseCost:(parseFloat(it.cost)||0);
     if(it.itemId){
       const item=inventory.find(function(i){return i.id===it.itemId;});
       if(item){
         // Update WACC (Weighted Average Cost)
-        updateItemWACC(item, parseFloat(it.qty)||0, parseFloat(it.cost)||0);
+        updateItemWACC(item, baseQty, baseCost);
       }
     }
     if(typeof stockMovements!=="undefined"&&typeof nxtMoveId!=="undefined")
       stockMovements.push({id:nxtMoveId++,itemId:it.itemId,type:"in",
-        qty:it.qty,price:it.cost||0,date:gr.date,ref:gr.ref,
+        qty:baseQty,price:baseCost,date:gr.date,ref:gr.ref,
         whId:gr.whId,entryId:entId});
   });
   gr.status="posted";
@@ -9904,13 +9990,25 @@ function addAdjLine(){
   invAdjLines.push({id:gid(),itemId:null,itemName:"",unit:"",bookQty:0,enteredQty:0,notes:""});
   renderAdjLines();
 }
+// يحوّل الكمية المُدخلة بالوحدة المختارة إلى الوحدة الأساسية للصنف (للمقارنة مع الرصيد الدفتري)
+function adjLineBaseQty(l){
+  const item=inventory.find(function(i){return i.id===l.itemId;});
+  if(!item) return parseFloat(l.enteredQty)||0;
+  const u=getItemUnits(item).find(function(x){return x.name===l.unit;});
+  return (parseFloat(l.enteredQty)||0)*(u?u.factor:1);
+}
+function adjLineVariance(l,type){
+  const baseQty=adjLineBaseQty(l);
+  return type==="damage"?-baseQty:(baseQty-(l.bookQty||0));
+}
 function renderAdjLines(){
   const el=document.getElementById("stkadj-lines");if(!el)return;
   const type=(document.getElementById("stkadj-type")||{}).value||"count";
   el.innerHTML=invAdjLines.map(function(l){
-    const variance=type==="damage"?-(parseFloat(l.enteredQty)||0):((parseFloat(l.enteredQty)||0)-(l.bookQty||0));
+    const item=l.itemId?inventory.find(function(i){return i.id===l.itemId;}):null;
+    const variance=adjLineVariance(l,type);
     const vColor=variance>0?"#16a34a":variance<0?"#dc2626":"var(--g5)";
-    return '<div style="display:grid;grid-template-columns:2fr 0.9fr 0.9fr 0.9fr 1.3fr 28px;gap:5px;margin-bottom:5px;align-items:center">'+
+    return '<div style="display:grid;grid-template-columns:1.8fr 0.8fr 0.9fr 0.8fr 0.8fr 1.1fr 28px;gap:5px;margin-bottom:5px;align-items:center">'+
       '<div style="position:relative">'+
         '<input type="text" placeholder="🔍 ابحث عن صنف..." value="'+(l.itemName||"")+'"'+
         ' oninput="adjItemSearch('+l.id+',this.value)" onclick="adjItemSearch('+l.id+',this.value)"'+
@@ -9920,6 +10018,9 @@ function renderAdjLines(){
       '<input type="number" value="'+(l.bookQty||0)+'" readonly style="font-size:11.5px;background:var(--g50);color:var(--g5)">'+
       '<input type="number" placeholder="0" value="'+(l.enteredQty||"")+'" min="0" step="0.01"'+
       ' oninput="updAdjLine('+l.id+',\'enteredQty\',this.value)" style="font-size:11.5px">'+
+      (item&&getItemUnits(item).length>1
+        ?'<select onchange="updAdjLineUnit('+l.id+',this.value)" style="font-size:10.5px;padding:5px">'+uomUnitOptionsHtml(item,l.unit)+'</select>'
+        :'<input type="text" value="'+(l.unit||"")+'" readonly style="font-size:10.5px;background:var(--g50);color:var(--g5)">')+
       '<input type="text" value="'+(variance>0?"+":"")+fmtNum(variance)+'" readonly style="font-size:11.5px;font-weight:700;color:'+vColor+';background:var(--g50)">'+
       '<input type="text" placeholder="ملاحظات..." value="'+(l.notes||"")+'"'+
       ' onchange="updAdjLine('+l.id+',\'notes\',this.value)" style="font-size:11.5px">'+
@@ -9931,8 +10032,7 @@ function renderAdjLines(){
   const totVal=invAdjLines.reduce(function(s,l){
     const item=inventory.find(function(i){return i.id===l.itemId;});
     if(!item) return s;
-    const variance=totType==="damage"?-(parseFloat(l.enteredQty)||0):((parseFloat(l.enteredQty)||0)-(l.bookQty||0));
-    return s+variance*(item.costPrice||0);
+    return s+adjLineVariance(l,totType)*(item.costPrice||0);
   },0);
   const totEl=document.getElementById("stkadj-total");
   if(totEl){totEl.textContent=fmtNum(totVal)+" "+cur();totEl.style.color=totVal>=0?"#16a34a":"#dc2626";}
@@ -9964,6 +10064,10 @@ function selectAdjItem(lid,itemId){
   if(pop) pop.style.display="none";
   renderAdjLines();
 }
+function updAdjLineUnit(lid,unitName){
+  const l=invAdjLines.find(function(x){return x.id===lid;});
+  if(l){l.unit=unitName;renderAdjLines();}
+}
 function updAdjLine(lid,f,v){
   const l=invAdjLines.find(function(x){return x.id===lid;});
   if(!l) return;
@@ -9989,13 +10093,13 @@ function saveInvAdjustment(){
     if(!l.itemId) return;
     const item=inventory.find(function(i){return i.id===l.itemId;});
     if(!item) return;
-    const variance=type==="damage"?-(parseFloat(l.enteredQty)||0):((parseFloat(l.enteredQty)||0)-(l.bookQty||0));
+    const variance=adjLineVariance(l,type);
     if(!variance) return;
     const qtyAbs=Math.abs(variance);
     const amount=qtyAbs*(item.costPrice||0);
     if(variance<0&&qtyAbs>(l.bookQty||0)) hasOverIssue=true;
     const mvType=variance>0?"in":"out";
-    adjLinesOut.push({itemId:item.id,itemName:item.name,bookQty:l.bookQty,enteredQty:l.enteredQty,variance,notes:l.notes||""});
+    adjLinesOut.push({itemId:item.id,itemName:item.name,bookQty:l.bookQty,enteredQty:l.enteredQty,unit:l.unit,variance,notes:l.notes||""});
     stockMovements.push({id:nxtMoveId++,itemId:item.id,type:mvType,qty:qtyAbs,price:item.costPrice,date,ref:ref||("ADJ-"+String(nxtInvAdjId).padStart(4,"0")),whId,entryId:null});
     item.qty=(item.qty||0)+(mvType==="in"?qtyAbs:-qtyAbs);
     if(item.accId){
