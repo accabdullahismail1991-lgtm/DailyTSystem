@@ -1823,6 +1823,19 @@ tbody tr:hover{background:var(--g50)}
  <div id="stk-bal-body"></div>
 </div></div>
 
+<!-- ══ WAREHOUSE REPORTS SECTION ══ -->
+<div id="sec-whrpt" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🏗️</div>تقارير المخازن</div>
+  <div style="display:flex;gap:6px">
+   <button class="btn bp bsm" onclick="renderWarehouseReports()">🔄 تحديث</button>
+   <button class="btn bo bsm" onclick="printWarehouseReport()">🖨️ طباعة</button>
+  </div>
+ </div>
+ <div id="whrpt-body"></div>
+</div></div>
+
 <!-- ══ POSTING REVIEW SECTION ══ -->
 <div id="sec-post" class="sec">
 <input type="hidden" id="post-tab-active" value="all">
@@ -9574,16 +9587,7 @@ function printGR(grId){
 // ════════════════════════════════════════════════════════════════
 function renderWarehouseReports(){
   const el=document.getElementById('whrpt-body');if(!el)return;
-  // Inventory by warehouse
-  const whMap={};
-  inventory.forEach(function(item){
-    const wh=item.whId&&warehouses?warehouses.find(function(w){return w.id===item.whId;}):null;
-    const whName=wh?wh.name:'غير محدد';
-    if(!whMap[whName]) whMap[whName]={items:[],totalQty:0,totalVal:0};
-    whMap[whName].items.push(item);
-    whMap[whName].totalQty+=item.qty||0;
-    whMap[whName].totalVal+=(item.qty||0)*(item.costPrice||0);
-  });
+  const whList=warehouses||[];
   let html='';
   // Summary cards
   const totalItems=inventory.length;
@@ -9593,29 +9597,43 @@ function renderWarehouseReports(){
     +'<div class="sc bl"><div class="sl">إجمالي الأصناف</div><div class="sv">'+totalItems+'</div></div>'
     +'<div class="sc gn"><div class="sl">قيمة المخزون</div><div class="sv">'+fmtDisp(totalVal)+'</div></div>'
     +'<div class="sc rd"><div class="sl">تحت الحد الأدنى</div><div class="sv">'+lowStock+'</div></div>'
-    +'<div class="sc am"><div class="sl">عدد المستودعات</div><div class="sv">'+(warehouses?warehouses.length:0)+'</div></div>'
+    +'<div class="sc am"><div class="sl">عدد المستودعات</div><div class="sv">'+whList.length+'</div></div>'
     +'</div>';
-  // Per warehouse table
-  Object.keys(whMap).forEach(function(whName){
-    const wh=whMap[whName];
+  if(!whList.length){
+    el.innerHTML=html+'<div class="empty"><span class="ei">🏗️</span><p>لا توجد مستودعات معرّفة — أضِف مستودعاً من "تعريف المستودعات"</p></div>';
+    return;
+  }
+  // كمية كل صنف تُحسب فعلياً لكل مستودع عبر حركات المخزون (stockMovements)،
+  // وليس عبر حقل item.whId غير المستخدم أصلاً في نموذج البيانات الحالي
+  whList.forEach(function(wh){
+    const rows=inventory.map(function(item){
+      return {item:item, qty:getItemQtyInWarehouse(item.id,wh.id)};
+    }).filter(function(r){return r.qty!==0;});
+    const totalQty=rows.reduce(function(s,r){return s+r.qty;},0);
+    const totalWhVal=rows.reduce(function(s,r){return s+r.qty*(r.item.costPrice||0);},0);
     html+='<div style="margin-bottom:16px">'
       +'<div style="font-weight:700;font-size:12.5px;padding:8px 12px;background:var(--tl2);color:#fff;border-radius:var(--r) var(--r) 0 0">'
-        +'🏗️ '+whName
-        +' <span style="font-size:10px;opacity:.8">| '+wh.items.length+' صنف | '+fmtNum(wh.totalQty)+' وحدة | '+fmtNum(wh.totalVal)+' '+cur()+'</span>'
-      +'</div>'
-      +'<div class="tw" style="border-radius:0 0 var(--r) var(--r);border:1px solid var(--g200)"><table>'
+        +'🏗️ '+wh.name
+        +' <span style="font-size:10px;opacity:.8">| '+rows.length+' صنف | '+fmtNum(totalQty)+' وحدة | '+fmtNum(totalWhVal)+' '+cur()+'</span>'
+      +'</div>';
+    if(!rows.length){
+      html+='<div style="border:1px solid var(--g200);border-top:none;padding:14px;text-align:center;color:var(--g4);font-size:11px;border-radius:0 0 var(--r) var(--r)">لا توجد أصناف بهذا المستودع</div></div>';
+      return;
+    }
+    html+='<div class="tw" style="border-radius:0 0 var(--r) var(--r);border:1px solid var(--g200)"><table>'
       +'<thead><tr><th>الكود</th><th>الصنف</th><th>التصنيف</th><th>الوحدة</th>'
         +'<th>الكمية</th><th>الحد الأدنى</th><th>التكلفة</th><th>القيمة</th><th>الحالة</th><th>إجراء</th>'
       +'</tr></thead><tbody>'
-      +wh.items.map(function(item){
-        const val=(item.qty||0)*(item.costPrice||0);
-        const isLow=item.qty<=(item.minQty||0)&&item.minQty>0;
+      +rows.map(function(r){
+        const item=r.item, qty=r.qty;
+        const val=qty*(item.costPrice||0);
+        const isLow=qty<=(item.minQty||0)&&item.minQty>0;
         return '<tr style="background:'+(isLow?"#fff9e6":"#fff")+'">'
           +'<td style="font-family:monospace;font-size:10px">'+item.code+'</td>'
           +'<td style="font-weight:600">'+item.name+'</td>'
           +'<td style="font-size:10.5px;color:var(--g5)">'+( item.category||'—')+'</td>'
           +'<td style="font-size:10.5px">'+( item.unit||'—')+'</td>'
-          +'<td style="text-align:center;font-weight:700;color:'+(isLow?"#dc2626":"#16a34a")+'">'+item.qty+'</td>'
+          +'<td style="text-align:center;font-weight:700;color:'+(isLow?"#dc2626":"#16a34a")+'">'+qty+'</td>'
           +'<td style="text-align:center;color:var(--g5)">'+( item.minQty||0)+'</td>'
           +'<td style="direction:ltr;text-align:left">'+fmtNum(item.costPrice||0)+'</td>'
           +'<td style="direction:ltr;text-align:left;font-weight:700">'+fmtNum(val)+'</td>'
@@ -9630,38 +9648,43 @@ function renderWarehouseReports(){
 function printWarehouseReport(){
   const hc=CFG.rptColor||'#0f4c75';
   const totalVal=inventory.reduce(function(s,i){return s+(i.qty||0)*(i.costPrice||0);},0);
-  const rows=inventory.map(function(it,i){
-    const wh=it.whId&&warehouses?warehouses.find(function(w){return w.id===it.whId;}):null;
-    const val=(it.qty||0)*(it.costPrice||0);
-    const isLow=it.qty<=(it.minQty||0)&&it.minQty>0;
-    return `<tr style="background:${isLow?'#fffbeb':'#fff'}">
-      <td style="font-family:monospace;font-size:9px">${it.code}</td>
-      <td style="font-weight:600">${it.name}</td>
-      <td>${it.category||'—'}</td>
-      <td style="text-align:center">${wh?wh.name:'عام'}</td>
-      <td>${it.unit||'—'}</td>
-      <td style="text-align:center;font-weight:700;color:${isLow?'#dc2626':'#16a34a'}">${it.qty||0}</td>
-      <td style="text-align:center">${it.minQty||0}</td>
-      <td style="direction:ltr;text-align:left">${fmtNum(it.costPrice||0)}</td>
-      <td style="direction:ltr;text-align:left;font-weight:700">${fmtNum(val)}</td>
-      ${isLow?'<td style="color:#dc2626;font-weight:700">⚠ تحت الحد</td>':'<td style="color:#16a34a">✓</td>'}
-    </tr>`;
+  const whList=warehouses||[];
+  const sections=whList.map(function(wh){
+    const rows=inventory.map(function(item){return {item:item,qty:getItemQtyInWarehouse(item.id,wh.id)};})
+      .filter(function(r){return r.qty!==0;});
+    if(!rows.length) return '';
+    const whVal=rows.reduce(function(s,r){return s+r.qty*(r.item.costPrice||0);},0);
+    const body=rows.map(function(r){
+      const it=r.item, qty=r.qty;
+      const val=qty*(it.costPrice||0);
+      const isLow=qty<=(it.minQty||0)&&it.minQty>0;
+      return `<tr style="background:${isLow?'#fffbeb':'#fff'}">
+        <td style="font-family:monospace;font-size:9px">${it.code}</td>
+        <td style="font-weight:600">${it.name}</td>
+        <td>${it.category||'—'}</td>
+        <td>${it.unit||'—'}</td>
+        <td style="text-align:center;font-weight:700;color:${isLow?'#dc2626':'#16a34a'}">${qty}</td>
+        <td style="text-align:center">${it.minQty||0}</td>
+        <td style="direction:ltr;text-align:left">${fmtNum(it.costPrice||0)}</td>
+        <td style="direction:ltr;text-align:left;font-weight:700">${fmtNum(val)}</td>
+        ${isLow?'<td style="color:#dc2626;font-weight:700">⚠ تحت الحد</td>':'<td style="color:#16a34a">✓</td>'}
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:14px;break-inside:avoid">
+      <div style="background:${hc};color:#fff;padding:6px 10px;font-weight:700;font-size:11.5px">🏗️ ${wh.name} — ${rows.length} صنف — ${fmtNum(whVal)} ${cur()}</div>
+      <table><thead><tr><th>الكود</th><th>الصنف</th><th>التصنيف</th><th>الوحدة</th><th>الكمية</th><th>الحد الأدنى</th><th>التكلفة</th><th>القيمة</th><th>الحالة</th></tr></thead>
+      <tbody>${body}</tbody></table></div>`;
   }).join('');
   printA4(`
-    <div style="text-align:center;font-size:14px;font-weight:800;color:${hc};margin-bottom:12px">تقرير رصيد المخزون</div>
+    <div style="text-align:center;font-size:14px;font-weight:800;color:${hc};margin-bottom:12px">تقارير المخازن — رصيد الأصناف حسب المستودع</div>
     <table style="margin-bottom:10px;border:none">
       <tr>
         <td style="border:none;color:#64748b">عدد الأصناف:</td><td style="border:none;font-weight:700">${inventory.length}</td>
         <td style="border:none;color:#64748b">إجمالي القيمة:</td><td style="border:none;font-weight:700;color:${hc}">${fmtNum(totalVal)} ${cur()}</td>
+        <td style="border:none;color:#64748b">عدد المستودعات:</td><td style="border:none;font-weight:700">${whList.length}</td>
       </tr>
     </table>
-    <table>
-      <thead><tr><th>الكود</th><th>الصنف</th><th>التصنيف</th><th>المستودع</th><th>الوحدة</th><th>الكمية</th><th>الحد الأدنى</th><th>التكلفة</th><th>القيمة</th><th>الحالة</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr><td colspan="8" style="text-align:left">إجمالي قيمة المخزون</td>
-        <td style="direction:ltr;text-align:left;font-weight:700">${fmtNum(totalVal)} ${cur()}</td><td></td>
-      </tr></tfoot>
-    </table>
+    ${sections||'<div style="text-align:center;color:#64748b;padding:20px">لا توجد بيانات</div>'}
   `, true);
 }
 
@@ -9847,19 +9870,20 @@ function renderStkRep(){
       });
     });
   }
-  // Also from goodsReceipts
-  goodsReceipts.forEach(function(gr){
+  // أذونات الاستلام غير المرحّلة فقط (المرحّلة موجودة بالفعل في stockMovements —
+  // إضافتها هنا مجدداً كانت تُكرّر نفس الحركة مرتين لأن مطابقة الاسم النصي بين
+  // gr.items[].itemName (وصف الفاتورة الحر) واسم الصنف الفعلي لا تتطابق دائماً،
+  // خصوصاً في أذونات الاستلام المُنشأة من فاتورة مشتريات عبر حساب الوسيط)
+  goodsReceipts.filter(function(gr){return gr.status!=="posted";}).forEach(function(gr){
     gr.items.forEach(function(it){
-      if(!moves.find(function(m){return m.ref===gr.ref&&m.itemName===(it.itemName||it.desc);})){
-        moves.push({
-          date:gr.date, ref:gr.ref, type:"in",
-          itemName:it.itemName||it.desc||"—", itemCode:"",
-          unit:it.unit||"", qty:it.qty, unitCost:it.cost||0,
-          totalCost:(it.qty||0)*(it.cost||0),
-          source:"إذن استلام", entryId:gr.entryId||null,
-          posted:gr.status==="posted", customer:gr.vendorName||"", whId:gr.whId
-        });
-      }
+      moves.push({
+        date:gr.date, ref:gr.ref, type:"in",
+        itemName:it.itemName||it.desc||"—", itemCode:"",
+        unit:it.unit||"", qty:it.qty, unitCost:it.cost||0,
+        totalCost:(it.qty||0)*(it.cost||0),
+        source:"إذن استلام", entryId:gr.entryId||null,
+        posted:false, customer:gr.vendorName||"", whId:gr.whId
+      });
     });
   });
   // Filter
