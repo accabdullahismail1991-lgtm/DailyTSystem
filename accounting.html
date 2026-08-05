@@ -57,6 +57,21 @@ body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:var(--g
 .tb-bell:hover{background:var(--g50)}
 .tb-bell-bdg{position:absolute;top:-3px;left:-3px;background:var(--rd);color:#fff;font-size:8.5px;font-weight:800;min-width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #fff}
 .tb-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--tl2),#4338ca);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;cursor:default}
+/* ── Bell dropdown panel (distinct from the legacy .notif-panel toast stack below) ── */
+.bell-panel{width:300px;max-height:360px;left:auto;right:0}
+.bell-item{display:flex;gap:10px;padding:9px 10px;border-bottom:1px solid var(--g100);cursor:pointer}
+.bell-item:last-child{border-bottom:none}
+.bell-item:hover{background:var(--g50)}
+.bell-ic{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.bell-ic.c-red{background:#fee2e2;color:#b91c1c}.bell-ic.c-amber{background:#fef3c7;color:#b45309}.bell-ic.c-blue{background:#dbeafe;color:#1d4ed8}
+.bell-body{flex:1;min-width:0}
+.bell-title{font-size:11.5px;font-weight:700;color:var(--g8)}
+.bell-sub{font-size:10px;color:var(--g5);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bell-panel-ft{padding:8px 10px;text-align:center;border-top:1px solid var(--g100)}
+.bell-panel-ft a{color:var(--tl2);font-size:11px;font-weight:700;cursor:pointer}
+/* ── Chart legend ── */
+.legend-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:var(--g7)}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 .content{padding:18px 22px;flex:1}
 .sec{display:none}.sec.active{display:block}
 /* ── Cards ── */
@@ -572,7 +587,10 @@ tbody tr:hover{background:var(--g50)}
   <div class="tb-chip" id="tb-dt"></div>
   <div class="tb-chip" id="tb-cur"></div>
   <button class="tb-yr" onclick="SS('yr',null)">السنة: <span id="tb-yr">2024</span></button>
-  <button class="tb-bell no-print" onclick="SS('notifs',null)" title="الإشعارات">🔔<span class="tb-bell-bdg" id="tb-bell-bdg" style="display:none">0</span></button>
+  <div class="asw no-print" style="width:auto">
+   <button class="tb-bell" onclick="toggleNotifPanel(event)" title="الإشعارات">🔔<span class="tb-bell-bdg" id="tb-bell-bdg" style="display:none">0</span></button>
+   <div class="asp bell-panel" id="bell-panel"></div>
+  </div>
   <div class="tb-avatar no-print" id="tb-avatar" title="">شركة</div>
  </div>
 </div>
@@ -582,6 +600,19 @@ tbody tr:hover{background:var(--g50)}
 <!-- DASHBOARD -->
 <div id="sec-dash" class="sec active">
  <div class="sg2" id="d-grid"></div>
+ <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:14px" id="d-charts-row">
+  <div class="card">
+   <div class="chd"><div class="ct"><div class="ti">📊</div>الإيرادات والمصروفات الشهرية</div></div>
+   <canvas id="d-bar-chart" height="190" style="width:100%"></canvas>
+  </div>
+  <div class="card">
+   <div class="chd"><div class="ct"><div class="ti">🥧</div>الأصول والخصوم وحقوق الملكية</div></div>
+   <div style="display:flex;align-items:center;gap:14px">
+    <canvas id="d-donut-chart" width="150" height="150" style="flex-shrink:0"></canvas>
+    <div id="d-donut-legend" style="flex:1;font-size:11px"></div>
+   </div>
+  </div>
+ </div>
  <div class="card"><div class="chd"><div class="ct"><div class="ti">🕐</div>آخر القيود</div><button class="btn bo bsm" onclick="SS('ent',null)">عرض الكل ←</button></div><div id="d-rec"></div></div>
 </div>
 
@@ -1475,6 +1506,7 @@ tbody tr:hover{background:var(--g50)}
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px" id="stkrep-summary"></div>
  <div id="stkrep-body"></div>
 </div>
+</div>
 
 <div id="sec-int" class="sec">
 <div class="card">
@@ -1665,6 +1697,7 @@ tbody tr:hover{background:var(--g50)}
  </div>
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px" id="stkout-summary"></div>
  <div id="stkout-body"></div>
+</div>
 </div>
 <!-- Manual Stock Issue Modal -->
 <div id="m-manual-issue" style="display:none" onclick="if(event.target===this)CM('m-manual-issue')">
@@ -2725,6 +2758,43 @@ function tbSearchGo(id){
   document.getElementById('tb-search-results').classList.remove('open');
   SS(id,null);
 }
+function getNotifItems(){
+  const items=[];
+  (inventory||[]).filter(i=>i.minQty>0&&i.qty<=i.minQty).forEach(i=>{
+    items.push({icon:'📦',color:'red',title:'مخزون منخفض: '+i.name,sub:'الكمية الحالية: '+i.qty,go:'wh'});
+  });
+  (custodians||[]).filter(c=>c.status==='open').forEach(c=>{
+    items.push({icon:'🗂️',color:'amber',title:'عهدة مالية قائمة: '+c.empName,sub:fmtDisp(c.amount)+' '+cur(),go:'cust'});
+  });
+  (salesInvoices||[]).filter(i=>i.status==='draft').forEach(i=>{
+    items.push({icon:'🟢',color:'blue',title:'فاتورة مبيعات مسودة',sub:i.ref||('#'+i.id),go:'sinv'});
+  });
+  (purchaseInvoices||[]).filter(i=>i.status==='draft').forEach(i=>{
+    items.push({icon:'🔴',color:'blue',title:'فاتورة مشتريات مسودة',sub:i.ref||('#'+i.id),go:'pinv'});
+  });
+  return items;
+}
+function toggleNotifPanel(e){
+  if(e)e.stopPropagation();
+  const panel=document.getElementById('bell-panel');if(!panel)return;
+  const willOpen=!panel.classList.contains('open');
+  document.querySelectorAll('.asp').forEach(p=>p.classList.remove('open'));
+  if(willOpen){renderNotifPanel();panel.classList.add('open');}
+}
+function renderNotifPanel(){
+  const panel=document.getElementById('bell-panel');if(!panel)return;
+  const items=getNotifItems();
+  const body=items.length
+    ?items.slice(0,8).map(n=>'<div class="bell-item" onclick="closeNotifAndGo(\''+n.go+'\')">'
+      +'<div class="bell-ic c-'+n.color+'">'+n.icon+'</div>'
+      +'<div class="bell-body"><div class="bell-title">'+n.title+'</div><div class="bell-sub">'+n.sub+'</div></div></div>').join('')
+    :'<div class="empty" style="padding:20px"><span class="ei">✅</span><p>لا توجد تنبيهات</p></div>';
+  panel.innerHTML=body+'<div class="bell-panel-ft"><a onclick="closeNotifAndGo(\'notifs\')">عرض كل الإشعارات</a></div>';
+}
+function closeNotifAndGo(id){
+  const panel=document.getElementById('bell-panel');if(panel)panel.classList.remove('open');
+  SS(id,null);
+}
 function updateNotifBadge(){
   const badge=document.getElementById('tb-bell-bdg');if(!badge)return;
   let count=0;
@@ -2932,6 +3002,83 @@ function popParSel(selId,excId){
 }
 
 // ═══ DASHBOARD ═══
+const CHART_COLORS=['#6366f1','#f59e0b','#8b5cf6','#22c55e','#ef4444','#06b6d4','#ec4899'];
+function drawDonutChart(canvasId,dataPairs,legendId){
+  const canvas=document.getElementById(canvasId);if(!canvas)return;
+  const ctx=canvas.getContext('2d');const w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,r=Math.min(w,h)/2-4;
+  const total=dataPairs.reduce((s,[,v])=>s+v,0);
+  ctx.clearRect(0,0,w,h);
+  if(!total){
+    ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle='#f1f5f9';ctx.fill();
+  }else{
+    let start=-Math.PI/2;
+    dataPairs.forEach(([,val],i)=>{
+      const slice=(val/total)*Math.PI*2;
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,start+slice);ctx.closePath();
+      ctx.fillStyle=CHART_COLORS[i%CHART_COLORS.length];ctx.fill();
+      start+=slice;
+    });
+  }
+  ctx.beginPath();ctx.arc(cx,cy,r*0.6,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  const legendEl=document.getElementById(legendId);if(!legendEl)return;
+  legendEl.innerHTML=dataPairs.map(([label,val],i)=>
+    '<div class="legend-item"><div class="legend-dot" style="background:'+CHART_COLORS[i%CHART_COLORS.length]+'"></div>'
+    +'<span>'+label+'</span>'
+    +'<span style="margin-right:auto;font-weight:700;color:var(--g8)">'+fmtDisp(val)+'</span></div>'
+  ).join('');
+}
+function drawBarChart(canvasId,categories,seriesList){
+  const canvas=document.getElementById(canvasId);if(!canvas)return;
+  const W=canvas.offsetWidth||500;canvas.width=W;const H=canvas.height;
+  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,H);
+  const allVals=seriesList.flatMap(s=>s.values);
+  const maxV=Math.max(...allVals,1);
+  const pad={t:10,b:22,l:6,r:6};
+  const gW=W-pad.l-pad.r,gH=H-pad.t-pad.b;
+  const groupW=gW/categories.length;
+  const barGap=3,barW=Math.max(2,(groupW-barGap*(seriesList.length+1))/seriesList.length);
+  ctx.strokeStyle='#f1f5f9';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(p=>{const y=pad.t+gH*(1-p);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();});
+  categories.forEach((cat,ci)=>{
+    const groupX=pad.l+ci*groupW;
+    seriesList.forEach((s,si)=>{
+      const v=s.values[ci]||0;
+      const bh=(v/maxV)*gH;
+      const bx=groupX+barGap+si*(barW+barGap);
+      const by=pad.t+gH-bh;
+      ctx.fillStyle=s.color;
+      const rad=Math.min(3,barW/2);
+      ctx.beginPath();
+      ctx.moveTo(bx,by+bh);ctx.lineTo(bx,by+rad);ctx.arcTo(bx,by,bx+rad,by,rad);
+      ctx.lineTo(bx+barW-rad,by);ctx.arcTo(bx+barW,by,bx+barW,by+rad,rad);
+      ctx.lineTo(bx+barW,by+bh);ctx.closePath();ctx.fill();
+    });
+    ctx.fillStyle='#94a3b8';ctx.font='9px Tajawal,sans-serif';ctx.textAlign='center';
+    ctx.fillText(cat,groupX+groupW/2,H-6);
+  });
+}
+function renderDashCharts(tA,tL,tE){
+  drawDonutChart('d-donut-chart',[['الأصول',Math.max(tA,0)],['الخصوم',Math.max(tL,0)],['حقوق الملكية',Math.max(tE,0)]],'d-donut-legend');
+  const months=[];
+  for(let m=1;m<=12;m++)months.push(CY+'-'+String(m).padStart(2,'0'));
+  const revByMonth={},expByMonth={};
+  months.forEach(m=>{revByMonth[m]=0;expByMonth[m]=0;});
+  entries.forEach(e=>{
+    const mKey=(e.date||'').slice(0,7);
+    if(!(mKey in revByMonth))return;
+    (e.lines||[]).forEach(l=>{
+      const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
+      if(acc.type==='revenue')revByMonth[mKey]+=(l.credit||0)-(l.debit||0);
+      if(acc.type==='expense')expByMonth[mKey]+=(l.debit||0)-(l.credit||0);
+    });
+  });
+  const monthLabels=['ينا','فبر','مار','أبر','ماي','يون','يول','أغس','سبت','أكت','نوف','ديس'];
+  drawBarChart('d-bar-chart',monthLabels,[
+    {label:'الإيرادات',color:'#22c55e',values:months.map(m=>Math.max(revByMonth[m],0))},
+    {label:'المصروفات',color:'#ef4444',values:months.map(m=>Math.max(expByMonth[m],0))},
+  ]);
+}
+
 function renderDash(){
   try{
 
@@ -2955,6 +3102,7 @@ function renderDash(){
     <div class="sc2-body"><div class="sc2-lb">${lb}</div>
     <div class="sc2-vl">${typeof vl==="number"&&vl>100?fmtDisp(vl):vl}</div>
     <div class="sc2-sub">${typeof vl==="number"&&vl>100?cur():"—"}</div></div></div>`).join("");
+  renderDashCharts(tA,tL,tE);
   const rec=entries.slice(-6).reverse();
   document.getElementById("d-rec").innerHTML=!rec.length
     ?'<div class="empty"><span class="ei">📄</span><p>لا توجد قيود بعد</p></div>'
@@ -6552,13 +6700,14 @@ function renderNotifications(){
   const drafts=salesInvoices.filter(function(i){return i.status==="draft";}).length+purchaseInvoices.filter(function(i){return i.status==="draft";}).length;
   if(drafts) cards.push({icon:"📄",color:"bl",title:"فواتير مسودة",body:drafts+" فاتورة تنتظر الترحيل",count:drafts});
   if(!cards.length){el.innerHTML='<div class="empty" style="grid-column:1/-1"><span class="ei">✅</span><p>لا توجد تنبيهات</p></div>';return;}
+  const colorMap={rd:'red',am:'amber',bl:'blue'};
   el.innerHTML=cards.map(function(c){
-    return '<div class="sc '+c.color+'">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-      '<span style="font-size:20px">'+c.icon+'</span>'+
-      '<span style="background:var(--rd);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">'+c.count+'</span>'+
-      '</div><div class="sl">'+c.title+'</div>'+
-      '<div style="font-size:11px;margin-top:4px">'+c.body+'</div></div>';
+    return '<div class="sc2 c-'+(colorMap[c.color]||'blue')+'" style="align-items:flex-start">'+
+      '<div class="sc2-ic">'+c.icon+'</div>'+
+      '<div class="sc2-body">'+
+      '<div style="display:flex;align-items:center;gap:8px"><div class="sc2-lb" style="margin-bottom:0">'+c.title+'</div>'+
+      '<span style="background:var(--rd);color:#fff;border-radius:50%;min-width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;padding:0 3px">'+c.count+'</span></div>'+
+      '<div style="font-size:11px;margin-top:5px;color:var(--g6);line-height:1.6">'+c.body+'</div></div></div>';
   }).join('');
 }
 
