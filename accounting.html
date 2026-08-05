@@ -833,6 +833,8 @@ tbody tr:hover{background:var(--g50)}
   </div>
   <div class="fgrp"><label>من تاريخ</label><input id="lg-from" type="date" onchange="renderLg()"></div>
   <div class="fgrp"><label>إلى تاريخ</label><input id="lg-to" type="date" onchange="renderLg()"></div>
+  <div class="fgrp" id="lg-cc-wrap" style="display:none"><label>🏷️ مركز التكلفة</label><select id="lg-cc" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
+  <div class="fgrp" id="lg-proj-wrap" style="display:none"><label>🏗️ المشروع</label><select id="lg-proj" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
   <button class="btn bo bsm" onclick="clrLg()" style="align-self:flex-end">↺ مسح</button>
  </div>
 </div>
@@ -902,6 +904,20 @@ tbody tr:hover{background:var(--g50)}
    <div class="asp" id="tr-acc-p"></div>
   </div>
   <button class="btn bo bsm" onclick="trClearAccFilter()">↺ مسح فلتر الحساب</button>
+ </div>
+ <div id="tr-dim-row" style="display:none;grid-template-columns:1fr 1fr;gap:10px;align-items:flex-end;padding:14px 16px;background:#f8fafc;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:14px">
+  <div class="fgrp">
+   <label>🏷️ مركز التكلفة</label>
+   <select id="tr-cc" onchange="renderTr()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
+    <option value="">— كل مراكز التكلفة —</option>
+   </select>
+  </div>
+  <div class="fgrp">
+   <label>🏗️ المشروع</label>
+   <select id="tr-proj" onchange="renderTr()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
+    <option value="">— كل المشاريع —</option>
+   </select>
+  </div>
  </div>
  <!-- Summary cards -->
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px" id="tr-summary"></div>
@@ -3100,7 +3116,7 @@ function SS(id,btn){
   if(id==="sub")  renderSub(subType);
   if(id==="ent")  {renderEnts();if(!entLines.length)initLines();}
   if(id==="lg")   clrLg();
-  if(id==="tr")   {populateTrGroupSelect();renderTr();}
+  if(id==="tr")   {populateTrGroupSelect();populateTrDimSelects();renderTr();}
   if(id==="fs")   renderFS(fsTab);
   if(id==="yr")   renderYr();
   if(id==="vch")  renderVouchers();
@@ -3441,7 +3457,7 @@ function renderAccs(){
 }
 
 // ═══ LEDGER ═══
-function clrLg(){["lg-s","lg-from","lg-to"].forEach(id=>document.getElementById(id).value="");document.getElementById("lg-id").value="";document.getElementById("lg-body").innerHTML='<div class="empty"><span class="ei">📖</span><p>ابحث عن حساب</p></div>';}
+function clrLg(){["lg-s","lg-from","lg-to","lg-cc","lg-proj"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});document.getElementById("lg-id").value="";document.getElementById("lg-body").innerHTML='<div class="empty"><span class="ei">📖</span><p>ابحث عن حساب</p></div>';}
 
 function setTrMode(m,btn){trMode=m;document.querySelectorAll(".tr-mb").forEach(b=>b.classList.remove("active"));if(btn)btn.classList.add("active");renderTr();}
 function clrTr(){["tr-s","tr-from","tr-to"].forEach(id=>document.getElementById(id).value="");document.getElementById("tr-ty").value="";document.getElementById("tr-sh").value="all";renderTr();}
@@ -8018,6 +8034,25 @@ function populateTrGroupSelect(){
   sel.innerHTML='<option value="">— كل المجموعات —</option>'
     +groups.map(a=>`<option value="${a.id}">${"—".repeat(getLevel(a))} ${a.code} ${a.name}</option>`).join("");
 }
+function populateTrDimSelects(){
+  const row=document.getElementById("tr-dim-row");if(!row)return;
+  const hasDims=(costCenters&&costCenters.length)||(projects&&projects.length);
+  row.style.display=hasDims?"grid":"none";
+  const ccSel=document.getElementById("tr-cc");
+  if(ccSel){
+    const cur=ccSel.value;
+    ccSel.innerHTML='<option value="">— كل مراكز التكلفة —</option>'
+      +(costCenters||[]).filter(c=>c.active!==false).map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+    ccSel.value=cur;
+  }
+  const projSel=document.getElementById("tr-proj");
+  if(projSel){
+    const cur=projSel.value;
+    projSel.innerHTML='<option value="">— كل المشاريع —</option>'
+      +(projects||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+    projSel.value=cur;
+  }
+}
 function trAccSearch(val){
   const q=(val||"").toLowerCase();
   const pop=document.getElementById("tr-acc-p");if(!pop)return;
@@ -8051,6 +8086,10 @@ function getTrData(){
   const groupId    = parseInt((document.getElementById("tr-parent")||{}).value)||0;
   const groupIds   = groupId ? new Set([groupId,...getDescendants(groupId)]) : null;
   const singleId   = parseInt((document.getElementById("tr-acc-id")||{}).value)||0;
+  const ccId       = parseInt((document.getElementById("tr-cc")||{}).value)||0;
+  const projId     = parseInt((document.getElementById("tr-proj")||{}).value)||0;
+  const hasDimFilter = !!(ccId||projId);
+  const dimOk = function(l){return (!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId);};
   const hasRange   = !!(fromD||toD);
   const NORM = {asset:"dr",liability:"cr",equity:"cr",revenue:"cr",expense:"dr"};
 
@@ -8067,14 +8106,15 @@ function getTrData(){
     })
     .map(function(a){
       let opDr=0, opCr=0, mvDr=0, mvCr=0;
-      // Opening balance from account setup
-      const openAmt = parseFloat(a.open)||0;
+      // Opening balance from account setup — لا معنى له عند التصفية حسب مركز تكلفة/مشروع
+      // (الرصيد الافتتاحي للحساب لا يمكن أن يُنسب لبعد تحليلي معيّن)
+      const openAmt = hasDimFilter ? 0 : (parseFloat(a.open)||0);
       const normSide = NORM[a.type]||"dr";
       if(!hasRange){
         // No date range: opening balance + ALL entries
         if(normSide==="dr") mvDr += openAmt; else mvCr += openAmt;
         entries.forEach(function(e){
-          e.lines.filter(function(l){return l.accId===a.id;}).forEach(function(l){
+          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l);}).forEach(function(l){
             mvDr+=l.debit||0; mvCr+=l.credit||0;
           });
         });
@@ -8083,7 +8123,7 @@ function getTrData(){
         if(normSide==="dr") opDr += openAmt; else opCr += openAmt;
         // Entries BEFORE period = opening balance additions
         entries.filter(function(e){ return fromD && e.date<fromD; }).forEach(function(e){
-          e.lines.filter(function(l){return l.accId===a.id;}).forEach(function(l){
+          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l);}).forEach(function(l){
             opDr+=l.debit||0; opCr+=l.credit||0;
           });
         });
@@ -8091,7 +8131,7 @@ function getTrData(){
         entries.filter(function(e){
           return (!fromD||e.date>=fromD) && (!toD||e.date<=toD);
         }).forEach(function(e){
-          e.lines.filter(function(l){return l.accId===a.id;}).forEach(function(l){
+          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l);}).forEach(function(l){
             mvDr+=l.debit||0; mvCr+=l.credit||0;
           });
         });
@@ -9498,14 +9538,25 @@ function renderLg(){
   const toD=((document.getElementById('lg-to')||{}).value)||'';
   const selAccId=parseInt((document.getElementById('lg-id')||{}).value)||0;
   const el=document.getElementById('lg-body');if(!el)return;
-  // Populate account selector
-  const lgSel=document.getElementById('lg-id');
-  if(lgSel&&!lgSel.options.length){
-    lgSel.innerHTML='<option value="">— كل الحسابات —</option>'+
-      accounts.filter(function(a){return isLeaf(a.id);}).map(function(a){
-        return '<option value="'+a.id+'">'+a.code+' — '+a.name+'</option>';
-      }).join('');
+  // إظهار/تعبئة فلاتر مركز التكلفة والمشروع (فقط إذا كانت معرّفة بالنظام)
+  const ccWrap=document.getElementById('lg-cc-wrap'), projWrap=document.getElementById('lg-proj-wrap');
+  if(ccWrap) ccWrap.style.display=(costCenters&&costCenters.length)?'flex':'none';
+  if(projWrap) projWrap.style.display=(projects&&projects.length)?'flex':'none';
+  const ccSel=document.getElementById('lg-cc');
+  if(ccSel&&costCenters&&costCenters.length){
+    const curCc=ccSel.value;
+    ccSel.innerHTML='<option value="">— الكل —</option>'+costCenters.filter(function(c){return c.active!==false;}).map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join('');
+    ccSel.value=curCc;
   }
+  const projSel=document.getElementById('lg-proj');
+  if(projSel&&projects&&projects.length){
+    const curProj=projSel.value;
+    projSel.innerHTML='<option value="">— الكل —</option>'+projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
+    projSel.value=curProj;
+  }
+  const ccId=parseInt((document.getElementById('lg-cc')||{}).value)||0;
+  const projId=parseInt((document.getElementById('lg-proj')||{}).value)||0;
+  const hasDimFilter=!!(ccId||projId);
   const filtAccs=accounts.filter(function(a){
     if(!isLeaf(a.id)) return false;
     if(selAccId&&a.id!==selAccId) return false;
@@ -9519,14 +9570,17 @@ function renderLg(){
     entries.filter(function(e){
       return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);
     }).forEach(function(e){
-      e.lines.filter(function(l){return l.accId===acc.id;}).forEach(function(l){
+      e.lines.filter(function(l){return l.accId===acc.id&&(!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId);}).forEach(function(l){
         lines.push({date:e.date,ref:e.ref||'',desc:l.desc||e.desc||'',
           entId:e.id,dr:l.debit||0,cr:l.credit||0,
-          sub:l.subId?subLedger.find(function(s){return s.id===l.subId;}):null});
+          sub:l.subId?subLedger.find(function(s){return s.id===l.subId;}):null,
+          cc:l.costCenterId?(costCenters||[]).find(function(c){return c.id===l.costCenterId;}):null,
+          proj:l.projectId?(projects||[]).find(function(p){return p.id===l.projectId;}):null});
       });
     });
     lines.sort(function(a,b){return a.date.localeCompare(b.date);});
-    let runBal=parseFloat(acc.open)||0;
+    // الرصيد الافتتاحي للحساب لا يُنسب لمركز تكلفة/مشروع معيّن — يُستبعد عند التصفية بأحدهما
+    let runBal=hasDimFilter?0:(parseFloat(acc.open)||0);
     let totDr=0,totCr=0;
     if(!lines.length&&!selAccId) return;
     html+='<div style="margin-bottom:18px;break-inside:avoid">'
@@ -9541,17 +9595,18 @@ function renderLg(){
         +'<th style="direction:ltr;text-align:left">دائن</th>'
         +'<th style="direction:ltr;text-align:left">الرصيد</th>'
       +'</tr></thead><tbody>'
-      +(parseFloat(acc.open)!==0?`<tr style="background:#f8fafc"><td colspan="4" style="color:#64748b;font-style:italic">رصيد افتتاحي</td>
+      +(!hasDimFilter&&parseFloat(acc.open)!==0?`<tr style="background:#f8fafc"><td colspan="4" style="color:#64748b;font-style:italic">رصيد افتتاحي</td>
         <td style="direction:ltr;text-align:left"></td>
         <td style="direction:ltr;text-align:left"></td>
         <td style="direction:ltr;text-align:left;font-weight:700;color:#1d4ed8">${fmtNum(runBal)}</td></tr>`:'')
       +lines.map(function(l){
         totDr+=l.dr; totCr+=l.cr;
         runBal+=l.dr-l.cr;
+        const dimBadge=(l.cc?' <small style="color:#0891b2">🏷️'+l.cc.name+'</small>':'')+(l.proj?' <small style="color:#ea580c">🏗️'+l.proj.name+'</small>':'');
         return '<tr>'
           +'<td style="white-space:nowrap;font-size:10.5px">'+fmtDate(l.date)+'</td>'
           +'<td style="font-family:monospace;font-size:10px;color:'+hc+'">'+l.ref+'</td>'
-          +'<td>'+l.desc+(l.sub?' <small style="color:#7c3aed">/ '+l.sub.name+'</small>':'')+'</td>'
+          +'<td>'+l.desc+(l.sub?' <small style="color:#7c3aed">/ '+l.sub.name+'</small>':'')+dimBadge+'</td>'
           +'<td style="text-align:center;font-size:10px"><a onclick="printEntVch('+l.entId+')" style="cursor:pointer;color:'+hc+'">#'+l.entId+'</a></td>'
           +'<td style="direction:ltr;text-align:left;color:#1d4ed8;font-weight:'+(l.dr?700:400)+'">'+( l.dr?fmtNum(l.dr):'')+'</td>'
           +'<td style="direction:ltr;text-align:left;color:#16a34a;font-weight:'+(l.cr?700:400)+'">'+( l.cr?fmtNum(l.cr):'')+'</td>'
