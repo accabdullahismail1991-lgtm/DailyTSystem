@@ -2750,6 +2750,33 @@ async function exportPDF(){
 const PERM_KEYS=['daily','dashboard','history','suppliers','reports','debts','banks','users','settings'];
 let currentLang='ar', currentBankTab='accounts', currentReportTab='analytics';
 
+function hasTabPerm(key){
+  const u=getCurrentUser();
+  if(!u)return true; // لا يوجد نظام دخول مفعّل — لا قيود
+  if(u.role==='admin')return true;
+  const perms=u.permissions||{};
+  return !!perms[key];
+}
+function applyTabPermissions(){
+  const u=getCurrentUser();
+  const allowedFirst={};
+  let firstAllowed=null;
+  PERM_KEYS.forEach(k=>{
+    const allowed=hasTabPerm(k);
+    if(allowed&&!firstAllowed)firstAllowed=k;
+    document.querySelectorAll('.tab').forEach(b=>{
+      if((b.getAttribute('onclick')||'').includes("showTab('"+k+"')"))b.style.display=allowed?'':'none';
+    });
+    const pnavBtn=document.getElementById('pnav-'+k);
+    if(pnavBtn)pnavBtn.style.display=allowed?'':'none';
+  });
+  if(u){
+    const activeTab=document.querySelector('.tab.active');
+    const activeKey=activeTab?PERM_KEYS.find(k=>(activeTab.getAttribute('onclick')||'').includes("showTab('"+k+"')")):null;
+    if(activeKey&&!hasTabPerm(activeKey)&&firstAllowed)showTab(firstAllowed);
+  }
+}
+
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function today(){return new Date().toISOString().slice(0,10);}
 function fmt(n){return(parseFloat(n)||0).toLocaleString('en-SA',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -3438,18 +3465,18 @@ function hideLoginScreen(){
 function selectLoginUser(el,uid){document.querySelectorAll('.user-login-item').forEach(b=>{b.style.borderColor='var(--border)';b.style.background='';});el.style.borderColor='rgba(200,164,94,.5)';el.style.background='rgba(200,164,94,.07)';state._loginSelectedUser=uid;}
 function doLogin(){
   const users=state.users||[];const errEl=document.getElementById('login-error');
-  if(!users.length){state.currentUserId=null;hideLoginScreen();updateHdrUserChip();logActivity('login','دخول كمسؤول افتراضي');showToast('✅ مرحباً في النظام');return;}
+  if(!users.length){state.currentUserId=null;hideLoginScreen();updateHdrUserChip();applyTabPermissions();logActivity('login','دخول كمسؤول افتراضي');showToast('✅ مرحباً في النظام');return;}
   const userId=state._loginSelectedUser||users[0].id;const user=users.find(u=>u.id===userId);
   if(!user){if(errEl){errEl.textContent='اختر مستخدماً';errEl.style.display='block';}return;}
   const pw=document.getElementById('login-pw')?.value||'';
   if(user.password&&user.password!==btoa(pw)){if(errEl){errEl.textContent='❌ كلمة المرور غير صحيحة';errEl.style.display='block';}document.getElementById('login-pw')?.select();return;}
-  state.currentUserId=userId;state._loginSelectedUser=null;persist();hideLoginScreen();updateHdrUserChip();logActivity('login','تسجيل دخول: '+user.name);showToast('✅ مرحباً، '+user.name);const pwEl=document.getElementById('login-pw');if(pwEl)pwEl.value='';
+  state.currentUserId=userId;state._loginSelectedUser=null;persist();hideLoginScreen();updateHdrUserChip();applyTabPermissions();logActivity('login','تسجيل دخول: '+user.name);showToast('✅ مرحباً، '+user.name);const pwEl=document.getElementById('login-pw');if(pwEl)pwEl.value='';
 }
 function getCurrentUser(){return(state.users||[]).find(u=>u.id===state.currentUserId)||null;}
 function updateHdrUserChip(){const u=getCurrentUser();const chip=document.getElementById('hdr-user-chip');if(chip){if(u)chip.textContent=(u.avatar||'👤')+' '+u.name;else chip.textContent='👤 ضيف';}}
 function switchUserModal(){const el=document.getElementById('su-user');if(el)el.innerHTML=(state.users||[]).map(u=>'<option value="'+u.id+'">'+u.name+' (@'+u.username+')</option>').join('');document.getElementById('su-password').value='';document.getElementById('su-error').style.display='none';openModal('switch-user-modal');}
 function quickSwitchUser(userId){const el=document.getElementById('su-user');if(el)el.innerHTML=(state.users||[]).map(u=>'<option value="'+u.id+'"'+(u.id===userId?' selected':'')+'>'+u.name+'</option>').join('');document.getElementById('su-password').value='';document.getElementById('su-error').style.display='none';openModal('switch-user-modal');}
-function doSwitchUser(){const userId=document.getElementById('su-user')?.value;const pw=document.getElementById('su-password')?.value;const errEl=document.getElementById('su-error');const user=(state.users||[]).find(u=>u.id===userId);if(!user){errEl.textContent='مستخدم غير موجود';errEl.style.display='block';return;}if(user.password&&user.password!==btoa(pw)){errEl.textContent='كلمة المرور غير صحيحة';errEl.style.display='block';return;}state.currentUserId=userId;persist();closeModal('switch-user-modal');renderUsersPage();updateHdrUserChip();showToast('مرحباً، '+user.name);}
+function doSwitchUser(){const userId=document.getElementById('su-user')?.value;const pw=document.getElementById('su-password')?.value;const errEl=document.getElementById('su-error');const user=(state.users||[]).find(u=>u.id===userId);if(!user){errEl.textContent='مستخدم غير موجود';errEl.style.display='block';return;}if(user.password&&user.password!==btoa(pw)){errEl.textContent='كلمة المرور غير صحيحة';errEl.style.display='block';return;}state.currentUserId=userId;persist();closeModal('switch-user-modal');renderUsersPage();updateHdrUserChip();applyTabPermissions();showToast('مرحباً، '+user.name);}
 function confirmLogout(){if(!confirm('هل تريد تسجيل الخروج من النظام؟'))return;doLogout();}
 function doLogout(){const cu=getCurrentUser();if(cu)logActivity('login','تسجيل خروج: '+cu.name);state.currentUserId=null;persist();showLoginScreen();}
 function logActivity(type,details,extra){if(!state.activityLog)state.activityLog=[];const cu=getCurrentUser();state.activityLog.unshift({id:uid(),type,details,extra,userId:cu?.id||null,userName:cu?.name||'نظام',userRole:cu?.role||'system',timestamp:new Date().toISOString()});if(state.activityLog.length>500)state.activityLog=state.activityLog.slice(0,500);persist();}
@@ -3476,6 +3503,7 @@ function mvOpenSession(el){const d=el.dataset.date,s=el.dataset.sid;if(d&&s){loa
 // ================================================================ PATCH showTab + INIT
 const _origST=showTab;
 showTab=function(n){
+  if(!hasTabPerm(n)){showToast('⛔ ليس لديك صلاحية الوصول لهذه الصفحة');return;}
   _origST(n);
   if(n==='banks'){if(!state.bankAccounts)state.bankAccounts=[];renderBankPage();}
   if(n==='users'){if(!state.users)state.users=[];renderUsersPage();renderActivityLog();}
