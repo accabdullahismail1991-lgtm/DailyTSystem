@@ -1765,7 +1765,7 @@ tbody tr:hover{background:var(--g50)}
    <select id="stk-bal-cat" style="font-size:12px;padding:5px 8px" onchange="renderStockBalance()"><option value="">كل التصنيفات</option></select>
    <select id="stk-bal-wh" style="font-size:12px;padding:5px 8px" onchange="renderStockBalance()"><option value="">كل المستودعات</option></select>
    <button class="btn bg bsm" onclick="exportStockBalXL()">📊 Excel</button>
-   <button class="btn bo bsm" onclick="window.print()">🖨️</button>
+   <button class="btn bo bsm" onclick="printStockBal()">🖨️</button>
   </div>
  </div>
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px" id="stk-bal-summary"></div>
@@ -6999,6 +6999,15 @@ function loadCustodianEntry(id){
 // ════════════════════════════════════════════════════════════════
 // TAX ENTRY - as journal entry form
 // ════════════════════════════════════════════════════════════════
+function getStockBalRows(){
+  const sq=((document.getElementById("stk-bal-search")||{}).value||"").toLowerCase();
+  const catF=((document.getElementById("stk-bal-cat")||{}).value||"");
+  const whF=parseInt((document.getElementById("stk-bal-wh")||{}).value)||0;
+  const whName=whF?((warehouses||[]).find(function(w){return w.id===whF;})||{}).name||"":"";
+  const list=inventory.filter(function(i){return (!sq||i.name.toLowerCase().includes(sq)||i.code.toLowerCase().includes(sq))&&(!catF||i.category===catF);})
+    .map(function(i){return {item:i, qty: whF?getItemQtyInWarehouse(i.id,whF):i.qty};});
+  return {list, whF, whName, catF, sq};
+}
 function renderStockBalance(){
   const el=document.getElementById("stk-bal-body");if(!el)return;
   const catSel=document.getElementById("stk-bal-cat");
@@ -7013,11 +7022,7 @@ function renderStockBalance(){
     whSel.innerHTML='<option value="">كل المستودعات</option>'+(warehouses||[]).map(function(w){return '<option value="'+w.id+'">'+w.name+'</option>';}).join("");
     whSel.value=curWh;
   }
-  const sq=((document.getElementById("stk-bal-search")||{}).value||"").toLowerCase();
-  const catF=((document.getElementById("stk-bal-cat")||{}).value||"");
-  const whF=parseInt((document.getElementById("stk-bal-wh")||{}).value)||0;
-  const list=inventory.filter(function(i){return (!sq||i.name.toLowerCase().includes(sq)||i.code.toLowerCase().includes(sq))&&(!catF||i.category===catF);})
-    .map(function(i){return {item:i, qty: whF?getItemQtyInWarehouse(i.id,whF):i.qty};});
+  const {list, whF}=getStockBalRows();
   const totalVal=list.reduce(function(s,r){return s+r.qty*r.item.costPrice;},0);
   const lowCount=list.filter(function(r){return r.item.minQty>0&&r.qty<=r.item.minQty;}).length;
   const sumEl=document.getElementById("stk-bal-summary");
@@ -7048,12 +7053,35 @@ function renderStockBalance(){
 }
 function exportStockBalXL(){
   if(typeof XLSX==="undefined"){showAlert("مكتبة Excel غير محملة","err");return;}
+  const {list}=getStockBalRows();
   const wb=XLSX.utils.book_new();
   const data=[["الكود","الصنف","التصنيف","الوحدة","الكمية","التكلفة","البيع","القيمة","حد التنبيه"]];
-  inventory.forEach(function(i){data.push([i.code,i.name,i.category,i.unit,i.qty,i.costPrice,i.salePrice,i.qty*i.costPrice,i.minQty]);});
+  list.forEach(function(r){const i=r.item;data.push([i.code,i.name,i.category,i.unit,r.qty,i.costPrice,i.salePrice,r.qty*i.costPrice,i.minQty]);});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),"رصيد المخزون");
   XLSX.writeFile(wb,"stock_balance_"+today()+".xlsx");
   showAlert("تم تصدير رصيد المخزون ✓");
+}
+function printStockBal(){
+  const hc=CFG.rptColor||"#0f4c75";
+  const {list, whName}=getStockBalRows();
+  const totalVal=list.reduce(function(s,r){return s+r.qty*r.item.costPrice;},0);
+  const rows=list.map(function(r){
+    const i=r.item;
+    const low=i.minQty>0&&r.qty<=i.minQty;
+    return `<tr style="background:${low?"#fffbeb":""}">
+      <td style="font-family:monospace">${i.code}</td>
+      <td>${i.name}${low?' <span style="color:#dc2626">⚠</span>':''}</td>
+      <td style="text-align:center;font-weight:700">${r.qty}</td>
+      <td>${i.unit||""}</td>
+      <td style="direction:ltr;text-align:left">${fmtNum(i.costPrice||0)}</td>
+      <td style="direction:ltr;text-align:left">${fmtNum(i.salePrice||0)}</td>
+      <td style="direction:ltr;text-align:left;font-weight:700">${fmtNum(r.qty*(i.costPrice||0))}</td>
+    </tr>`;
+  }).join("");
+  printA4(`<div style="text-align:center;font-size:13px;font-weight:700;color:${hc};margin-bottom:4px">تقرير رصيد المخزون${whName?" — مستودع: "+whName:""}</div>
+    <div style="text-align:center;font-size:10px;color:#64748b;margin-bottom:12px">إجمالي قيمة المخزون: ${fmtNum(totalVal)} ${cur()}</div>
+    <table><thead><tr><th>الكود</th><th>الصنف</th><th>الكمية</th><th>الوحدة</th><th>التكلفة</th><th>سعر البيع</th><th>القيمة</th></tr></thead>
+    <tbody>${rows}</tbody></table>`, true);
 }
 
 // ════════════════════════════════════════════════════════════════
