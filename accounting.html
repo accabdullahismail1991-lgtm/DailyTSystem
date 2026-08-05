@@ -11,6 +11,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="qrcode.min.js"></script>
 <script src="cloud-sync.js"></script>
 <style>
 :root{
@@ -628,7 +629,8 @@ tbody tr:hover{background:var(--g50)}
   <h3>🏢 بيانات المنشأة</h3>
   <div class="fgrp" style="margin-bottom:9px"><label>اسم الشركة / المنشأة</label><input id="st-name" type="text" placeholder="اسم الشركة"></div>
   <div class="fgrp" style="margin-bottom:9px"><label>العنوان</label><input id="st-addr" type="text" placeholder="المدينة، الدولة"></div>
-  <div class="fgrp"><label>رقم السجل التجاري</label><input id="st-cr" type="text" placeholder="123456789"></div>
+  <div class="fgrp" style="margin-bottom:9px"><label>رقم السجل التجاري</label><input id="st-cr" type="text" placeholder="123456789"></div>
+  <div class="fgrp"><label>الرقم الضريبي (VAT) — لازم لـ QR فاتورة الزكاة</label><input id="st-vat" type="text" placeholder="300000000000003" maxlength="15"></div>
  </div>
  <div class="set-card">
   <h3>📅 السنة المالية</h3>
@@ -3066,6 +3068,8 @@ function loadSettings(){
   document.getElementById("st-name").value=CFG.name||"";
   document.getElementById("st-addr").value=CFG.addr||"";
   document.getElementById("st-cr").value=CFG.cr||"";
+  const vatEl=document.getElementById("st-vat");
+  if(vatEl)vatEl.value=CFG.vatNo||"";
   document.getElementById("st-yr").value=CFG.year||2024;
   document.getElementById("st-fy-start").value=CFG.fyStart||"";
   document.getElementById("st-fy-end").value=CFG.fyEnd||"";
@@ -3087,6 +3091,8 @@ function saveSettings(){
   CFG.name=document.getElementById("st-name").value.trim();
   CFG.addr=document.getElementById("st-addr").value.trim();
   CFG.cr=document.getElementById("st-cr").value.trim();
+  const vatSv=document.getElementById("st-vat");
+  if(vatSv)CFG.vatNo=vatSv.value.trim();
   const ny=parseInt(document.getElementById("st-yr").value)||2024;
   CFG.fyStart=document.getElementById("st-fy-start").value;
   CFG.fyEnd=document.getElementById("st-fy-end").value;
@@ -9063,6 +9069,46 @@ function printEntVch(entId){
 }
 
 // ════════════════════════════════════════════════════════════════
+// ZATCA QR CODE (فاتورة إلكترونية مبسّطة — TLV + Base64)
+// ════════════════════════════════════════════════════════════════
+function zatcaTLV(tag, value){
+  const valBytes=new TextEncoder().encode(String(value||""));
+  const out=new Uint8Array(2+valBytes.length);
+  out[0]=tag; out[1]=valBytes.length; out.set(valBytes,2);
+  return out;
+}
+function zatcaBase64(inv){
+  const sellerName=CFG.name||"";
+  const vatNo=CFG.vatNo||"";
+  const dt=(inv.date?new Date(inv.date+"T"+(inv.time||"00:00:00")):new Date());
+  const isoTs=isNaN(dt.getTime())?new Date().toISOString():dt.toISOString().replace(/\.\d{3}Z$/,"Z");
+  const total=(parseFloat(inv.total)||0).toFixed(2);
+  const vatAmt=(parseFloat(inv.tax)||0).toFixed(2);
+  const parts=[
+    zatcaTLV(1,sellerName),
+    zatcaTLV(2,vatNo),
+    zatcaTLV(3,isoTs),
+    zatcaTLV(4,total),
+    zatcaTLV(5,vatAmt)
+  ];
+  const totalLen=parts.reduce((s,p)=>s+p.length,0);
+  const buf=new Uint8Array(totalLen);
+  let off=0; parts.forEach(p=>{buf.set(p,off);off+=p.length;});
+  let bin=""; buf.forEach(b=>{bin+=String.fromCharCode(b);});
+  return btoa(bin);
+}
+function zatcaQRDataUrl(inv){
+  if(typeof qrcode==="undefined")return "";
+  try{
+    const payload=zatcaBase64(inv);
+    const qr=qrcode(0,"M");
+    qr.addData(payload);
+    qr.make();
+    return qr.createDataURL(4,4);
+  }catch(e){console.error("[ZATCA QR] فشل توليد الرمز:",e);return "";}
+}
+
+// ════════════════════════════════════════════════════════════════
 // PRINT: INVOICE (فاتورة)
 // ════════════════════════════════════════════════════════════════
 function printInvDoc(invId, type){
@@ -9070,6 +9116,7 @@ function printInvDoc(invId, type){
   if(!inv){showAlert('الفاتورة غير موجودة','err');return;}
   const hc=CFG.rptColor||'#0f4c75';
   const isSale=type==='sale';
+  const qrUrl=isSale?zatcaQRDataUrl(inv):"";
   const rows=inv.items.map(function(it,i){
     const tot=(parseFloat(it.qty)||0)*(parseFloat(it.price)||0);
     return `<tr>
@@ -9114,6 +9161,12 @@ function printInvDoc(invId, type){
       </div>
     </div>
     ${inv.notes?`<div style="margin-top:10px;padding:8px;background:#f8fafc;border-right:3px solid ${hc};font-size:10px"><strong>ملاحظات:</strong> ${inv.notes}</div>`:''}
+    ${qrUrl?`<div style="margin-top:14px;display:flex;justify-content:flex-end;align-items:center;gap:10px">
+      <div style="text-align:center;font-size:9px;color:#64748b">
+        <img src="${qrUrl}" width="110" height="110" style="border:1px solid #e2e8f0;border-radius:4px"/>
+        <div style="margin-top:2px">رمز الاستجابة السريعة (ZATCA)</div>
+      </div>
+    </div>`:''}
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:40px;text-align:center;font-size:10px">
       <div style="border-top:1px solid #94a3b8;padding-top:6px">المستلم</div>
       <div style="border-top:1px solid #94a3b8;padding-top:6px">المحاسب</div>
