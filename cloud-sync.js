@@ -84,7 +84,12 @@ const firebaseConfig = {
 
   function onChange(docName,cb){
     ready.then(()=>{
+      let isFirstSnapshot=true;
       db.collection('system').doc(docName).onSnapshot(snap=>{
+        // Firestore يُطلق onSnapshot فوراً عند الاشتراك بالحالة الحالية للمستند —
+        // هذه ليست "تغييراً" حقيقياً، بل حالة التحميل. تجاهلها لتفادي حلقة تحديث
+        // لا نهائية (كل تحميل صفحة جديد يعتبرها تغييراً خارجياً ويعيد تحميل الصفحة فوراً)
+        if(isFirstSnapshot){isFirstSnapshot=false;return;}
         if(!snap.exists)return;
         const d=snap.data();
         if(!d||!d.writeToken)return;
