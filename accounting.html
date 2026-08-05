@@ -2664,7 +2664,32 @@ const PGS={
 };
 
 // ═══ NAVIGATION ═══
+// ═══ PAGE PERMISSIONS (passed in from the unified shell, if any) ═══
+let ALLOWED_PAGES=null; // null = غير مقيّد (تشغيل مباشر خارج القشرة الموحدة)
+(function(){
+  try{
+    const params=new URLSearchParams(location.search);
+    if(params.has('pages')){
+      const p=params.get('pages');
+      ALLOWED_PAGES=p?p.split(','):[];
+    }
+  }catch(e){}
+})();
+function hasPagePerm(id){return !ALLOWED_PAGES||ALLOWED_PAGES.includes(id);}
+function applyPagePermissions(){
+  if(!ALLOWED_PAGES)return;
+  document.querySelectorAll('.nb').forEach(b=>{
+    const m=(b.getAttribute('onclick')||'').match(/SS\('([a-z]+)'/);
+    if(m&&!hasPagePerm(m[1]))b.style.display='none';
+  });
+}
+function firstAllowedPage(){
+  if(!ALLOWED_PAGES)return'dash';
+  return ALLOWED_PAGES[0]||null;
+}
+
 function SS(id,btn){
+  if(!hasPagePerm(id)){showAlert('⛔ لا تملك صلاحية الوصول لهذه الصفحة','err');return;}
   window.currentSection = id;
   // Update URL hash for linking
   try{if(history&&history.replaceState)history.replaceState(null,null,"#"+id);}catch(e){}
@@ -9296,12 +9321,14 @@ function renderAll(){
   try{renderYr();}catch(e){console.error(e)}
   try{restoreNavStates();}catch(e){console.error(e)}
   const z=localStorage.getItem("sys_zoom");if(z)document.body.style.zoom=z+"%";
+  try{applyPagePermissions();}catch(e){console.error(e)}
   // Set initial active section
   try{
     const hash=((typeof location!=='undefined'?location.hash:'')||'').replace('#','');
-    SS(hash||'dash', null);
+    const wanted=hash||'dash';
+    SS(hasPagePerm(wanted)?wanted:firstAllowedPage(), null);
   }catch(e){
-    try{SS('dash',null);}catch(e2){}
+    try{SS(firstAllowedPage(),null);}catch(e2){}
   }
   try{restoreNavStates();}catch(e){console.error(e)}
 }

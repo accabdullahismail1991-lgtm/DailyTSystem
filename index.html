@@ -166,9 +166,19 @@
       <div class="fld">
         <label>الأنظمة المسموحة</label>
         <div class="sys-check">
-          <label><input type="checkbox" id="u-sys-transfers"> 🏦 الحوالات</label>
-          <label><input type="checkbox" id="u-sys-accounting"> 📊 المحاسبة</label>
+          <label><input type="checkbox" id="u-sys-transfers" onchange="renderAcctPagesVisibility()"> 🏦 الحوالات</label>
+          <label><input type="checkbox" id="u-sys-accounting" onchange="renderAcctPagesVisibility()"> 📊 المحاسبة</label>
         </div>
+      </div>
+      <div class="fld" id="u-acct-pages-wrap" style="display:none">
+        <label style="display:flex;align-items:center;justify-content:space-between">
+          <span>صفحات النظام المحاسبي المسموحة</span>
+          <span style="display:flex;gap:10px">
+            <a href="#" onclick="toggleAllAcctPages(true);return false" style="color:var(--gold);font-size:11.5px">تحديد الكل</a>
+            <a href="#" onclick="toggleAllAcctPages(false);return false" style="color:var(--muted);font-size:11.5px">إلغاء الكل</a>
+          </span>
+        </label>
+        <div id="u-acct-pages-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:6px"></div>
       </div>
       <div class="fld"><label><input type="checkbox" id="u-admin"> مدير (يقدر يدير المستخدمين)</label></div>
       <div style="display:flex;gap:8px;margin-top:12px">
@@ -190,6 +200,20 @@ const SESSION_KEY='unified_shell_session';
 const SRC={transfers:'transfers.html', accounting:'accounting.html'};
 const SYS_LABEL={transfers:'🏦 نظام الحوالات البنكية', accounting:'📊 النظام المحاسبي'};
 const loaded={transfers:false, accounting:false};
+
+const ACCT_PAGES=[
+  ['dash','🏠 الرئيسية'],['set','⚙️ الإعدادات العامة'],['acc','📂 دليل الحسابات'],
+  ['sub','👥 الحسابات التحليلية'],['tax','🧾 إدارة الضرائب'],['ent','📝 القيود اليومية'],
+  ['post','✅ مراجعة الترحيلات'],['vch','🧾 السندات'],['sinv','🟢 فواتير المبيعات'],
+  ['sret','↩️ مرتجعات المبيعات'],['pinv','🔴 فواتير المشتريات'],['pret','↩️ مرتجعات المشتريات'],
+  ['wh','🏗️ تعريف المستودعات'],['items','📦 تعريف الأصناف'],['gr','📥 أذونات الاستلام'],
+  ['stkout','📤 أذونات الإخراج'],['stkbal','📊 رصيد المخزون'],['ast','🏭 الأصول الثابتة'],
+  ['rent','🏠 الإيجارات'],['cust','🗂️ العهد المالية'],['lg','📖 الأستاذ العام'],
+  ['tr','⚖️ ميزان المراجعة'],['fs','📊 القوائم المالية'],['stkrep','📈 حركات المخزون'],
+  ['taxrpt','🧾 تقرير الضريبة'],['whrpt','🏗️ تقارير المخازن'],['exp','📤 التصدير'],
+  ['notifs','🔔 الإشعارات'],['yr','🗓️ إقفال السنة'],['bk','💾 النسخ الاحتياطي'],
+  ['int','🔗 الربط الخارجي']
+];
 
 let shellUsers=[];
 let currentShellUser=null;
@@ -265,13 +289,20 @@ function enterShell(){
   switchSystem(initial);
 }
 
+function buildFrameSrc(name){
+  if(name==='accounting'&&currentShellUser){
+    const ap=currentShellUser.acctPages;
+    if(Array.isArray(ap))return SRC[name]+'?pages='+encodeURIComponent(ap.join(','));
+  }
+  return SRC[name];
+}
 function switchSystem(name){
   const frame=document.getElementById('frame-'+name);
   const loadingEl=document.getElementById('loading');
   if(!loaded[name]){
     loadingEl.style.display='flex';
     frame.addEventListener('load',()=>{loadingEl.style.display='none';},{once:true});
-    frame.src=SRC[name];
+    frame.src=buildFrameSrc(name);
     loaded[name]=true;
   }
   ['transfers','accounting'].forEach(n=>{
@@ -294,6 +325,23 @@ function resetUserForm(){
   document.getElementById('u-sys-transfers').checked=false;
   document.getElementById('u-sys-accounting').checked=false;
   document.getElementById('u-admin').checked=false;
+  renderAcctPagesGrid(null); // null = كل الصفحات محددة (افتراضي)
+  renderAcctPagesVisibility();
+}
+function renderAcctPagesGrid(allowedList){
+  const grid=document.getElementById('u-acct-pages-grid');
+  grid.innerHTML=ACCT_PAGES.map(([id,label])=>{
+    const checked=(allowedList===null)||allowedList.includes(id);
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:12.5px">'
+      +'<input type="checkbox" class="u-acct-page-cb" value="'+id+'" '+(checked?'checked':'')+'> '+esc(label)+'</label>';
+  }).join('');
+}
+function toggleAllAcctPages(state){
+  document.querySelectorAll('.u-acct-page-cb').forEach(cb=>cb.checked=state);
+}
+function renderAcctPagesVisibility(){
+  const wrap=document.getElementById('u-acct-pages-wrap');
+  wrap.style.display=document.getElementById('u-sys-accounting').checked?'':'none';
 }
 function renderUsersList(){
   const el=document.getElementById('users-list');
@@ -319,6 +367,8 @@ function editShellUser(id){
   document.getElementById('u-sys-transfers').checked=(u.systems||[]).includes('transfers');
   document.getElementById('u-sys-accounting').checked=(u.systems||[]).includes('accounting');
   document.getElementById('u-admin').checked=!!u.admin;
+  renderAcctPagesGrid(u.acctPages===undefined?null:u.acctPages);
+  renderAcctPagesVisibility();
 }
 function saveShellUser(){
   const id=document.getElementById('u-edit-id').value;
@@ -329,15 +379,17 @@ function saveShellUser(){
   const systems=[];
   if(document.getElementById('u-sys-transfers').checked)systems.push('transfers');
   if(document.getElementById('u-sys-accounting').checked)systems.push('accounting');
+  const checkedPages=Array.from(document.querySelectorAll('.u-acct-page-cb:checked')).map(cb=>cb.value);
+  const acctPages=checkedPages.length===ACCT_PAGES.length?null:checkedPages;
   if(!name||!username||!password){alert('عبّي الاسم واسم المستخدم وكلمة المرور');return;}
   const dupe=shellUsers.find(u=>u.username===username&&u.id!==id);
   if(dupe){alert('اسم المستخدم مستخدم مسبقاً');return;}
   if(id){
     const u=shellUsers.find(x=>x.id===id);
-    Object.assign(u,{name,username,password,admin,systems});
+    Object.assign(u,{name,username,password,admin,systems,acctPages});
     if(currentShellUser&&currentShellUser.id===id)currentShellUser=u;
   }else{
-    shellUsers.push({id:uid(),name,username,password,admin,systems});
+    shellUsers.push({id:uid(),name,username,password,admin,systems,acctPages});
   }
   localDirtySinceBoot=true;
   persistShellUsers();
