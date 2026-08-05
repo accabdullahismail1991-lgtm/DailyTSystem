@@ -193,6 +193,7 @@ const loaded={transfers:false, accounting:false};
 
 let shellUsers=[];
 let currentShellUser=null;
+let localDirtySinceBoot=false;
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
@@ -338,6 +339,7 @@ function saveShellUser(){
   }else{
     shellUsers.push({id:uid(),name,username,password,admin,systems});
   }
+  localDirtySinceBoot=true;
   persistShellUsers();
   renderUsersList();
   resetUserForm();
@@ -350,6 +352,7 @@ function deleteShellUser(id){
   if(target.admin&&admins.length<=1){alert('لا يمكن حذف آخر مستخدم مدير');return;}
   if(!confirm('حذف المستخدم "'+target.name+'"؟'))return;
   shellUsers=shellUsers.filter(u=>u.id!==id);
+  localDirtySinceBoot=true;
   persistShellUsers();
   renderUsersList();
 }
@@ -358,7 +361,9 @@ function deleteShellUser(id){
 loadShellUsers();
 if(window.CloudSync){
   CloudSync.load('shell_users').then(remote=>{
-    if(remote&&remote.length){
+    if(localDirtySinceBoot){
+      // بيانات محلية جديدة تغيّرت أثناء انتظار السحابة — لا تستبدلها، هي بالفعل قيد المزامنة عبر persistShellUsers()
+    }else if(remote&&remote.length){
       shellUsers=remote;
       try{localStorage.setItem(SHELL_KEY,JSON.stringify(shellUsers));}catch(e){}
     }else{
