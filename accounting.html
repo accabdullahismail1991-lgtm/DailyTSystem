@@ -556,6 +556,7 @@ tbody tr:hover{background:var(--g50)}
   <button class="nb" onclick="SS('whrpt',this)"><span class="nb-ic">🏗️</span><span class="nb-txt">تقارير المخازن</span></button>
   <button class="nb" onclick="SS('depsched',this)"><span class="nb-ic">🏭</span><span class="nb-txt">جدول إهلاك الأصول</span></button>
   <button class="nb" onclick="SS('cashflow',this)"><span class="nb-ic">💵</span><span class="nb-txt">التدفقات النقدية</span></button>
+  <button class="nb" onclick="SS('ccrpt',this)"><span class="nb-ic">🏷️</span><span class="nb-txt">تقرير مراكز التكلفة والمشاريع</span></button>
 <button class="nb" onclick="SS('exp',this)"><span class="nb-ic">📤</span><span class="nb-txt">التصدير</span></button>
  </div>
 </div>
@@ -1619,6 +1620,29 @@ tbody tr:hover{background:var(--g50)}
   ℹ️ الطريقة غير المباشرة: تبدأ من صافي الربح وتُعدّل بالبنود غير النقدية والتغيّر في رأس المال العامل. لأغراض التحليل الإداري وليست بديلاً عن مراجعة محاسبية رسمية.
  </div>
  <div id="cashflow-body"></div>
+</div>
+</div>
+
+<!-- ══ COST CENTER & PROJECT REPORT SECTION ══ -->
+<div id="sec-ccrpt" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🏷️</div>تقرير مراكز التكلفة والمشاريع</div>
+  <div style="display:flex;gap:6px;align-items:center">
+   <input id="ccrpt-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCCProjReport()">
+   <input id="ccrpt-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCCProjReport()">
+   <button class="btn bo bsm" onclick="document.getElementById('ccrpt-from').value='';document.getElementById('ccrpt-to').value='';renderCCProjReport()">↺</button>
+   <button class="btn bg bsm" onclick="expCCProjXL()">📊 Excel</button>
+   <button class="btn bo bsm" onclick="printCCProjReport()">🖨️ طباعة</button>
+  </div>
+ </div>
+ <div style="display:flex;gap:6px;margin-bottom:14px" id="ccrpt-tabs">
+  <button class="btn bp bsm ccrpt-tab-btn active" data-dim="cc" onclick="showCCProjTab('cc')">🏷️ مراكز التكلفة</button>
+  <button class="btn bo bsm ccrpt-tab-btn" data-dim="proj" onclick="showCCProjTab('proj')">🏗️ المشاريع</button>
+ </div>
+ <input type="hidden" id="ccrpt-active-dim" value="cc">
+ <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px" id="ccrpt-summary"></div>
+ <div id="ccrpt-body"></div>
 </div>
 </div>
 
@@ -2970,6 +2994,7 @@ const PGS={
   inv:["الفوترة","فواتير المبيعات والمشتريات"],
   depsched:["جدول إهلاك الأصول","تقرير مجمّع لإهلاك جميع الأصول الثابتة"],
   cashflow:["قائمة التدفقات النقدية","التدفقات النقدية من الأنشطة التشغيلية والاستثمارية والتمويلية"],
+  ccrpt:["تقرير مراكز التكلفة والمشاريع","ملخص الحركات والتكاليف حسب مركز التكلفة أو المشروع"],
   cc:["مراكز التكلفة","تعريف وإدارة مراكز التكلفة"],
   proj:["المشاريع","تعريف وإدارة المشاريع"],
   stkadj:["تسوية الجرد والتوالف","تسوية فروقات الجرد الفعلي وإخراج البضاعة التالفة"],
@@ -2982,7 +3007,7 @@ const PAGE_GROUP={
   pinv:'🔴 المشتريات',pret:'🔴 المشتريات',
   wh:'📦 المخازن والمخزون',items:'📦 المخازن والمخزون',gr:'📦 المخازن والمخزون',stkout:'📦 المخازن والمخزون',stkadj:'📦 المخازن والمخزون',
   ast:'🏭 الأصول والإيجارات',rent:'🏭 الأصول والإيجارات',cust:'🏭 الأصول والإيجارات',
-  lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',stkbal:'📊 التقارير',stkrep:'📊 التقارير',taxrpt:'📊 التقارير',whrpt:'📊 التقارير',exp:'📊 التقارير',depsched:'📊 التقارير',cashflow:'📊 التقارير',
+  lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',stkbal:'📊 التقارير',stkrep:'📊 التقارير',taxrpt:'📊 التقارير',whrpt:'📊 التقارير',exp:'📊 التقارير',depsched:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',
   notifs:'🔧 الإدارة والنظام',yr:'🔧 الإدارة والنظام',bk:'🔧 الإدارة والنظام',int:'🔧 الإدارة والنظام',
 };
 function tbSearchInput(v){
@@ -3145,6 +3170,7 @@ function SS(id,btn){
   if(id==="taxrpt"){renderTaxReport();}
   if(id==="depsched"){renderDepSchedule();}
   if(id==="cashflow"){renderCashFlow();}
+  if(id==="ccrpt"){renderCCProjReport();}
   if(id==="cc"){renderCostCenters();}
   if(id==="proj"){renderProjects();}
   if(id==="stkrep"){renderStkRep();}
@@ -4361,6 +4387,118 @@ function printCashFlow(){
     </tbody></table>
     <div style="margin-top:8px;font-size:10px;color:#64748b">الحسابات المرتبطة تلقائياً: ${cf.cashAccountNames.length?cf.cashAccountNames.join('، '):'لا توجد'}</div>`;
   printA4(html);
+}
+
+// ════════════════════════════════════════════════════════════════
+// COST CENTER & PROJECT REPORT
+// ════════════════════════════════════════════════════════════════
+function showCCProjTab(dim){
+  document.getElementById("ccrpt-active-dim").value=dim;
+  document.querySelectorAll(".ccrpt-tab-btn").forEach(function(b){
+    const active=b.getAttribute("data-dim")===dim;
+    b.classList.toggle("active",active);
+    b.classList.toggle("bp",active);
+    b.classList.toggle("bo",!active);
+  });
+  renderCCProjReport();
+}
+function getCCProjReportData(){
+  const dim=(document.getElementById("ccrpt-active-dim")||{}).value||"cc";
+  const fromD=(document.getElementById("ccrpt-from")||{}).value||"";
+  const toD=(document.getElementById("ccrpt-to")||{}).value||"";
+  const items=dim==="cc"?(costCenters||[]):(projects||[]);
+  return items.map(function(item){
+    let debit=0,credit=0,moveCount=0;
+    const accMap={};
+    entries.filter(function(e){return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);}).forEach(function(e){
+      e.lines.filter(function(l){return dim==="cc"?l.costCenterId===item.id:l.projectId===item.id;}).forEach(function(l){
+        debit+=l.debit||0; credit+=l.credit||0; moveCount++;
+        const acc=accounts.find(function(a){return a.id===l.accId;});
+        if(!acc) return;
+        if(!accMap[acc.id]) accMap[acc.id]={code:acc.code,name:acc.name,type:acc.type,debit:0,credit:0};
+        accMap[acc.id].debit+=l.debit||0; accMap[acc.id].credit+=l.credit||0;
+      });
+    });
+    return {id:item.id,name:item.name,code:item.code||"",debit,credit,net:debit-credit,moveCount,
+      accounts:Object.values(accMap).sort(function(a,b){return a.code.localeCompare(b.code);})};
+  });
+}
+function toggleCCProjDetail(id){
+  const el=document.getElementById(id);if(!el) return;
+  el.style.display=el.style.display==="none"?"block":"none";
+}
+function renderCCProjReport(){
+  const el=document.getElementById("ccrpt-body");if(!el) return;
+  const dim=(document.getElementById("ccrpt-active-dim")||{}).value||"cc";
+  const rows=getCCProjReportData();
+  const sumEl=document.getElementById("ccrpt-summary");
+  const totalDebit=rows.reduce(function(s,r){return s+r.debit;},0);
+  const totalCredit=rows.reduce(function(s,r){return s+r.credit;},0);
+  const activeCount=rows.filter(function(r){return r.moveCount>0;}).length;
+  if(sumEl) sumEl.innerHTML=
+    '<div class="sc bl"><div class="sl">'+(dim==="cc"?"عدد مراكز التكلفة":"عدد المشاريع")+'</div><div class="sv">'+rows.length+'</div></div>'+
+    '<div class="sc gn"><div class="sl">لديها حركة</div><div class="sv">'+activeCount+'</div></div>'+
+    '<div class="sc am"><div class="sl">إجمالي مدين</div><div class="sv">'+fmtNum(totalDebit)+'</div></div>'+
+    '<div class="sc rd"><div class="sl">إجمالي دائن</div><div class="sv">'+fmtNum(totalCredit)+'</div></div>';
+  if(!rows.length){
+    el.innerHTML='<div class="empty"><span class="ei">🏷️</span><p>'+(dim==="cc"?"لا توجد مراكز تكلفة معرّفة":"لا توجد مشاريع معرّفة")+'</p></div>';
+    return;
+  }
+  el.innerHTML=rows.map(function(r){
+    const detailId="ccrpt-detail-"+dim+"-"+r.id;
+    return '<div style="margin-bottom:12px;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;cursor:pointer;flex-wrap:wrap;gap:8px" onclick="toggleCCProjDetail(\''+detailId+'\')">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<span style="font-weight:700">'+(dim==="cc"?"🏷️":"🏗️")+' '+r.name+'</span>'
+          +(r.code?'<span style="font-size:10px;color:var(--g4)">('+r.code+')</span>':'')
+          +'<span class="bdg '+(r.moveCount?"b4":"b5")+'" style="font-size:9px">'+r.moveCount+' حركة</span>'
+        +'</div>'
+        +'<div style="display:flex;gap:16px;font-size:11.5px">'
+          +'<span style="color:#1d4ed8">مدين: '+fmtNum(r.debit)+'</span>'
+          +'<span style="color:#16a34a">دائن: '+fmtNum(r.credit)+'</span>'
+          +'<span style="font-weight:700;color:'+(r.net>0?"#dc2626":r.net<0?"#16a34a":"var(--g5)")+'">صافي: '+fmtNum(Math.abs(r.net))+(r.net>0?" (تكلفة)":r.net<0?" (فائض)":" (متوازن)")+'</span>'
+        +'</div>'
+      +'</div>'
+      +'<div id="'+detailId+'" style="display:none;padding:10px 14px">'
+        +(r.accounts.length
+          ?'<table style="width:100%;font-size:11px;border-collapse:collapse">'
+            +'<thead><tr style="background:#f1f5f9"><th style="text-align:right;padding:5px">الحساب</th><th style="text-align:left;padding:5px">مدين</th><th style="text-align:left;padding:5px">دائن</th></tr></thead>'
+            +'<tbody>'+r.accounts.map(function(a){
+              return '<tr><td style="padding:5px">'+a.code+' — '+a.name+'</td>'
+                +'<td style="direction:ltr;text-align:left;padding:5px;color:#1d4ed8">'+(a.debit?fmtNum(a.debit):'')+'</td>'
+                +'<td style="direction:ltr;text-align:left;padding:5px;color:#16a34a">'+(a.credit?fmtNum(a.credit):'')+'</td></tr>';
+            }).join('')
+            +'</tbody></table>'
+          :'<div style="color:var(--g4);font-size:11px">لا توجد حركات</div>')
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+function expCCProjXL(){
+  if(typeof XLSX==="undefined"){showAlert("مكتبة Excel غير محملة","err");return;}
+  const dim=(document.getElementById("ccrpt-active-dim")||{}).value||"cc";
+  const rows=getCCProjReportData();
+  const wb=XLSX.utils.book_new();
+  const data=[[dim==="cc"?"تقرير مراكز التكلفة":"تقرير المشاريع"],[],
+    [dim==="cc"?"مركز التكلفة":"المشروع","عدد الحركات","إجمالي مدين","إجمالي دائن","الصافي"]];
+  rows.forEach(function(r){data.push([r.name,r.moveCount,r.debit,r.credit,r.net]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),dim==="cc"?"مراكز التكلفة":"المشاريع");
+  XLSX.writeFile(wb,(dim==="cc"?"cost_centers_":"projects_")+today()+".xlsx");
+  showAlert("تم التصدير Excel ✓");
+}
+function printCCProjReport(){
+  const hc=CFG.rptColor||"#0f4c75";
+  const dim=(document.getElementById("ccrpt-active-dim")||{}).value||"cc";
+  const rows=getCCProjReportData();
+  const body=rows.map(function(r){
+    return '<tr><td>'+r.name+'</td><td style="text-align:center">'+r.moveCount+'</td>'
+      +'<td style="direction:ltr;text-align:left">'+fmtNum(r.debit)+'</td>'
+      +'<td style="direction:ltr;text-align:left">'+fmtNum(r.credit)+'</td>'
+      +'<td style="direction:ltr;text-align:left;font-weight:700">'+fmtNum(Math.abs(r.net))+(r.net>0?' (تكلفة)':r.net<0?' (فائض)':' (متوازن)')+'</td></tr>';
+  }).join('');
+  printA4('<div style="text-align:center;font-size:13px;font-weight:700;color:'+hc+';margin-bottom:12px">'+(dim==="cc"?"تقرير مراكز التكلفة":"تقرير المشاريع")+'</div>'
+    +'<table><thead><tr><th>'+(dim==="cc"?"مركز التكلفة":"المشروع")+'</th><th>عدد الحركات</th><th>إجمالي مدين</th><th>إجمالي دائن</th><th>الصافي</th></tr></thead>'
+    +'<tbody>'+body+'</tbody></table>');
 }
 
 function printDepSchedule(){
