@@ -4,12 +4,12 @@
 // Firebase Console → Project settings → General → Your apps → Web app
 // ==================================================================
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyC3ZzYw_5cvFSft1TzkEUQrkkbWOmBGCLU",
+  authDomain: "accounting-and-dailytsystem.firebaseapp.com",
+  projectId: "accounting-and-dailytsystem",
+  storageBucket: "accounting-and-dailytsystem.firebasestorage.app",
+  messagingSenderId: "33110837615",
+  appId: "1:33110837615:web:566ea83a3671a55e0b809a"
 };
 
 (function(){
