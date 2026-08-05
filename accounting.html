@@ -369,9 +369,9 @@ tbody tr:hover{background:var(--g50)}
 <input type="hidden" id="ea-id">
 <div class="fg" style="grid-template-columns:repeat(3,1fr)">
  <div class="fgrp"><label>رمز الحساب (مثال: 010101)</label><input id="ea-code" type="text" placeholder="010101"></div>
- <div class="fgrp s2"><label>اسم الحساب *</label><input id="ea-name" type="text"></div>
+ <div class="fgrp s2"><label>اسم الحساب *</label><input id="ea-name" type="text" oninput="updateEaCfActHint({name:this.value,type:document.getElementById('ea-type').value})"></div>
  <div class="fgrp"><label>نوع الحساب *</label>
-  <select id="ea-type"><option value="asset">أصول</option><option value="liability">خصوم</option><option value="equity">حقوق الملكية</option><option value="revenue">إيرادات</option><option value="expense">مصروفات</option></select>
+  <select id="ea-type" onchange="updateEaCfActHint({name:document.getElementById('ea-name').value,type:this.value})"><option value="asset">أصول</option><option value="liability">خصوم</option><option value="equity">حقوق الملكية</option><option value="revenue">إيرادات</option><option value="expense">مصروفات</option></select>
  </div>
  <div class="fgrp"><label>الرصيد الافتتاحي</label><input id="ea-open" type="number" step="0.01" min="0"></div>
  <div class="fgrp"><label>الحساب الأب</label><select id="ea-par"><option value="">— مستوى أول —</option></select></div>
@@ -379,6 +379,15 @@ tbody tr:hover{background:var(--g50)}
   <select id="ea-sub"><option value="">— رئيسي —</option><option value="customer">عميل</option><option value="vendor">مورّد</option><option value="employee">موظف</option><option value="advance">عهدة / سلفة</option></select>
  </div>
  <div class="fgrp s3"><label>رمز تحليلي مستقل (للحسابات التحليلية - مثال: C-001)</label><input id="ea-acode" type="text" placeholder="اتركه فارغاً لاستخدام رمز الدليل"></div>
+ <div class="fgrp s3"><label>تصنيف التدفقات النقدية</label>
+  <select id="ea-cfact">
+   <option value="">تلقائي (حسب نوع الحساب)</option>
+   <option value="operating">🔵 أنشطة تشغيلية</option>
+   <option value="investing">🟣 أنشطة استثمارية</option>
+   <option value="financing">🟢 أنشطة تمويلية</option>
+  </select>
+  <div id="ea-cfact-hint" style="font-size:10px;color:var(--g4);margin-top:3px"></div>
+ </div>
 </div>
 <div class="mact"><button class="btn bo" onclick="CM('m-ea')">إلغاء</button><button class="btn bp" onclick="saveEditAcc()">💾 حفظ</button></div>
 </div></div>
@@ -725,6 +734,14 @@ tbody tr:hover{background:var(--g50)}
   </div>
   <div class="fgrp"><label>رصيد افتتاحي</label><input id="ac-open" type="number" value="0" step="0.01" min="0"></div>
   <div class="fgrp s2"><label>الحساب الأب (المستوى)</label><select id="ac-par"><option value="">— جذر —</option></select></div>
+  <div class="fgrp s2"><label>تصنيف التدفقات النقدية</label>
+   <select id="ac-cfact">
+    <option value="">تلقائي (حسب نوع الحساب)</option>
+    <option value="operating">🔵 أنشطة تشغيلية</option>
+    <option value="investing">🟣 أنشطة استثمارية</option>
+    <option value="financing">🟢 أنشطة تمويلية</option>
+   </select>
+  </div>
  </div>
  <div class="actions"><button class="btn bp" onclick="addAcc()">✓ إضافة</button></div>
 </div>
@@ -2436,6 +2453,7 @@ let inventoryMethod = "periodic";
 let invAdjustments = [], nxtInvAdjId = 1;
 let invAdjLines = [];
 let itemUomAlts = [];
+const CF_ACTIVITY_LABELS={operating:"🔵 تشغيلية",investing:"🟣 استثمارية",financing:"🟢 تمويلية",cash:"💵 نقدية"};
 
 let trMode = "full", fsTab = "is", subType = "customer", subQ = "";
 let accQ = "", entQ = "";
@@ -3430,10 +3448,12 @@ function addAcc(){
   }
   let finalType=type;
   if(par){const p=accounts.find(a=>a.id===par);if(p)finalType=p.type;}
-  accounts.push({id:nxtAccId++,code,name,type:finalType,open,par});
+  const cfAct=(document.getElementById("ac-cfact")||{}).value||null;
+  accounts.push({id:nxtAccId++,code,name,type:finalType,open,par,cfActivity:cfAct||null});
   accounts.sort((a,b)=>a.code.localeCompare(b.code));
   ["ac-code","ac-name"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("ac-open").value="0";document.getElementById("ac-par").value="";
+  const cfActEl=document.getElementById("ac-cfact");if(cfActEl)cfActEl.value="";
   showAlert("تمت إضافة الحساب ✓");renderAccs();updateBadges();
 }
 function openEditAcc(id){
@@ -3443,7 +3463,13 @@ function openEditAcc(id){
   document.getElementById("ea-open").value=a.open;document.getElementById("ea-sub").value="";
   document.getElementById("ea-acode").value="";popParSel("ea-par",id);
   document.getElementById("ea-par").value=a.par||"";
+  const cfSel=document.getElementById("ea-cfact");
+  if(cfSel){cfSel.value=a.cfActivity||"";updateEaCfActHint(a);}
   document.getElementById("m-ea").style.display="flex";
+}
+function updateEaCfActHint(a){
+  const hint=document.getElementById("ea-cfact-hint");if(!hint)return;
+  hint.textContent="التصنيف التلقائي الحالي: "+(CF_ACTIVITY_LABELS[getDefaultCFActivity(a)]||"—");
 }
 function saveEditAcc(){
   const id=parseInt(document.getElementById("ea-id").value);
@@ -3452,9 +3478,11 @@ function saveEditAcc(){
   const type=document.getElementById("ea-type").value;
   const open=parseFloat(document.getElementById("ea-open").value)||0;
   const par=parseInt(document.getElementById("ea-par").value)||null;
+  const cfActEl=document.getElementById("ea-cfact");
+  const cfActivity=cfActEl?(cfActEl.value||null):null;
   if(!code||!name){showAlert("يرجى إدخال البيانات المطلوبة","err");return;}
   if(accounts.find(a=>a.code===code&&a.id!==id)){showAlert("الرمز موجود","err");return;}
-  Object.assign(accounts.find(a=>a.id===id),{code,name,type,open,par});
+  Object.assign(accounts.find(a=>a.id===id),{code,name,type,open,par,cfActivity});
   accounts.sort((a,b)=>a.code.localeCompare(b.code));
   CM("m-ea");renderAccs();showAlert("تم التعديل");
 }
@@ -3479,7 +3507,7 @@ function renderAccs(){
     return `<tr class="lv${Math.min(lvl,3)}">
       <td><strong style="letter-spacing:1px;font-family:monospace">${fmtCode(a.code)}</strong></td>
       <td class="nm-col" style="padding-right:${11+lvl*14}px">${a.name}</td>
-      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span></td>
+      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span>${isLeaf(a.id)?`<div style="font-size:8.5px;color:var(--g4);margin-top:2px;white-space:nowrap">${CF_ACTIVITY_LABELS[getEffectiveCFActivity(a)]||""}${a.cfActivity?" (يدوي)":""}</div>`:""}</td>
       <td style="font-size:10px;color:var(--g4)">${lvl===0?"جذر":lvl===1?"م.1":lvl===2?"م.2":"م.3+"}</td>
       <td>${sc?`<span class="bdg b6" style="cursor:pointer" onclick="SS('sub',null);filterSubByAcc(${a.id})">${sc} سجل</span>`:"—"}</td>
       <td style="direction:ltr;text-align:left">${fmtNum(a.open)} ${cur()}</td>
@@ -4305,13 +4333,33 @@ function getCFPeriod(){
 function getCashAccounts(){
   return accounts.filter(a=>isLeaf(a.id)&&a.type==="asset"&&/نقد|صندوق|بنك|cash|bank/i.test(a.name));
 }
+// التصنيف الافتراضي للحساب حسب قائمة التدفقات النقدية (تشغيلية/استثمارية/تمويلية)،
+// يُستخدم عندما لا يكون هناك تصنيف يدوي محفوظ على الحساب نفسه (a.cfActivity)
+function getDefaultCFActivity(a){
+  if(!a) return "operating";
+  if(a.type==="revenue"||a.type==="expense") return "operating";
+  if(a.type==="equity") return "financing";
+  if(a.type==="asset"){
+    if(/نقد|صندوق|بنك|cash|bank/i.test(a.name)) return "cash";
+    const isFixedAsset=(typeof assets!=="undefined"&&assets.some(function(as){return as.accId===a.id;}))
+      ||/أصول ثابتة|عقار|آلات|معدات|سيارات|أثاث|fixed asset/i.test(a.name);
+    return isFixedAsset?"investing":"operating";
+  }
+  if(a.type==="liability"){
+    return /قرض|تمويل|سند|طويل الأجل|loan|financing/i.test(a.name)?"financing":"operating";
+  }
+  return "operating";
+}
+function getEffectiveCFActivity(a){
+  return (a&&a.cfActivity)||getDefaultCFActivity(a);
+}
 function computeCashFlow(){
   const {from,to}=getCFPeriod();
   const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to);
   const depAccIds=new Set(assets.map(a=>a.depExpAccId).filter(Boolean));
   const cashAccIds=new Set(getCashAccounts().map(a=>a.id));
 
-  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,actualCashChange=0;
+  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,operatingLiabChange=0,actualCashChange=0;
   periodEntries.forEach(e=>{
     e.lines.forEach(l=>{
       const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
@@ -4325,18 +4373,21 @@ function computeCashFlow(){
         if(sub&&sub.type==="customer")arChange+=dr-cr;
         if(sub&&sub.type==="vendor")apChange+=cr-dr;
       }else if(acc.type==="liability"){
-        financingLiabChange+=cr-dr;
+        // تصنيف كل حساب التزام حسب تبويبه في التدفقات النقدية (تلقائي أو مُعدَّل يدوياً من دليل الحسابات):
+        // التزامات تمويلية (قروض) → أنشطة تمويلية | التزامات تشغيلية (مستحقات، ضرائب...) → ضمن رأس المال العامل التشغيلي
+        if(getEffectiveCFActivity(acc)==="financing") financingLiabChange+=cr-dr;
+        else operatingLiabChange+=cr-dr;
       }
     });
   });
   const netIncome=revenue-expense;
-  const operating=netIncome+depExpense-arChange+apChange;
+  const operating=netIncome+depExpense-arChange+apChange+operatingLiabChange;
   const investing=-assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to).reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
   const financing=equityChange+financingLiabChange;
   const netChange=operating+investing+financing;
   const cashAccountNames=getCashAccounts().map(a=>a.code+" — "+a.name);
   const reconciled=Math.abs(netChange-actualCashChange)<0.01;
-  return {from,to,netIncome,depExpense,arChange,apChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
+  return {from,to,netIncome,depExpense,arChange,apChange,operatingLiabChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
 }
 function cfRow(label,val,indent,bold){
   return `<tr${bold?' style="font-weight:800;background:var(--g50)"':''}>
@@ -4358,6 +4409,7 @@ function renderCashFlow(){
     ${cfRow("+ إهلاك الأصول (بند غير نقدي)",cf.depExpense,true)}
     ${cfRow((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange,true)}
     ${cfRow((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange,true)}
+    ${cf.operatingLiabChange?cfRow((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى (مستحقات، ضرائب...)",cf.operatingLiabChange,true):''}
     ${cfRow("صافي النقد من الأنشطة التشغيلية",cf.operating,false,true)}
     ${cfHeader("الأنشطة الاستثمارية")}
     ${cfRow("شراء أصول ثابتة",cf.investing,true)}
@@ -4390,6 +4442,7 @@ function printCashFlow(){
     ${cfRow("+ إهلاك الأصول",cf.depExpense)}
     ${cfRow((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
     ${cfRow((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
+    ${cf.operatingLiabChange?cfRow((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى",cf.operatingLiabChange):''}
     ${cfRow("صافي النقد من الأنشطة التشغيلية",cf.operating,false,true)}
     ${cfRow("شراء أصول ثابتة",cf.investing)}
     ${cfRow("صافي النقد من الأنشطة الاستثمارية",cf.investing,false,true)}
