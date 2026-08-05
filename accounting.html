@@ -483,6 +483,8 @@ tbody tr:hover{background:var(--g50)}
   <button class="nb" onclick="SS('acc',this)"><span class="nb-ic">📂</span><span class="nb-txt">دليل الحسابات</span><span class="nb-bg" id="b-acc">0</span></button>
   <button class="nb" onclick="SS('sub',this)"><span class="nb-ic">👥</span><span class="nb-txt">الحسابات التحليلية</span></button>
   <button class="nb" onclick="SS('tax',this)"><span class="nb-ic">🧾</span><span class="nb-txt">إدارة الضرائب</span></button>
+  <button class="nb" onclick="SS('cc',this)"><span class="nb-ic">🏷️</span><span class="nb-txt">مراكز التكلفة</span></button>
+  <button class="nb" onclick="SS('proj',this)"><span class="nb-ic">📁</span><span class="nb-txt">المشاريع</span></button>
   <button class="nb" onclick="openOV()"><span class="nb-ic">📋</span><span class="nb-txt">القيد الافتتاحي</span></button>
  </div>
 </div>
@@ -1300,6 +1302,65 @@ tbody tr:hover{background:var(--g50)}
 </div>
 </div>
 
+<!-- ══ COST CENTERS SECTION ══ -->
+<div id="sec-cc" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🏷️</div>مراكز التكلفة</div>
+  <button class="btn bp" onclick="openCCForm()">＋ مركز تكلفة جديد</button>
+ </div>
+ <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px" id="cc-summary"></div>
+ <div id="cc-tb"></div>
+</div>
+</div>
+
+<!-- ══ PROJECTS SECTION ══ -->
+<div id="sec-proj" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">📁</div>المشاريع</div>
+  <button class="btn bp" onclick="openProjForm()">＋ مشروع جديد</button>
+ </div>
+ <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px" id="proj-summary"></div>
+ <div id="proj-tb"></div>
+</div>
+</div>
+
+<!-- ══ COST CENTER MODAL ══ -->
+<div class="mb" id="m-cc" style="display:none" onclick="if(event.target===this)CM('m-cc')">
+<div class="modal modal-md">
+ <div class="mt">🏷️ مركز تكلفة</div>
+ <input type="hidden" id="cc-id">
+ <div class="fg" style="grid-template-columns:repeat(2,1fr)">
+  <div class="fgrp"><label>الرمز</label><input id="cc-code" type="text" placeholder="CC-01"></div>
+  <div class="fgrp"><label>الاسم *</label><input id="cc-name" type="text" placeholder="اسم مركز التكلفة"></div>
+ </div>
+ <div class="fgrp" style="margin-top:8px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="cc-active" checked style="width:15px;height:15px"> نشط</label></div>
+ <div class="mact"><button class="btn bo" onclick="CM('m-cc')">إلغاء</button><button class="btn bp" onclick="saveCC()">💾 حفظ</button></div>
+</div></div>
+
+<!-- ══ PROJECT MODAL ══ -->
+<div class="mb" id="m-proj" style="display:none" onclick="if(event.target===this)CM('m-proj')">
+<div class="modal modal-lg">
+ <div class="mt">📁 مشروع</div>
+ <input type="hidden" id="proj-id">
+ <div class="fg" style="grid-template-columns:repeat(2,1fr)">
+  <div class="fgrp"><label>الرمز</label><input id="proj-code" type="text" placeholder="PRJ-01"></div>
+  <div class="fgrp"><label>اسم المشروع *</label><input id="proj-name" type="text" placeholder="اسم المشروع"></div>
+  <div class="fgrp s2"><label>العميل / الجهة</label><input id="proj-client" type="text" placeholder="اسم العميل أو الجهة"></div>
+  <div class="fgrp"><label>تاريخ البدء</label><input id="proj-start" type="date"></div>
+  <div class="fgrp"><label>تاريخ الانتهاء المتوقع</label><input id="proj-end" type="date"></div>
+  <div class="fgrp s2"><label>الحالة</label>
+   <select id="proj-status" style="font-size:11.5px;padding:7px;border:1px solid var(--g200);border-radius:var(--rs)">
+    <option value="active">🟢 جاري</option>
+    <option value="onhold">⏸ متوقف</option>
+    <option value="done">✅ منتهي</option>
+   </select>
+  </div>
+ </div>
+ <div class="mact"><button class="btn bo" onclick="CM('m-proj')">إلغاء</button><button class="btn bp" onclick="saveProj()">💾 حفظ</button></div>
+</div></div>
+
 <!-- ══ ITEM FORM MODAL ══ -->
 <div class="mb" id="m-inv-item" style="display:none" onclick="if(event.target===this)CM('m-inv-item')">
 <div class="modal modal-lg">
@@ -2056,8 +2117,30 @@ let accounts = [
 ];
 let nxtAccId = 94;
 let entries = [], entLines = [], eeLines = [], ovLines = [];
+let costCenters=[], nxtCCId=1;
+let projects=[], nxtProjId=1;
 
 
+function ccProjMiniHtml(l,updFnName){
+  if(!costCenters.length&&!projects.length)return "";
+  let html='<div style="display:flex;gap:3px;margin-top:3px">';
+  if(costCenters.length){
+    html+='<select onchange="'+updFnName+'('+l.id+',\'costCenterId\',this.value?parseInt(this.value):null)" '
+      +'style="font-size:8.5px;padding:1px 3px;border:1px solid var(--g200);border-radius:3px;flex:1;color:var(--g6)" title="مركز التكلفة">'
+      +'<option value="">🏷️ مركز تكلفة</option>'
+      +costCenters.filter(function(c){return c.active!==false;}).map(function(c){return '<option value="'+c.id+'"'+(l.costCenterId===c.id?' selected':'')+'>'+c.name+'</option>';}).join('')
+      +'</select>';
+  }
+  if(projects.length){
+    html+='<select onchange="'+updFnName+'('+l.id+',\'projectId\',this.value?parseInt(this.value):null)" '
+      +'style="font-size:8.5px;padding:1px 3px;border:1px solid var(--g200);border-radius:3px;flex:1;color:var(--g6)" title="المشروع">'
+      +'<option value="">📁 مشروع</option>'
+      +projects.filter(function(p){return p.status!=="done";}).map(function(p){return '<option value="'+p.id+'"'+(l.projectId===p.id?' selected':'')+'>'+p.name+'</option>';}).join('')
+      +'</select>';
+  }
+  html+='</div>';
+  return html;
+}
 function renderEntLines(){
   const el=document.getElementById("en-lines");if(!el)return;
   el.innerHTML=entLines.map(function(l,idx){
@@ -2117,7 +2200,7 @@ function renderEntLines(){
           +' onkeydown="entLineKeyNav(event,'+l.id+',\'acc\')" autocomplete="off"'
           +' style="width:100%;font-size:11.5px"'+rdOnly+'>'
           +'<div class="asp" id="elp-'+l.id+'"></div>'
-        +'</div>'+subHtml
+        +'</div>'+subHtml+ccProjMiniHtml(l,'updEl')
       +'</div>'
       +'<input type="text" placeholder="وصف السطر..." value="'+(l.desc||'')+'"'
         +' onchange="updEl('+l.id+',\'desc\',this.value)"'
@@ -2542,7 +2625,7 @@ function saveEnt(){
     lines:valid.map(function(l){
       return {accId:parseInt(l.accId),desc:l.desc||"",
         debit:parseFloat(l.dr)||0,credit:parseFloat(l.cr)||0,
-        subId:l.subId||null};
+        subId:l.subId||null,costCenterId:l.costCenterId||null,projectId:l.projectId||null};
     })
   };
   if(attachFile&&attachFile.files&&attachFile.files[0]){
@@ -2571,7 +2654,7 @@ function openEditEntry(id){
   document.getElementById("ee-date").value=e.date;
   document.getElementById("ee-desc").value=e.desc;
   document.getElementById("ee-ref").value=e.ref||"";
-  eeLines=e.lines.map(l=>{const a=accounts.find(x=>x.id===l.accId);return{id:gid(),accId:l.accId,lbl:a?(a.code+" - "+a.name):"",desc:l.desc,dr:l.debit,cr:l.credit};});
+  eeLines=e.lines.map(l=>{const a=accounts.find(x=>x.id===l.accId);return{id:gid(),accId:l.accId,lbl:a?(a.code+" - "+a.name):"",desc:l.desc,dr:l.debit,cr:l.credit,subId:l.subId||null,costCenterId:l.costCenterId||null,projectId:l.projectId||null};});
   renderEeLines();
   document.getElementById("m-ee").style.display="flex";
 }
@@ -2580,10 +2663,13 @@ function renderEeLines(){
   document.getElementById("ee-lines").innerHTML=eeLines.map((l,idx)=>`
     <div class="el">
       <span style="font-size:10.5px;color:var(--g4);text-align:center">${idx+1}</span>
-      <div class="asw">
-        <input id="ees-${l.id}" type="text" placeholder="🔍 ابحث..." value="${l.lbl||""}"
-          oninput="eeSearch(${l.id},this.value)" onclick="eeSearch(${l.id},this.value)" autocomplete="off" style="width:100%;font-size:11.5px">
-        <div class="asp" id="eep-${l.id}"></div>
+      <div style="min-width:0">
+        <div class="asw">
+          <input id="ees-${l.id}" type="text" placeholder="🔍 ابحث..." value="${l.lbl||""}"
+            oninput="eeSearch(${l.id},this.value)" onclick="eeSearch(${l.id},this.value)" autocomplete="off" style="width:100%;font-size:11.5px">
+          <div class="asp" id="eep-${l.id}"></div>
+        </div>
+        ${ccProjMiniHtml(l,'updEe')}
       </div>
       <input type="text" value="${l.desc||""}" onchange="updEe(${l.id},'desc',this.value)" style="font-size:11.5px" placeholder="بيان...">
       <input type="number" value="${l.dr||""}" oninput="updEe(${l.id},'dr',this.value)" step="0.01" style="font-size:11.5px">
@@ -2628,7 +2714,7 @@ function saveEE(){
   if(Math.abs(td-tc)>0.01){showAlert("القيد غير متوازن","err");return;}
   const ent=entries.find(e=>e.id===id);if(!ent)return;
   ent.date=date;ent.desc=desc;ent.ref=ref;
-  ent.lines=valid.map(l=>({accId:parseInt(l.accId),desc:typeof l.desc==="string"?l.desc:"",debit:parseFloat(l.dr)||0,credit:parseFloat(l.cr)||0}));
+  ent.lines=valid.map(l=>({accId:parseInt(l.accId),desc:typeof l.desc==="string"?l.desc:"",debit:parseFloat(l.dr)||0,credit:parseFloat(l.cr)||0,subId:l.subId||null,costCenterId:l.costCenterId||null,projectId:l.projectId||null}));
   CM("m-ee");renderEnts();showAlert("تم تعديل القيد ✓");
 }
 function delEnt(id){if(!confirm("حذف هذا القيد؟"))return;entries=entries.filter(e=>e.id!==id);renderEnts();updateBadges();showAlert("تم الحذف","warn");}
@@ -2793,10 +2879,12 @@ const PGS={
   inv:["الفوترة","فواتير المبيعات والمشتريات"],
   depsched:["جدول إهلاك الأصول","تقرير مجمّع لإهلاك جميع الأصول الثابتة"],
   cashflow:["قائمة التدفقات النقدية","التدفقات النقدية من الأنشطة التشغيلية والاستثمارية والتمويلية"],
+  cc:["مراكز التكلفة","تعريف وإدارة مراكز التكلفة"],
+  proj:["المشاريع","تعريف وإدارة المشاريع"],
 };
 
 const PAGE_GROUP={
-  set:'⚙️ إعداد النظام',acc:'⚙️ إعداد النظام',sub:'⚙️ إعداد النظام',tax:'⚙️ إعداد النظام',
+  set:'⚙️ إعداد النظام',acc:'⚙️ إعداد النظام',sub:'⚙️ إعداد النظام',tax:'⚙️ إعداد النظام',cc:'⚙️ إعداد النظام',proj:'⚙️ إعداد النظام',
   ent:'📝 القيود والسندات',post:'📝 القيود والسندات',vch:'📝 القيود والسندات',
   sinv:'🟢 المبيعات',sret:'🟢 المبيعات',
   pinv:'🔴 المشتريات',pret:'🔴 المشتريات',
@@ -2965,6 +3053,8 @@ function SS(id,btn){
   if(id==="taxrpt"){renderTaxReport();}
   if(id==="depsched"){renderDepSchedule();}
   if(id==="cashflow"){renderCashFlow();}
+  if(id==="cc"){renderCostCenters();}
+  if(id==="proj"){renderProjects();}
   if(id==="stkrep"){renderStkRep();}
 }
 document.addEventListener("click",e=>{
@@ -6674,6 +6764,91 @@ function saveQuickParty(type, targetId, ctx){
 }
 
 // ════════════════════════════════════════════════════════════════
+// COST CENTERS & PROJECTS (مراكز التكلفة والمشاريع)
+// ════════════════════════════════════════════════════════════════
+function renderCostCenters(){
+  const el=document.getElementById("cc-tb");if(!el)return;
+  const sumEl=document.getElementById("cc-summary");
+  const activeCount=costCenters.filter(c=>c.active!==false).length;
+  if(sumEl)sumEl.innerHTML='<div class="sc"><div class="sl">إجمالي مراكز التكلفة</div><div class="sv">'+costCenters.length+'</div></div>'
+    +'<div class="sc gn"><div class="sl">نشطة</div><div class="sv">'+activeCount+'</div></div>';
+  if(!costCenters.length){el.innerHTML='<div class="empty"><span class="ei">🏷️</span><p>لا توجد مراكز تكلفة — أضف مركزاً جديداً</p></div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>الرمز</th><th>الاسم</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>'
+    +costCenters.map(function(c){return '<tr><td><strong>'+(c.code||"—")+'</strong></td><td>'+c.name+'</td>'
+      +'<td>'+(c.active!==false?'<span class="bdg b4">✅ نشط</span>':'<span class="bdg b5">⏸ غير نشط</span>')+'</td>'
+      +'<td><button class="btn bo bxs" onclick="openCCForm('+c.id+')">✏️</button> <button class="btn bd bxs" onclick="deleteCC('+c.id+')">🗑️</button></td></tr>';}).join('')
+    +'</tbody></table></div>';
+}
+function openCCForm(id){
+  const c=id?costCenters.find(function(x){return x.id===id;}):null;
+  document.getElementById("cc-id").value=id||"";
+  document.getElementById("cc-code").value=c?(c.code||""):"";
+  document.getElementById("cc-name").value=c?c.name:"";
+  document.getElementById("cc-active").checked=c?c.active!==false:true;
+  document.getElementById("m-cc").style.display="flex";
+}
+function saveCC(){
+  const id=parseInt(document.getElementById("cc-id").value)||0;
+  const code=document.getElementById("cc-code").value.trim();
+  const name=document.getElementById("cc-name").value.trim();
+  const active=document.getElementById("cc-active").checked;
+  if(!name){showAlert("يرجى إدخال اسم مركز التكلفة","err");return;}
+  if(id){const c=costCenters.find(function(x){return x.id===id;});if(c)Object.assign(c,{code,name,active});}
+  else costCenters.push({id:nxtCCId++,code,name,active});
+  CM("m-cc");renderCostCenters();showAlert("تم حفظ مركز التكلفة ✓");
+}
+function deleteCC(id){
+  if(!confirm("حذف مركز التكلفة؟ لن يتأثر أي قيد سابق مرتبط به."))return;
+  costCenters=costCenters.filter(function(c){return c.id!==id;});
+  renderCostCenters();showAlert("تم الحذف","warn");
+}
+
+function renderProjects(){
+  const el=document.getElementById("proj-tb");if(!el)return;
+  const sumEl=document.getElementById("proj-summary");
+  const activeCount=projects.filter(p=>p.status==="active").length;
+  if(sumEl)sumEl.innerHTML='<div class="sc"><div class="sl">إجمالي المشاريع</div><div class="sv">'+projects.length+'</div></div>'
+    +'<div class="sc gn"><div class="sl">جارية</div><div class="sv">'+activeCount+'</div></div>';
+  if(!projects.length){el.innerHTML='<div class="empty"><span class="ei">📁</span><p>لا توجد مشاريع — أضف مشروعاً جديداً</p></div>';return;}
+  const stLbl={active:'<span class="bdg b4">🟢 جاري</span>',done:'<span class="bdg b1">✅ منتهي</span>',onhold:'<span class="bdg b2">⏸ متوقف</span>'};
+  el.innerHTML='<div class="tw"><table><thead><tr><th>الرمز</th><th>اسم المشروع</th><th>العميل / الجهة</th><th>تاريخ البدء</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>'
+    +projects.map(function(p){return '<tr><td><strong>'+(p.code||"—")+'</strong></td><td>'+p.name+'</td><td>'+(p.client||"—")+'</td>'
+      +'<td>'+(p.startDate?fmtDate(p.startDate):"—")+'</td>'
+      +'<td>'+(stLbl[p.status]||p.status)+'</td>'
+      +'<td><button class="btn bo bxs" onclick="openProjForm('+p.id+')">✏️</button> <button class="btn bd bxs" onclick="deleteProj('+p.id+')">🗑️</button></td></tr>';}).join('')
+    +'</tbody></table></div>';
+}
+function openProjForm(id){
+  const p=id?projects.find(function(x){return x.id===id;}):null;
+  document.getElementById("proj-id").value=id||"";
+  document.getElementById("proj-code").value=p?(p.code||""):"";
+  document.getElementById("proj-name").value=p?p.name:"";
+  document.getElementById("proj-client").value=p?(p.client||""):"";
+  document.getElementById("proj-start").value=p?(p.startDate||""):"";
+  document.getElementById("proj-end").value=p?(p.endDate||""):"";
+  document.getElementById("proj-status").value=p?p.status:"active";
+  document.getElementById("m-proj").style.display="flex";
+}
+function saveProj(){
+  const id=parseInt(document.getElementById("proj-id").value)||0;
+  const code=document.getElementById("proj-code").value.trim();
+  const name=document.getElementById("proj-name").value.trim();
+  const client=document.getElementById("proj-client").value.trim();
+  const startDate=document.getElementById("proj-start").value;
+  const endDate=document.getElementById("proj-end").value;
+  const status=document.getElementById("proj-status").value;
+  if(!name){showAlert("يرجى إدخال اسم المشروع","err");return;}
+  if(id){const p=projects.find(function(x){return x.id===id;});if(p)Object.assign(p,{code,name,client,startDate,endDate,status});}
+  else projects.push({id:nxtProjId++,code,name,client,startDate,endDate,status});
+  CM("m-proj");renderProjects();showAlert("تم حفظ المشروع ✓");
+}
+function deleteProj(id){
+  if(!confirm("حذف المشروع؟ لن يتأثر أي قيد سابق مرتبط به."))return;
+  projects=projects.filter(function(p){return p.id!==id;});
+  renderProjects();showAlert("تم الحذف","warn");
+}
+
+// ════════════════════════════════════════════════════════════════
 // CUSTODIAN MODULE (العهد المالية)
 // ════════════════════════════════════════════════════════════════
 let custodians=[], nxtCustId=1;
@@ -9743,7 +9918,7 @@ CREATE TABLE EntryLines (<br>
 // ════ PERSISTENCE (localStorage + Cloud) ════
 const PERSIST_KEY='acct_sys_v6';
 function buildPersistData(){
-  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId};
+  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId};
 }
 let localDirtySinceBoot=false;
 let __bootDataSnapshot=null;
@@ -9804,6 +9979,10 @@ function applyPersistedData(d){
     if(d.subNextNum!==undefined)subNextNum=d.subNextNum;
     if(d.custodians!==undefined)custodians=d.custodians;
     if(d.nxtCustId!==undefined)nxtCustId=d.nxtCustId;
+    if(d.costCenters!==undefined)costCenters=d.costCenters;
+    if(d.nxtCCId!==undefined)nxtCCId=d.nxtCCId;
+    if(d.projects!==undefined)projects=d.projects;
+    if(d.nxtProjId!==undefined)nxtProjId=d.nxtProjId;
   }catch(e){console.error('applyPersistedData:',e);}
 }
 setInterval(persist,3000);
