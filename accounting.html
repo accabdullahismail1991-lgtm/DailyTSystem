@@ -10308,7 +10308,7 @@ function applyPersistedData(d){
   }catch(e){console.error('applyPersistedData:',e);}
 }
 setInterval(persist,3000);
-window.addEventListener('beforeunload',persist);
+window.addEventListener('beforeunload',()=>{persist();try{window.CloudSync&&CloudSync.flush&&CloudSync.flush('accounting');}catch(e){}});
 
 // ════ DIAGNOSTIC ERROR CATCHER ════
 (function(){

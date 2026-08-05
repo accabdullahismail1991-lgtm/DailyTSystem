@@ -231,7 +231,9 @@ function loadShellUsers(){
 }
 function persistShellUsers(){
   try{localStorage.setItem(SHELL_KEY,JSON.stringify(shellUsers));}catch(e){}
-  try{window.CloudSync&&CloudSync.save('shell_users',shellUsers);}catch(e){}
+  // كتابة فورية (بدون تأخير) — إدارة المستخدمين عملية صريحة ونادرة، ولا يجوز أن يضيع
+  // الحذف/الإضافة إذا أعاد المستخدم تحميل الصفحة بسرعة قبل انتهاء مهلة الحفظ المؤجّل
+  try{window.CloudSync&&CloudSync.saveNow('shell_users',shellUsers);}catch(e){}
 }
 
 function doShellLogin(){
@@ -410,6 +412,7 @@ function deleteShellUser(id){
 }
 
 // ==================== Boot ====================
+window.addEventListener('beforeunload',()=>{try{window.CloudSync&&CloudSync.flushAll&&CloudSync.flushAll();}catch(e){}});
 loadShellUsers();
 if(window.CloudSync){
   CloudSync.load('shell_users').then(remote=>{

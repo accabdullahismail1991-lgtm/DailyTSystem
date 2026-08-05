@@ -2785,6 +2785,7 @@ function bankOpts(sel){return BANKS.map(b=>`<option${b===sel?' selected':''}>${b
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 let localDirtySinceBoot=false;
 function persist(){localDirtySinceBoot=true;try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn(e);}try{window.CloudSync&&CloudSync.save('transfers',state);}catch(e){}}
+window.addEventListener('beforeunload',()=>{try{window.CloudSync&&CloudSync.flush&&CloudSync.flush('transfers');}catch(e){}});
 function load(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):null;}catch(e){return null;}}
 function bankBg(b){const m={'بنك الراجحي':'rgba(0,100,0,.15)','البنك الأهلي':'rgba(0,60,120,.15)','بنك البلاد':'rgba(120,0,0,.15)','بنك الإنماء':'rgba(0,100,120,.15)','بنك الرياض':'rgba(180,140,0,.15)'};return m[b]||'rgba(100,100,100,.12)';}
 function bankEmoji(b){const m={'بنك الراجحي':'🟩','البنك الأهلي':'🟦','بنك البلاد':'🟥','بنك الإنماء':'🔷','بنك الرياض':'🟡'};return m[b]||'🏦';}

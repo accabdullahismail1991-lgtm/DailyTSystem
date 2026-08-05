@@ -30,20 +30,48 @@ const firebaseConfig = {
 
   const saveTimers={};
   const lastLocalWrite={};
+  const pendingData={};
+
+  function doWrite(docName,data){
+    return ready.then(()=>{
+      const token=Date.now()+'_'+Math.random().toString(36).slice(2);
+      lastLocalWrite[docName]=token;
+      return db.collection('system').doc(docName).set({
+        data:JSON.stringify(data),
+        updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+        writeToken:token
+      });
+    }).catch(err=>console.error('[CloudSync] فشل الحفظ ('+docName+'):',err));
+  }
 
   function save(docName,data){
+    pendingData[docName]=data;
     clearTimeout(saveTimers[docName]);
     saveTimers[docName]=setTimeout(()=>{
-      ready.then(()=>{
-        const token=Date.now()+'_'+Math.random().toString(36).slice(2);
-        lastLocalWrite[docName]=token;
-        db.collection('system').doc(docName).set({
-          data:JSON.stringify(data),
-          updatedAt:firebase.firestore.FieldValue.serverTimestamp(),
-          writeToken:token
-        }).catch(err=>console.error('[CloudSync] فشل الحفظ ('+docName+'):',err));
-      });
+      delete saveTimers[docName];
+      doWrite(docName,pendingData[docName]);
     },1500);
+  }
+
+  // كتابة فورية بدون تأخير — للعمليات الصريحة قليلة التكرار (مثال: إدارة المستخدمين)
+  // حيث لا داعي للـdebounce، ويجب ألا يضيع التغيير إذا أُعيد تحميل الصفحة بسرعة
+  function saveNow(docName,data){
+    clearTimeout(saveTimers[docName]);
+    delete saveTimers[docName];
+    return doWrite(docName,data);
+  }
+
+  // إرسال أي حفظ مؤجّل (debounced) فوراً بدون انتظار — يُستخدم قبل إغلاق/تحديث الصفحة
+  function flush(docName){
+    if(saveTimers[docName]){
+      clearTimeout(saveTimers[docName]);
+      delete saveTimers[docName];
+      return doWrite(docName,pendingData[docName]);
+    }
+    return Promise.resolve();
+  }
+  function flushAll(){
+    return Promise.all(Object.keys(saveTimers).map(flush));
   }
 
   function load(docName){
@@ -71,5 +99,5 @@ const firebaseConfig = {
     onRefresh();
   }
 
-  window.CloudSync={ready,save,load,onChange,showUpdateBanner};
+  window.CloudSync={ready,save,saveNow,load,onChange,showUpdateBanner,flush,flushAll};
 })();
