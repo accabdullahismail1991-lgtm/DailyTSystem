@@ -487,9 +487,9 @@ tbody tr:hover{background:var(--g50)}
  <span class="nb-ic">🏠</span><span class="nb-txt">الرئيسية</span>
 </button>
 
-<!-- ─── إعداد النظام ─── -->
+<!-- ─── الحسابات العامة ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>⚙️ إعداد النظام</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>⚙️ الحسابات العامة</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('set',this)"><span class="nb-ic">⚙️</span><span class="nb-txt">الإعدادات العامة</span></button>
   <button class="nb" onclick="SS('acc',this)"><span class="nb-ic">📂</span><span class="nb-txt">دليل الحسابات</span><span class="nb-bg" id="b-acc">0</span></button>
@@ -542,9 +542,9 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div>
 
-<!-- ─── الأصول والإيجارات ─── -->
+<!-- ─── الأصول والإيجارات والعهد ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🏭 الأصول والإيجارات</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🏭 الأصول والإيجارات والعهد</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('ast',this)"><span class="nb-ic">🏭</span><span class="nb-txt">الأصول الثابتة</span></button>
   <button class="nb" onclick="SS('rent',this)"><span class="nb-ic">🏠</span><span class="nb-txt">الإيجارات</span></button>
@@ -552,21 +552,35 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div>
 
-<!-- ─── التقارير ─── -->
+<!-- ─── التقارير المالية ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📊 التقارير</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📊 التقارير المالية</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('lg',this)"><span class="nb-ic">📖</span><span class="nb-txt">الأستاذ العام</span></button>
   <button class="nb" onclick="SS('tr',this)"><span class="nb-ic">⚖️</span><span class="nb-txt">ميزان المراجعة</span></button>
   <button class="nb" onclick="SS('fs',this)"><span class="nb-ic">📊</span><span class="nb-txt">القوائم المالية</span></button>
+  <button class="nb" onclick="SS('cashflow',this)"><span class="nb-ic">💵</span><span class="nb-txt">التدفقات النقدية</span></button>
+  <button class="nb" onclick="SS('taxrpt',this)"><span class="nb-ic">🧾</span><span class="nb-txt">تقرير الضريبة</span></button>
+  <button class="nb" onclick="SS('ccrpt',this)"><span class="nb-ic">🏷️</span><span class="nb-txt">تقرير مراكز التكلفة والمشاريع</span></button>
+ </div>
+</div>
+
+<!-- ─── تقارير المخازن والأصول ─── -->
+<div class="sb-grp">
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📦 تقارير المخازن والأصول</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-grp-body">
   <button class="nb" onclick="SS('stkbal',this)"><span class="nb-ic">📦</span><span class="nb-txt">رصيد المخزون</span></button>
   <button class="nb" onclick="SS('stkrep',this)"><span class="nb-ic">📈</span><span class="nb-txt">حركات المخزون</span></button>
-  <button class="nb" onclick="SS('taxrpt',this)"><span class="nb-ic">🧾</span><span class="nb-txt">تقرير الضريبة</span></button>
   <button class="nb" onclick="SS('whrpt',this)"><span class="nb-ic">🏗️</span><span class="nb-txt">تقارير المخازن</span></button>
   <button class="nb" onclick="SS('depsched',this)"><span class="nb-ic">🏭</span><span class="nb-txt">جدول إهلاك الأصول</span></button>
-  <button class="nb" onclick="SS('cashflow',this)"><span class="nb-ic">💵</span><span class="nb-txt">التدفقات النقدية</span></button>
-  <button class="nb" onclick="SS('ccrpt',this)"><span class="nb-ic">🏷️</span><span class="nb-txt">تقرير مراكز التكلفة والمشاريع</span></button>
-<button class="nb" onclick="SS('exp',this)"><span class="nb-ic">📤</span><span class="nb-txt">التصدير</span></button>
+ </div>
+</div>
+
+<!-- ─── التصدير ─── -->
+<div class="sb-grp">
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📤 التصدير</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-grp-body">
+  <button class="nb" onclick="SS('exp',this)"><span class="nb-ic">📤</span><span class="nb-txt">مركز التصدير</span></button>
  </div>
 </div>
 
@@ -953,10 +967,7 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">📊</div>القوائم المالية</div>
-  <button class="btn bp bsm" onclick="renderFs()">🔄 عرض</button>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-   <input id="fs-from" type="date" style="font-size:11px;padding:5px 9px;width:130px" onchange="renderFS(fsTab)">
-   <input id="fs-to" type="date" style="font-size:11px;padding:5px 9px;width:130px" onchange="renderFS(fsTab)">
    <button class="btn bg bsm" onclick="expFSXL()">📊 Excel</button>
    <button class="btn bo bsm" onclick="expFSPDF()">📄 PDF</button>
   </div>
@@ -987,10 +998,10 @@ tbody tr:hover{background:var(--g50)}
  <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">📝</div><h3 style="font-size:12.5px;margin-bottom:4px">سجل القيود</h3><p style="font-size:11px;color:var(--g5);margin-bottom:10px">جميع القيود اليومية</p><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="expJrnXL()">📊 Excel</button><button class="btn bo bsm" onclick="expJrnPDF()">📄 PDF</button></div></div>
  <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">📋</div><h3 style="font-size:12.5px;margin-bottom:4px">دليل الحسابات</h3><p style="font-size:11px;color:var(--g5);margin-bottom:10px">شجرة الحسابات والأرصدة</p><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="expAccXL()">📊 Excel</button><button class="btn bo bsm" onclick="expAccPDF()">📄 PDF</button></div></div>
  <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">📊</div><h3 style="font-size:12.5px;margin-bottom:4px">القوائم المالية</h3><p style="font-size:11px;color:var(--g5);margin-bottom:10px">قائمة الدخل والميزانية</p><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-   <input id="fs-from" type="date" style="font-size:11px;padding:5px 9px;width:130px" onchange="renderFS(fsTab)">
-   <input id="fs-to" type="date" style="font-size:11px;padding:5px 9px;width:130px" onchange="renderFS(fsTab)">
-   <button class="btn bg bsm" onclick="expFSXL()">📊 Excel</button>
-   <button class="btn bo bsm" onclick="expFSPDF()">📄 PDF</button>
+   <input id="exp-fs-from" type="date" style="font-size:11px;padding:5px 9px;width:130px">
+   <input id="exp-fs-to" type="date" style="font-size:11px;padding:5px 9px;width:130px">
+   <button class="btn bg bsm" onclick="expFSXL(document.getElementById('exp-fs-from').value,document.getElementById('exp-fs-to').value)">📊 Excel</button>
+   <button class="btn bo bsm" onclick="expFSPDF(document.getElementById('exp-fs-from').value,document.getElementById('exp-fs-to').value)">📄 PDF</button>
   </div></div>
  <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">👥</div><h3 style="font-size:12.5px;margin-bottom:4px">التقارير التحليلية</h3>
   <select id="ex-sub-ty" style="margin-bottom:8px;font-size:11px"><option value="customer">عملاء</option><option value="vendor">موردون</option><option value="employee">موظفون</option><option value="advance">عهد وسلف</option></select>
@@ -3032,13 +3043,15 @@ const PGS={
 };
 
 const PAGE_GROUP={
-  set:'⚙️ إعداد النظام',acc:'⚙️ إعداد النظام',sub:'⚙️ إعداد النظام',tax:'⚙️ إعداد النظام',cc:'⚙️ إعداد النظام',proj:'⚙️ إعداد النظام',
+  set:'⚙️ الحسابات العامة',acc:'⚙️ الحسابات العامة',sub:'⚙️ الحسابات العامة',tax:'⚙️ الحسابات العامة',cc:'⚙️ الحسابات العامة',proj:'⚙️ الحسابات العامة',
   ent:'📝 القيود والسندات',post:'📝 القيود والسندات',vch:'📝 القيود والسندات',
   sinv:'🟢 المبيعات',sret:'🟢 المبيعات',
   pinv:'🔴 المشتريات',pret:'🔴 المشتريات',
-  wh:'📦 المخازن والمخزون',items:'📦 المخازن والمخزون',gr:'📦 المخازن والمخزون',stkout:'📦 المخازن والمخزون',stkadj:'📦 المخازن والمخزون',
-  ast:'🏭 الأصول والإيجارات',rent:'🏭 الأصول والإيجارات',cust:'🏭 الأصول والإيجارات',
-  lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',stkbal:'📊 التقارير',stkrep:'📊 التقارير',taxrpt:'📊 التقارير',whrpt:'📊 التقارير',exp:'📊 التقارير',depsched:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',
+  wh:'📦 المخازن والمخزون',items:'📦 المخازن والمخزون',gr:'📦 المخازن والمخزون',stkout:'📦 المخازن والمخزون',stkadj:'📦 المخازن والمخزون',stkbal:'📦 المخازن والمخزون',
+  ast:'🏭 الأصول والإيجارات والعهد',rent:'🏭 الأصول والإيجارات والعهد',cust:'🏭 الأصول والإيجارات والعهد',
+  lg:'📊 التقارير المالية',tr:'📊 التقارير المالية',fs:'📊 التقارير المالية',taxrpt:'📊 التقارير المالية',cashflow:'📊 التقارير المالية',ccrpt:'📊 التقارير المالية',
+  stkrep:'📦 تقارير المخازن والأصول',whrpt:'📦 تقارير المخازن والأصول',depsched:'📦 تقارير المخازن والأصول',
+  exp:'📤 التصدير',
   notifs:'🔧 الإدارة والنظام',yr:'🔧 الإدارة والنظام',bk:'🔧 الإدارة والنظام',int:'🔧 الإدارة والنظام',
 };
 function tbSearchInput(v){
@@ -3814,9 +3827,9 @@ function expAccPDF(){
   arTbl(doc,{startY:sy,head:[["الرمز","اسم الحساب","النوع","مستوى","افتتاحي","الحالي"]],body:accounts.map(a=>{const b=getBalance(a.id,true);return [a.code,a.name,TN[a.type],String(getLevel(a)),fmtNum(a.open),fmtNum(Math.abs(b))+" "+(b>=0?"م":"د")];})});
   doc.save(`accounts_${CY}_ar.pdf`);showAlert("تم التصدير PDF");
 }
-function expFSXL(){
-  const fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
-  const toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
+function expFSXL(fromD,toD){
+  if(fromD===undefined) fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
+  if(toD===undefined) toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
   function flatN(nodes,d=0){let r=[];nodes.forEach(n=>{r.push(["  ".repeat(d)+n.a.name,fmtNum(Math.abs(n.bal))]);if(n.children.length)r=r.concat(flatN(n.children,d+1));});return r;}
   const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD);
   const asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
@@ -3833,9 +3846,9 @@ function expFSXL(){
   const ws2=XLSX.utils.aoa_to_sheet(bs);ws2["!cols"]=[{wch:30},{wch:14},{wch:30},{wch:14}];XLSX.utils.book_append_sheet(wb,ws2,"الميزانية");
   XLSX.writeFile(wb,`fs_${CY}.xlsx`);showAlert("تم تصدير القوائم المالية Excel");
 }
-function expFSPDF(){
-  const fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
-  const toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
+function expFSPDF(fromD,toD){
+  if(fromD===undefined) fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
+  if(toD===undefined) toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
   function flatR(nodes,d=0){let r=[];nodes.forEach(n=>{r.push(["  ".repeat(d)+n.a.name,fmtNum(Math.abs(n.bal))]);if(n.children.length)r=r.concat(flatR(n.children,d+1));});return r;}
   const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD);
   const asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
@@ -10425,106 +10438,6 @@ function renderInvAdjustments(){
         '<td>'+(a.entryId?'<a onclick="printEntVch('+a.entryId+')" style="cursor:pointer;color:var(--teal)">📄#'+a.entryId+'</a>':'—')+'</td>'+
         '<td>'+(a.notes||"—")+'</td></tr>';
     }).join('')+'</tbody></table></div>';
-}
-
-// ════════════════════════════════════════════════════════════════
-// FINANCIAL STATEMENTS (renderFs)
-// ════════════════════════════════════════════════════════════════
-function renderFs(){
-  const el=document.getElementById("fs-body"); if(!el)return;
-  const hc=CFG.rptColor||"#0f4c75";
-  const NORM={asset:"dr",liability:"cr",equity:"cr",revenue:"cr",expense:"dr"};
-  function getAccBal(type){
-    return accounts.filter(function(a){return a.type===type&&isLeaf(a.id);})
-      .reduce(function(s,a){
-        let dr=parseFloat(a.open)||0, cr=0;
-        if(NORM[type]==="cr"){cr=dr;dr=0;}
-        entries.forEach(function(e){e.lines.filter(function(l){return l.accId===a.id;}).forEach(function(l){dr+=l.debit||0;cr+=l.credit||0;});});
-        return s+(NORM[type]==="dr"?dr-cr:cr-dr);
-      },0);
-  }
-  const totAssets=getAccBal("asset"), totLiab=getAccBal("liability"),
-        totEquity=getAccBal("equity"), totRev=getAccBal("revenue"), totExp=getAccBal("expense");
-  const netIncome=totRev-totExp;
-  const typeColors={asset:"#1d4ed8",liability:"#dc2626",equity:"#7c3aed",revenue:"#16a34a",expense:"#92400e"};
-  const typeLabels={asset:"الأصول",liability:"الخصوم",equity:"حقوق الملكية",revenue:"الإيرادات",expense:"المصروفات"};
-  // Income Statement + Balance Sheet side by side
-  el.innerHTML=
-    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">'
-    // Income Statement
-    +'<div style="background:#fff;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden">'
-    +'<div style="background:'+hc+';color:#fff;padding:10px 14px;font-weight:700">📊 قائمة الدخل — '+CY+'</div>'
-    +'<div style="padding:14px">'
-    +['revenue','expense'].map(function(type){
-      const rows=accounts.filter(function(a){return a.type===type&&isLeaf(a.id);});
-      return '<div style="font-weight:700;font-size:11.5px;color:'+typeColors[type]+';margin:8px 0 4px">'+typeLabels[type]+'</div>'
-        +rows.map(function(a){
-          let dr=parseFloat(a.open)||0, cr=0;
-          if(NORM[type]==="cr"){cr=dr;dr=0;}
-          entries.forEach(function(e){e.lines.filter(function(l){return l.accId===a.id;}).forEach(function(l){dr+=l.debit||0;cr+=l.credit||0;});});
-          const bal=NORM[type]==="dr"?dr-cr:cr-dr;
-          if(Math.abs(bal)<0.001) return '';
-          return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--g50);font-size:11.5px">'
-            +'<span style="color:var(--g6)">'+a.name+'</span>'
-            +'<span style="font-weight:600;color:'+typeColors[type]+'">'+fmtNum(bal)+'</span>'
-            +'</div>';
-        }).join('')
-        +'<div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:700;border-top:1px solid '+typeColors[type]+'">'
-          +'<span>مجموع '+typeLabels[type]+'</span><span style="color:'+typeColors[type]+'">'+fmtNum(getAccBal(type))+'</span>'
-        +'</div>';
-    }).join('')
-    +'<div style="display:flex;justify-content:space-between;padding:10px;margin-top:8px;background:'+(netIncome>=0?"#f0fdf4":"#fef2f2")+';border-radius:var(--r);font-weight:800;font-size:13px">'
-      +'<span>صافي '+(netIncome>=0?"الربح":"الخسارة")+'</span>'
-      +'<span style="color:'+(netIncome>=0?"#16a34a":"#dc2626")+'">'+fmtNum(Math.abs(netIncome))+'</span>'
-    +'</div>'
-    +'</div></div>'
-    // Balance Sheet
-    +'<div style="background:#fff;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden">'
-    +'<div style="background:'+hc+';color:#fff;padding:10px 14px;font-weight:700">📋 الميزانية العمومية — '+CY+'</div>'
-    +'<div style="padding:14px">'
-    +['asset','liability','equity'].map(function(type){
-      const rows=accounts.filter(function(a){return a.type===type&&isLeaf(a.id);});
-      return '<div style="font-weight:700;font-size:11.5px;color:'+typeColors[type]+';margin:8px 0 4px">'+typeLabels[type]+'</div>'
-        +rows.map(function(a){
-          let dr=parseFloat(a.open)||0, cr=0;
-          if(NORM[type]==="cr"){cr=dr;dr=0;}
-          entries.forEach(function(e){e.lines.filter(function(l){return l.accId===a.id;}).forEach(function(l){dr+=l.debit||0;cr+=l.credit||0;});});
-          const bal=NORM[type]==="dr"?dr-cr:cr-dr;
-          if(Math.abs(bal)<0.001) return '';
-          return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--g50);font-size:11.5px">'
-            +'<span>'+a.name+'</span><span style="font-weight:600;color:'+typeColors[type]+'">'+fmtNum(bal)+'</span>'
-            +'</div>';
-        }).join('')
-        +'<div style="display:flex;justify-content:space-between;padding:6px 0;font-weight:700;border-top:1px solid '+typeColors[type]+'">'
-          +'<span>مجموع '+typeLabels[type]+'</span><span style="color:'+typeColors[type]+'">'+fmtNum(getAccBal(type))+'</span>'
-        +'</div>';
-    }).join('')
-    +'<div style="display:flex;justify-content:space-between;padding:10px;margin-top:8px;background:#f8fafc;border-radius:var(--r);font-weight:800;font-size:13px">'
-      +'<span>الخصوم + حقوق الملكية + صافي الدخل</span>'
-      +'<span style="color:'+(Math.abs(totAssets-(totLiab+totEquity+netIncome))<1?"#16a34a":"#dc2626")+'">'+fmtNum(totLiab+totEquity+netIncome)+'</span>'
-    +'</div>'
-    +'</div></div>'
-    +'</div>'
-    // Detail tables
-    +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">'
-    +["asset","liability","equity","revenue","expense"].map(function(type){
-      const rows=accounts.filter(function(a){return a.type===type&&isLeaf(a.id);});
-      if(!rows.length) return '';
-      return '<div style="background:#fff;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden">'
-        +'<div style="background:'+typeColors[type]+'15;border-bottom:2px solid '+typeColors[type]+';padding:7px 12px;font-weight:700;font-size:12px;color:'+typeColors[type]+'">'+typeLabels[type]+'</div>'
-        +'<div style="padding:10px 12px;font-size:11.5px">'
-        +rows.map(function(a){
-          let dr=parseFloat(a.open)||0, cr=0;
-          if(NORM[type]==="cr"){cr=dr;dr=0;}
-          entries.forEach(function(e){e.lines.filter(function(l){return l.accId===a.id;}).forEach(function(l){dr+=l.debit||0;cr+=l.credit||0;});});
-          const bal=NORM[type]==="dr"?dr-cr:cr-dr;
-          if(Math.abs(bal)<0.001) return '';
-          return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--g50)">'
-            +'<span style="color:var(--g6)">'+a.code+' — '+a.name+'</span>'
-            +'<span style="font-weight:600;color:'+typeColors[type]+'">'+fmtNum(bal)+'</span>'
-            +'</div>';
-        }).join('')+'</div></div>';
-    }).join('')+'</div>';
 }
 
 // ════════════════════════════════════════════════════════════════
