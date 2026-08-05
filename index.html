@@ -5,10 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>النظام الموحد — الحوالات والمحاسبة</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="cloud-sync.js"></script>
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --border:#262b36; --gold:#c8a45e;
-    --text:#e8e6e1; --muted:#9aa0ac;
+    --text:#e8e6e1; --muted:#9aa0ac; --danger:#e05a5a;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;margin:0;}
@@ -16,15 +20,52 @@
     font-family:'Tajawal',sans-serif; background:var(--bg); color:var(--text);
     display:flex; flex-direction:column; overflow:hidden;
   }
+  input,select{
+    font-family:inherit; background:#0f1115; border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:10px 12px; font-size:14px;
+  }
+  input:focus,select:focus{outline:none; border-color:var(--gold);}
+  button{font-family:inherit; cursor:pointer;}
+  .btn{
+    appearance:none; border:1px solid var(--border); background:transparent;
+    color:var(--muted); padding:9px 18px; border-radius:10px;
+    font-size:14px; font-weight:700; transition:.15s;
+  }
+  .btn:hover{border-color:var(--gold); color:var(--text);}
+  .btn-gold{
+    background:linear-gradient(135deg,var(--gold),#a9803f); color:#1a1a1a; border-color:var(--gold);
+  }
+  .btn-danger{border-color:var(--danger); color:var(--danger);}
+  .btn-danger:hover{background:var(--danger); color:#fff;}
+
+  /* ===== Login screen ===== */
+  #login-screen{
+    flex:1; display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  #login-card{
+    width:100%; max-width:340px; background:var(--panel); border:1px solid var(--border);
+    border-radius:16px; padding:28px 24px; box-shadow:0 10px 40px rgba(0,0,0,.4);
+  }
+  #login-card h1{
+    font-size:18px; color:var(--gold); text-align:center; margin:0 0 4px;
+  }
+  #login-card .sub{ text-align:center; color:var(--muted); font-size:12.5px; margin-bottom:22px; }
+  #login-card label{ display:block; font-size:12.5px; color:var(--muted); margin-bottom:6px; }
+  #login-card .fld{ margin-bottom:14px; }
+  #login-card input{ width:100%; }
+  #login-card .go{ width:100%; padding:11px; font-size:14.5px; margin-top:6px; }
+  #login-error{ color:var(--danger); font-size:12.5px; text-align:center; margin-top:10px; min-height:1em; }
+
+  /* ===== App shell ===== */
+  #app-shell{ display:none; flex:1; flex-direction:column; min-height:0; }
   #shell-nav{
     display:flex; align-items:center; gap:10px; padding:10px 16px;
     background:var(--panel); border-bottom:1px solid var(--border);
-    flex-shrink:0;
+    flex-shrink:0; flex-wrap:wrap;
   }
-  #shell-nav .brand{
-    font-weight:800; font-size:15px; color:var(--gold); margin-left:auto;
-    white-space:nowrap;
-  }
+  #shell-nav .brand{ font-weight:800; font-size:15px; color:var(--gold); white-space:nowrap; }
+  #shell-nav .spacer{ margin-right:auto; }
+  #shell-nav .user-chip{ font-size:13px; color:var(--muted); }
   .switch-btn{
     appearance:none; border:1px solid var(--border); background:transparent;
     color:var(--muted); padding:9px 18px; border-radius:10px; cursor:pointer;
@@ -45,26 +86,183 @@
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     color:var(--muted); font-size:14px; pointer-events:none;
   }
+  #no-access{
+    flex:1; display:none; align-items:center; justify-content:center; color:var(--muted); font-size:14px; text-align:center; padding:20px;
+  }
+
+  /* ===== Manage users modal ===== */
+  .modal-bg{
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9000;
+    align-items:center; justify-content:center; padding:16px;
+  }
+  .modal-bg.open{ display:flex; }
+  .modal-box{
+    width:100%; max-width:560px; max-height:86vh; overflow-y:auto; background:var(--panel);
+    border:1px solid var(--border); border-radius:14px; padding:20px;
+  }
+  .modal-box h2{ margin:0 0 16px; font-size:16px; color:var(--gold); }
+  .u-row{
+    display:flex; align-items:center; gap:10px; padding:10px; border:1px solid var(--border);
+    border-radius:10px; margin-bottom:8px; font-size:13px;
+  }
+  .u-row .u-name{ font-weight:700; }
+  .u-row .u-meta{ color:var(--muted); font-size:11.5px; }
+  .u-row .u-actions{ margin-right:auto; display:flex; gap:6px; }
+  .u-row .u-actions button{ padding:5px 10px; font-size:12px; border-radius:7px; }
+  .u-form{ border-top:1px solid var(--border); margin-top:14px; padding-top:14px; }
+  .u-form .fld{ margin-bottom:10px; }
+  .u-form label{ display:block; font-size:12px; color:var(--muted); margin-bottom:5px; }
+  .u-form input{ width:100%; }
+  .sys-check{ display:flex; gap:16px; margin-top:4px; }
+  .sys-check label{ display:flex; align-items:center; gap:6px; color:var(--text); font-size:13px; }
 </style>
 </head>
 <body>
 
-<div id="shell-nav">
-  <button class="switch-btn" id="btn-transfers" onclick="switchSystem('transfers')">🏦 نظام الحوالات البنكية</button>
-  <button class="switch-btn" id="btn-accounting" onclick="switchSystem('accounting')">📊 النظام المحاسبي</button>
-  <span class="brand">النظام الموحد</span>
+<div id="login-screen">
+  <div id="login-card">
+    <h1>🔐 النظام الموحد</h1>
+    <div class="sub">سجّل الدخول لاختيار النظام</div>
+    <div class="fld">
+      <label>اسم المستخدم</label>
+      <input id="li-user" type="text" autocomplete="username">
+    </div>
+    <div class="fld">
+      <label>كلمة المرور</label>
+      <input id="li-pass" type="password" autocomplete="current-password">
+    </div>
+    <button class="btn btn-gold go" onclick="doShellLogin()">دخول</button>
+    <div id="login-error"></div>
+  </div>
 </div>
 
-<div id="frame-wrap">
-  <div id="loading">جاري التحميل...</div>
-  <iframe id="frame-transfers" title="نظام الحوالات البنكية"></iframe>
-  <iframe id="frame-accounting" title="النظام المحاسبي"></iframe>
+<div id="app-shell">
+  <div id="shell-nav">
+    <span class="brand">النظام الموحد</span>
+    <div id="sys-buttons" style="display:flex;gap:10px"></div>
+    <div class="spacer"></div>
+    <span class="user-chip" id="hdr-user-chip"></span>
+    <button class="btn" id="btn-manage-users" style="display:none" onclick="openUsersModal()">👥 إدارة المستخدمين</button>
+    <button class="btn btn-danger" onclick="doShellLogout()">🚪 خروج</button>
+  </div>
+  <div id="frame-wrap">
+    <div id="no-access">لا توجد أنظمة مُتاحة لهذا المستخدم. تواصل مع المدير.</div>
+    <div id="loading">جاري التحميل...</div>
+    <iframe id="frame-transfers" title="نظام الحوالات البنكية"></iframe>
+    <iframe id="frame-accounting" title="النظام المحاسبي"></iframe>
+  </div>
+</div>
+
+<div class="modal-bg" id="users-modal">
+  <div class="modal-box">
+    <h2>👥 إدارة مستخدمي الدخول</h2>
+    <div id="users-list"></div>
+    <div class="u-form">
+      <div style="font-weight:700;font-size:13px;margin-bottom:10px" id="u-form-title">➕ إضافة مستخدم جديد</div>
+      <input type="hidden" id="u-edit-id">
+      <div class="fld"><label>الاسم</label><input id="u-name" type="text"></div>
+      <div class="fld"><label>اسم المستخدم</label><input id="u-username" type="text"></div>
+      <div class="fld"><label>كلمة المرور</label><input id="u-password" type="text"></div>
+      <div class="fld">
+        <label>الأنظمة المسموحة</label>
+        <div class="sys-check">
+          <label><input type="checkbox" id="u-sys-transfers"> 🏦 الحوالات</label>
+          <label><input type="checkbox" id="u-sys-accounting"> 📊 المحاسبة</label>
+        </div>
+      </div>
+      <div class="fld"><label><input type="checkbox" id="u-admin"> مدير (يقدر يدير المستخدمين)</label></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-gold" onclick="saveShellUser()">حفظ</button>
+        <button class="btn" onclick="resetUserForm()">إلغاء</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:left">
+      <button class="btn" onclick="closeUsersModal()">إغلاق</button>
+    </div>
+  </div>
 </div>
 
 <script>
+// ==================== Shell auth & user management ====================
+const SHELL_KEY='unified_shell_users_v1';
 const SYS_KEY='unified_active_system';
+const SESSION_KEY='unified_shell_session';
 const SRC={transfers:'transfers.html', accounting:'accounting.html'};
+const SYS_LABEL={transfers:'🏦 نظام الحوالات البنكية', accounting:'📊 النظام المحاسبي'};
 const loaded={transfers:false, accounting:false};
+
+let shellUsers=[];
+let currentShellUser=null;
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function loadShellUsers(){
+  try{
+    const raw=localStorage.getItem(SHELL_KEY);
+    if(raw){shellUsers=JSON.parse(raw);return;}
+  }catch(e){}
+  shellUsers=[{id:uid(),name:'المدير العام',username:'admin',password:'admin123',admin:true,systems:['transfers','accounting']}];
+  persistShellUsers();
+}
+function persistShellUsers(){
+  try{localStorage.setItem(SHELL_KEY,JSON.stringify(shellUsers));}catch(e){}
+  try{window.CloudSync&&CloudSync.save('shell_users',shellUsers);}catch(e){}
+}
+
+function doShellLogin(){
+  const u=document.getElementById('li-user').value.trim();
+  const p=document.getElementById('li-pass').value;
+  const errEl=document.getElementById('login-error');
+  const user=shellUsers.find(x=>x.username===u&&x.password===p);
+  if(!user){errEl.textContent='اسم المستخدم أو كلمة المرور غير صحيحة';return;}
+  errEl.textContent='';
+  currentShellUser=user;
+  try{sessionStorage.setItem(SESSION_KEY,user.id);}catch(e){}
+  enterShell();
+}
+function doShellLogout(){
+  currentShellUser=null;
+  try{sessionStorage.removeItem(SESSION_KEY);}catch(e){}
+  document.getElementById('app-shell').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('li-user').value='';
+  document.getElementById('li-pass').value='';
+}
+
+function enterShell(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app-shell').style.display='flex';
+  document.getElementById('hdr-user-chip').textContent='👤 '+currentShellUser.name;
+  document.getElementById('btn-manage-users').style.display=currentShellUser.admin?'':'none';
+
+  const allowed=(currentShellUser.systems||[]).filter(s=>SRC[s]);
+  const btnWrap=document.getElementById('sys-buttons');
+  btnWrap.innerHTML='';
+  const noAccessEl=document.getElementById('no-access');
+  if(allowed.length===0){
+    noAccessEl.style.display='flex';
+    document.getElementById('loading').style.display='none';
+    return;
+  }
+  noAccessEl.style.display='none';
+
+  if(allowed.length>1){
+    allowed.forEach(name=>{
+      const b=document.createElement('button');
+      b.className='switch-btn'; b.id='btn-'+name;
+      b.textContent=SYS_LABEL[name];
+      b.onclick=()=>switchSystem(name);
+      btnWrap.appendChild(b);
+    });
+  }
+
+  let initial=allowed[0];
+  try{
+    const saved=localStorage.getItem(SYS_KEY);
+    if(saved&&allowed.includes(saved))initial=saved;
+  }catch(e){}
+  switchSystem(initial);
+}
 
 function switchSystem(name){
   const frame=document.getElementById('frame-'+name);
@@ -77,15 +275,100 @@ function switchSystem(name){
   }
   ['transfers','accounting'].forEach(n=>{
     document.getElementById('frame-'+n).classList.toggle('active', n===name);
-    document.getElementById('btn-'+n).classList.toggle('active', n===name);
+    const btn=document.getElementById('btn-'+n);
+    if(btn)btn.classList.toggle('active', n===name);
   });
   try{localStorage.setItem(SYS_KEY,name);}catch(e){}
 }
 
-let initial='transfers';
-try{initial=localStorage.getItem(SYS_KEY)||'transfers';}catch(e){}
-if(!SRC[initial])initial='transfers';
-switchSystem(initial);
+// ==================== Manage users modal ====================
+function openUsersModal(){renderUsersList();resetUserForm();document.getElementById('users-modal').classList.add('open');}
+function closeUsersModal(){document.getElementById('users-modal').classList.remove('open');}
+function resetUserForm(){
+  document.getElementById('u-form-title').textContent='➕ إضافة مستخدم جديد';
+  document.getElementById('u-edit-id').value='';
+  document.getElementById('u-name').value='';
+  document.getElementById('u-username').value='';
+  document.getElementById('u-password').value='';
+  document.getElementById('u-sys-transfers').checked=false;
+  document.getElementById('u-sys-accounting').checked=false;
+  document.getElementById('u-admin').checked=false;
+}
+function renderUsersList(){
+  const el=document.getElementById('users-list');
+  el.innerHTML=shellUsers.map(u=>{
+    const sysLabel=(u.systems||[]).map(s=>SYS_LABEL[s]||s).join(' + ')||'—';
+    return '<div class="u-row">'
+      +'<div><div class="u-name">'+esc(u.name)+(u.admin?' 👑':'')+'</div>'
+      +'<div class="u-meta">@'+esc(u.username)+' — '+sysLabel+'</div></div>'
+      +'<div class="u-actions">'
+      +'<button class="btn" onclick="editShellUser(\''+u.id+'\')">تعديل</button>'
+      +'<button class="btn btn-danger" onclick="deleteShellUser(\''+u.id+'\')">حذف</button>'
+      +'</div></div>';
+  }).join('')||'<div style="color:var(--muted);font-size:13px">لا يوجد مستخدمون</div>';
+}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function editShellUser(id){
+  const u=shellUsers.find(x=>x.id===id); if(!u)return;
+  document.getElementById('u-form-title').textContent='✏️ تعديل مستخدم';
+  document.getElementById('u-edit-id').value=u.id;
+  document.getElementById('u-name').value=u.name;
+  document.getElementById('u-username').value=u.username;
+  document.getElementById('u-password').value=u.password;
+  document.getElementById('u-sys-transfers').checked=(u.systems||[]).includes('transfers');
+  document.getElementById('u-sys-accounting').checked=(u.systems||[]).includes('accounting');
+  document.getElementById('u-admin').checked=!!u.admin;
+}
+function saveShellUser(){
+  const id=document.getElementById('u-edit-id').value;
+  const name=document.getElementById('u-name').value.trim();
+  const username=document.getElementById('u-username').value.trim();
+  const password=document.getElementById('u-password').value;
+  const admin=document.getElementById('u-admin').checked;
+  const systems=[];
+  if(document.getElementById('u-sys-transfers').checked)systems.push('transfers');
+  if(document.getElementById('u-sys-accounting').checked)systems.push('accounting');
+  if(!name||!username||!password){alert('عبّي الاسم واسم المستخدم وكلمة المرور');return;}
+  const dupe=shellUsers.find(u=>u.username===username&&u.id!==id);
+  if(dupe){alert('اسم المستخدم مستخدم مسبقاً');return;}
+  if(id){
+    const u=shellUsers.find(x=>x.id===id);
+    Object.assign(u,{name,username,password,admin,systems});
+    if(currentShellUser&&currentShellUser.id===id)currentShellUser=u;
+  }else{
+    shellUsers.push({id:uid(),name,username,password,admin,systems});
+  }
+  persistShellUsers();
+  renderUsersList();
+  resetUserForm();
+  if(currentShellUser)enterShell();
+}
+function deleteShellUser(id){
+  const admins=shellUsers.filter(u=>u.admin);
+  const target=shellUsers.find(u=>u.id===id);
+  if(!target)return;
+  if(target.admin&&admins.length<=1){alert('لا يمكن حذف آخر مستخدم مدير');return;}
+  if(!confirm('حذف المستخدم "'+target.name+'"؟'))return;
+  shellUsers=shellUsers.filter(u=>u.id!==id);
+  persistShellUsers();
+  renderUsersList();
+}
+
+// ==================== Boot ====================
+loadShellUsers();
+if(window.CloudSync){
+  CloudSync.load('shell_users').then(remote=>{
+    if(remote&&remote.length){
+      shellUsers=remote;
+      try{localStorage.setItem(SHELL_KEY,JSON.stringify(shellUsers));}catch(e){}
+    }else{
+      persistShellUsers();
+    }
+    CloudSync.onChange('shell_users',()=>{
+      CloudSync.showUpdateBanner(()=>location.reload());
+    });
+  });
+}
 </script>
 
 </body>
