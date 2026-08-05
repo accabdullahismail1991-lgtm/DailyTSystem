@@ -548,6 +548,8 @@ tbody tr:hover{background:var(--g50)}
   <button class="nb" onclick="SS('stkrep',this)"><span class="nb-ic">📈</span><span class="nb-txt">حركات المخزون</span></button>
   <button class="nb" onclick="SS('taxrpt',this)"><span class="nb-ic">🧾</span><span class="nb-txt">تقرير الضريبة</span></button>
   <button class="nb" onclick="SS('whrpt',this)"><span class="nb-ic">🏗️</span><span class="nb-txt">تقارير المخازن</span></button>
+  <button class="nb" onclick="SS('depsched',this)"><span class="nb-ic">🏭</span><span class="nb-txt">جدول إهلاك الأصول</span></button>
+  <button class="nb" onclick="SS('cashflow',this)"><span class="nb-ic">💵</span><span class="nb-txt">التدفقات النقدية</span></button>
 <button class="nb" onclick="SS('exp',this)"><span class="nb-ic">📤</span><span class="nb-txt">التصدير</span></button>
  </div>
 </div>
@@ -764,13 +766,26 @@ tbody tr:hover{background:var(--g50)}
 <div id="sec-ent" class="sec">
 <div class="card">
  <div class="chd">
-  <div class="ct"><div class="ti">✏️</div>إدخال قيد جديد</div>
+  <div class="ct"><div class="ti">📄</div>سجل القيود</div>
   <div style="display:flex;gap:6px">
+   <input type="text" placeholder="🔍 بحث..." style="width:170px;font-size:11px;padding:5px 8px" oninput="filterEnts(this.value)">
+   <button class="btn bg bsm" onclick="expJrnXL()">📊</button><button class="btn bo bsm" onclick="expJrnPDF()">📄</button>
+   <button class="btn bp bsm" onclick="openNewEntryModal()">✏️ ＋ قيد يومية جديد</button>
+  </div>
+ </div>
+ <div class="tw"><table><thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>المبلغ</th><th>الحسابات</th><th style="color:var(--tl2)">تحليلي</th><th>مرفق</th><th>إجراءات</th></tr></thead><tbody id="ent-tb"></tbody></table></div>
+</div>
+</div>
+
+<!-- New Journal Entry Modal -->
+<div class="mb" id="m-new-ent" style="display:none" onclick="if(event.target===this)CM('m-new-ent')">
+<div class="modal modal-xl">
+ <div class="mt">✏️ إدخال قيد يومية جديد</div>
+ <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
    <button class="btn ba bsm no-print" onclick="openImportEntries()">📥 استيراد Excel</button>
    <button class="btn ba bsm no-print" onclick="openTaxEntry()">🧾 قيد ضريبي</button>
    <button class="btn ba bsm no-print" onclick="openCustodianEntryPicker()">🗂️ تسوية عهدة</button>
    <button class="btn ba bsm no-print" onclick="openQuickAddAcc('ent')">📂 ＋ حساب</button>
-  </div>
  </div>
  <div class="fg" style="grid-template-columns:repeat(4,1fr)">
   <div class="fgrp"><label>التاريخ *</label><input id="en-dt" type="date"></div>
@@ -796,19 +811,8 @@ tbody tr:hover{background:var(--g50)}
    <span>مدين: <strong id="en-tot-dr">0.00</strong></span><span>دائن: <strong id="en-tot-cr">0.00</strong></span><span id="en-bal-st"></span>
   </div>
  </div>
- <div class="actions"><button class="btn bo" onclick="clrEnt()">✕ مسح</button><button class="btn bp" onclick="saveEnt()">💾 حفظ القيد</button></div>
-</div>
-<div class="card">
- <div class="chd">
-  <div class="ct"><div class="ti">📄</div>سجل القيود</div>
-  <div style="display:flex;gap:6px">
-   <input type="text" placeholder="🔍 بحث..." style="width:170px;font-size:11px;padding:5px 8px" oninput="filterEnts(this.value)">
-   <button class="btn bg bsm" onclick="expJrnXL()">📊</button><button class="btn bo bsm" onclick="expJrnPDF()">📄</button>
-  </div>
- </div>
- <div class="tw"><table><thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>المبلغ</th><th>الحسابات</th><th style="color:var(--tl2)">تحليلي</th><th>مرفق</th><th>إجراءات</th></tr></thead><tbody id="ent-tb"></tbody></table></div>
-</div>
-</div>
+ <div class="mact"><button class="btn bo" onclick="clrEnt()">✕ مسح</button><button class="btn bp" onclick="saveEnt()">💾 حفظ القيد</button></div>
+</div></div>
 
 <!-- LEDGER -->
 <div id="sec-lg" class="sec">
@@ -1474,6 +1478,40 @@ tbody tr:hover{background:var(--g50)}
   </div>
  </div>
  <div id="tax-report-body"></div>
+</div>
+</div>
+
+<!-- ══ DEPRECIATION SCHEDULE REPORT SECTION ══ -->
+<div id="sec-depsched" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🏭</div>جدول إهلاك الأصول الثابتة</div>
+  <div style="display:flex;gap:6px">
+   <button class="btn bg bsm" onclick="expDepSchedXL()">📊 Excel</button>
+   <button class="btn bo bsm" onclick="printDepSchedule()">🖨️ طباعة</button>
+  </div>
+ </div>
+ <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px" id="depsched-summary"></div>
+ <div id="depsched-body"></div>
+</div>
+</div>
+
+<!-- ══ CASH FLOW STATEMENT SECTION ══ -->
+<div id="sec-cashflow" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">💵</div>قائمة التدفقات النقدية</div>
+  <div style="display:flex;gap:6px;align-items:center">
+   <input id="cf-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
+   <input id="cf-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
+   <button class="btn bo bsm" onclick="document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';renderCashFlow()">↺</button>
+   <button class="btn bo bsm" onclick="printCashFlow()">🖨️ طباعة</button>
+  </div>
+ </div>
+ <div style="margin-bottom:10px;padding:9px 12px;background:#fefce8;border:1px solid #fcd34d;border-radius:var(--r);font-size:11px;color:#92400e">
+  ℹ️ الطريقة غير المباشرة: تبدأ من صافي الربح وتُعدّل بالبنود غير النقدية والتغيّر في رأس المال العامل. لأغراض التحليل الإداري وليست بديلاً عن مراجعة محاسبية رسمية.
+ </div>
+ <div id="cashflow-body"></div>
 </div>
 </div>
 
@@ -2442,6 +2480,10 @@ function clrEnt(){
   document.getElementById("en-desc").value="";document.getElementById("en-ref").value="";
   document.getElementById("en-dt").value=today();entLines=[];initLines();
 }
+function openNewEntryModal(){
+  clrEnt();
+  document.getElementById("m-new-ent").style.display="flex";
+}
 function saveEnt(){
   const date=document.getElementById("en-dt").value;
   const desc=document.getElementById("en-desc").value.trim();
@@ -2499,7 +2541,7 @@ function saveEnt(){
     const c=custodians.find(function(x){return x.id===custId;});
     if(c){c.status="settled";c.settledDate=date;c.settleEntryId=newEnt.id;renderCustodians();}
   }
-  clrEnt();updateBadges();renderEnts();renderDash();
+  clrEnt();updateBadges();renderEnts();renderDash();CM("m-new-ent");
   showAlert(newEnt.isDraft?"تم حفظ القيد كمسودة #"+newEnt.id+" ✓":"تم حفظ القيد #"+newEnt.id+" ✓");
 }
 
@@ -2731,6 +2773,8 @@ const PGS={
   taxrpt:["تقرير الضريبة","ضريبة المخرجات والمدخلات والإقرار الضريبي"],
   stkrep:["سجل حركات المخزون","تقرير تفصيلي لجميع حركات المخزون"],
   inv:["الفوترة","فواتير المبيعات والمشتريات"],
+  depsched:["جدول إهلاك الأصول","تقرير مجمّع لإهلاك جميع الأصول الثابتة"],
+  cashflow:["قائمة التدفقات النقدية","التدفقات النقدية من الأنشطة التشغيلية والاستثمارية والتمويلية"],
 };
 
 const PAGE_GROUP={
@@ -2740,7 +2784,7 @@ const PAGE_GROUP={
   pinv:'🔴 المشتريات',pret:'🔴 المشتريات',
   wh:'📦 المخازن والمخزون',items:'📦 المخازن والمخزون',gr:'📦 المخازن والمخزون',stkout:'📦 المخازن والمخزون',
   ast:'🏭 الأصول والإيجارات',rent:'🏭 الأصول والإيجارات',cust:'🏭 الأصول والإيجارات',
-  lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',stkbal:'📊 التقارير',stkrep:'📊 التقارير',taxrpt:'📊 التقارير',whrpt:'📊 التقارير',exp:'📊 التقارير',
+  lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',stkbal:'📊 التقارير',stkrep:'📊 التقارير',taxrpt:'📊 التقارير',whrpt:'📊 التقارير',exp:'📊 التقارير',depsched:'📊 التقارير',cashflow:'📊 التقارير',
   notifs:'🔧 الإدارة والنظام',yr:'🔧 الإدارة والنظام',bk:'🔧 الإدارة والنظام',int:'🔧 الإدارة والنظام',
 };
 function tbSearchInput(v){
@@ -2901,6 +2945,8 @@ function SS(id,btn){
   if(id==="tax")  {renderTaxModule();}
   if(id==="set")  {setTimeout(populateTaxPrefSelects,100);}
   if(id==="taxrpt"){renderTaxReport();}
+  if(id==="depsched"){renderDepSchedule();}
+  if(id==="cashflow"){renderCashFlow();}
   if(id==="stkrep"){renderStkRep();}
 }
 document.addEventListener("click",e=>{
@@ -3952,6 +3998,156 @@ function getTotalDepToDate(asset) {
     });
   });
   return total;
+}
+
+// ═══ CONSOLIDATED DEPRECIATION SCHEDULE REPORT ═══
+function buildDepScheduleRows(){
+  return assets.map(a=>{
+    const cost=parseFloat(a.purchaseCost)||0;
+    const dep=getTotalDepToDate(a);
+    const bookValue=cost-dep;
+    return {asset:a,cost,dep,bookValue};
+  }).sort((a,b)=>(a.asset.code||"").localeCompare(b.asset.code||""));
+}
+function renderDepSchedule(){
+  const rows=buildDepScheduleRows();
+  const totCost=rows.reduce((s,r)=>s+r.cost,0);
+  const totDep=rows.reduce((s,r)=>s+r.dep,0);
+  const totBook=rows.reduce((s,r)=>s+r.bookValue,0);
+  const sumEl=document.getElementById("depsched-summary");
+  if(sumEl)sumEl.innerHTML=[
+    ["🏭","عدد الأصول",rows.length,""],
+    ["💰","إجمالي التكلفة",fmtDisp(totCost)+" "+cur(),""],
+    ["📉","إجمالي الإهلاك المتراكم",fmtDisp(totDep)+" "+cur(),"rd"],
+    ["📦","صافي القيمة الدفترية",fmtDisp(totBook)+" "+cur(),"gn"],
+  ].map(([ic,lb,vl,cl])=>`<div class="sc ${cl}"><span class="si">${ic}</span><div class="sl">${lb}</div><div class="sv" style="${cl==="gn"?"color:var(--gn)":cl==="rd"?"color:var(--rd)":""}">${vl}</div></div>`).join("");
+  const body=document.getElementById("depsched-body");if(!body)return;
+  if(!rows.length){body.innerHTML='<div class="empty"><span class="ei">🏭</span><p>لا توجد أصول ثابتة</p></div>';return;}
+  body.innerHTML=`<div class="tw"><table><thead><tr>
+    <th>الرمز</th><th>الأصل</th><th>تاريخ الشراء</th><th>التكلفة</th><th>طريقة الإهلاك</th><th>العمر (سنوات)</th>
+    <th>الإهلاك المتراكم</th><th>القيمة الدفترية</th><th></th>
+  </tr></thead><tbody>${rows.map(r=>`<tr>
+    <td>${r.asset.code||"—"}</td>
+    <td style="font-weight:700">${r.asset.name}</td>
+    <td>${fmtDate(r.asset.purchaseDate)}</td>
+    <td style="direction:ltr;text-align:left">${fmtDisp(r.cost)}</td>
+    <td>${DEP_METHODS[r.asset.method]||r.asset.method}</td>
+    <td style="text-align:center">${r.asset.lifeYears}</td>
+    <td style="direction:ltr;text-align:left;color:var(--rd)">${fmtDisp(r.dep)}</td>
+    <td style="direction:ltr;text-align:left;color:var(--gn);font-weight:700">${fmtDisp(r.bookValue)}</td>
+    <td><button class="btn bo bxs" onclick="SS('ast',null);setTimeout(()=>showAssetSchedule(${r.asset.id}),50)">📋 التفاصيل</button></td>
+  </tr>`).join("")}
+  <tr class="tr-tot"><td colspan="3">الإجمالي</td>
+    <td style="direction:ltr;text-align:left">${fmtDisp(totCost)}</td><td></td><td></td>
+    <td style="direction:ltr;text-align:left">${fmtDisp(totDep)}</td>
+    <td style="direction:ltr;text-align:left">${fmtDisp(totBook)}</td><td></td>
+  </tr>
+  </tbody></table></div>`;
+}
+function expDepSchedXL(){
+  if(typeof XLSX==="undefined"){showAlert("مكتبة Excel غير محملة","err");return;}
+  const rows=buildDepScheduleRows();
+  const data=[["الرمز","الأصل","تاريخ الشراء","التكلفة","طريقة الإهلاك","العمر (سنوات)","الإهلاك المتراكم","القيمة الدفترية"]];
+  rows.forEach(r=>data.push([r.asset.code||"",r.asset.name,r.asset.purchaseDate,r.cost,DEP_METHODS[r.asset.method]||r.asset.method,r.asset.lifeYears,r.dep,r.bookValue]));
+  const wb=mkWB("جدول الإهلاك",data);
+  XLSX.writeFile(wb,"جدول_إهلاك_الأصول.xlsx");
+}
+// ═══ CASH FLOW STATEMENT (INDIRECT METHOD) ═══
+function getCFPeriod(){
+  const from=document.getElementById("cf-from")?.value||(CY+"-01-01");
+  const to=document.getElementById("cf-to")?.value||(CY+"-12-31");
+  return {from,to};
+}
+function computeCashFlow(){
+  const {from,to}=getCFPeriod();
+  const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to);
+  const depAccIds=new Set(assets.map(a=>a.depExpAccId).filter(Boolean));
+
+  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0;
+  periodEntries.forEach(e=>{
+    e.lines.forEach(l=>{
+      const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
+      const dr=l.debit||0,cr=l.credit||0;
+      if(acc.type==="revenue")revenue+=cr-dr;
+      if(acc.type==="expense"){expense+=dr-cr;if(depAccIds.has(acc.id))depExpense+=dr-cr;}
+      if(acc.type==="equity")equityChange+=cr-dr;
+      if(l.subId){
+        const sub=subLedger.find(s=>s.id===l.subId);
+        if(sub&&sub.type==="customer")arChange+=dr-cr;
+        if(sub&&sub.type==="vendor")apChange+=cr-dr;
+      }else if(acc.type==="liability"){
+        financingLiabChange+=cr-dr;
+      }
+    });
+  });
+  const netIncome=revenue-expense;
+  const operating=netIncome+depExpense-arChange+apChange;
+  const investing=-assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to).reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
+  const financing=equityChange+financingLiabChange;
+  const netChange=operating+investing+financing;
+  return {from,to,netIncome,depExpense,arChange,apChange,operating,investing,financing,netChange};
+}
+function cfRow(label,val,indent,bold){
+  return `<tr${bold?' style="font-weight:800;background:var(--g50)"':''}>
+    <td style="padding-right:${indent?28:14}px">${label}</td>
+    <td style="direction:ltr;text-align:left">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)}</td>
+  </tr>`;
+}
+function cfHeader(label){
+  return `<tr style="font-weight:800;background:var(--g50)"><td colspan="2" style="padding-right:14px">${label}</td></tr>`;
+}
+function renderCashFlow(){
+  const cf=computeCashFlow();
+  const body=document.getElementById("cashflow-body");if(!body)return;
+  body.innerHTML=`<div class="tw"><table>
+    <thead><tr><th colspan="2">من ${fmtDate(cf.from)} إلى ${fmtDate(cf.to)}</th></tr></thead>
+    <tbody>
+    ${cfHeader("الأنشطة التشغيلية")}
+    ${cfRow("صافي الربح",cf.netIncome,true)}
+    ${cfRow("+ إهلاك الأصول (بند غير نقدي)",cf.depExpense,true)}
+    ${cfRow((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange,true)}
+    ${cfRow((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange,true)}
+    ${cfRow("صافي النقد من الأنشطة التشغيلية",cf.operating,false,true)}
+    ${cfHeader("الأنشطة الاستثمارية")}
+    ${cfRow("شراء أصول ثابتة",cf.investing,true)}
+    ${cfRow("صافي النقد من الأنشطة الاستثمارية",cf.investing,false,true)}
+    ${cfHeader("الأنشطة التمويلية")}
+    ${cfRow("التغيّر في حقوق الملكية والقروض",cf.financing,true)}
+    ${cfRow("صافي النقد من الأنشطة التمويلية",cf.financing,false,true)}
+    <tr class="tr-tot"><td>صافي التغيّر في النقدية</td>
+      <td style="direction:ltr;text-align:left">${cf.netChange<0?'('+fmtDisp(Math.abs(cf.netChange))+')':fmtDisp(cf.netChange)} ${cur()}</td></tr>
+    </tbody></table></div>`;
+}
+function printCashFlow(){
+  const cf=computeCashFlow();
+  const hc=CFG.rptColor||"#0f4c75";
+  const html=`<div style="text-align:center;font-size:14px;font-weight:800;color:${hc};margin-bottom:4px">قائمة التدفقات النقدية</div>
+    <div style="text-align:center;font-size:10.5px;color:#64748b;margin-bottom:12px">من ${fmtDate(cf.from)} إلى ${fmtDate(cf.to)}</div>
+    <table><tbody>
+    ${cfRow("صافي الربح",cf.netIncome)}
+    ${cfRow("+ إهلاك الأصول",cf.depExpense)}
+    ${cfRow((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
+    ${cfRow((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
+    ${cfRow("صافي النقد من الأنشطة التشغيلية",cf.operating,false,true)}
+    ${cfRow("شراء أصول ثابتة",cf.investing)}
+    ${cfRow("صافي النقد من الأنشطة الاستثمارية",cf.investing,false,true)}
+    ${cfRow("التغيّر في حقوق الملكية والقروض",cf.financing)}
+    ${cfRow("صافي النقد من الأنشطة التمويلية",cf.financing,false,true)}
+    <tr class="tr-tot"><td>صافي التغيّر في النقدية</td><td style="direction:ltr;text-align:left">${fmtDisp(cf.netChange)} ${cur()}</td></tr>
+    </tbody></table>`;
+  printA4(html);
+}
+
+function printDepSchedule(){
+  const rows=buildDepScheduleRows();
+  const hc=CFG.rptColor||"#0f4c75";
+  const html=`<div style="text-align:center;font-size:14px;font-weight:800;color:${hc};margin-bottom:12px">جدول إهلاك الأصول الثابتة</div>
+    <table><thead><tr><th>الرمز</th><th>الأصل</th><th>التكلفة</th><th>الطريقة</th><th>الإهلاك المتراكم</th><th>القيمة الدفترية</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${r.asset.code||"—"}</td><td>${r.asset.name}</td>
+      <td style="direction:ltr;text-align:left">${fmtDisp(r.cost)}</td><td>${DEP_METHODS[r.asset.method]||r.asset.method}</td>
+      <td style="direction:ltr;text-align:left">${fmtDisp(r.dep)}</td><td style="direction:ltr;text-align:left">${fmtDisp(r.bookValue)}</td></tr>`).join("")}
+    </tbody></table>`;
+  printA4(html);
 }
 
 function saveAsset() {
