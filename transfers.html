@@ -6,6 +6,10 @@
 <title id="page-title">نظام الحوالات البنكية</title>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="cloud-sync.js"></script>
 <style>
 
 :root{
@@ -2752,7 +2756,7 @@ function fmt(n){return(parseFloat(n)||0).toLocaleString('en-SA',{minimumFraction
 function fmtDateAr(d){if(!d)return'';try{return new Date(d+'T00:00:00').toLocaleDateString('ar-SA',{weekday:'short',year:'numeric',month:'long',day:'numeric'});}catch(e){return d;}}
 function bankOpts(sel){return BANKS.map(b=>`<option${b===sel?' selected':''}>${b}</option>`).join('');}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function persist(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn(e);}}
+function persist(){try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn(e);}try{window.CloudSync&&CloudSync.save('transfers',state);}catch(e){}}
 function load(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):null;}catch(e){return null;}}
 function bankBg(b){const m={'بنك الراجحي':'rgba(0,100,0,.15)','البنك الأهلي':'rgba(0,60,120,.15)','بنك البلاد':'rgba(120,0,0,.15)','بنك الإنماء':'rgba(0,100,120,.15)','بنك الرياض':'rgba(180,140,0,.15)'};return m[b]||'rgba(100,100,100,.12)';}
 function bankEmoji(b){const m={'بنك الراجحي':'🟩','البنك الأهلي':'🟦','بنك البلاد':'🟥','بنك الإنماء':'🔷','بنك الرياض':'🟡'};return m[b]||'🏦';}
@@ -2763,8 +2767,7 @@ function openModal(id){const el=document.getElementById(id);if(el){el.classList.
 function closeModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');el.style.display='none';}}
 
 // ================================================================ STATE
-function initState(){
-  const saved=load();
+function applyState(saved){
   if(saved)state=Object.assign({days:{},suppliers:[],debts:[],paymentPlan:[],bankAccounts:[],balanceEntries:[],supplierOpenings:[],users:[],activityLog:[],company:{name:'نظام الحوالات البنكية',sub:'',vat:'',emoji:'🏦',bankName:'',bankAccount:'',bankOwner:''},currentUserId:null,lang:'ar',currentDate:today()},saved);
   if(!state.supplierOpenings)state.supplierOpenings=[];
   if(!state.balanceEntries)state.balanceEntries=[];
@@ -2787,6 +2790,7 @@ function initState(){
     }
   });
 }
+function initState(){applyState(load());}
 
 function pickDebtName(name){const inp=document.getElementById('d-name');if(inp)inp.value=name;const dd=document.getElementById('debt-ac-dd');if(dd)dd.style.display='none';}
 
@@ -3484,8 +3488,7 @@ showTab=function(n){
   const pnav=document.getElementById('page-nav-bar');if(pnav){const ls=document.getElementById('login-screen');pnav.style.display=(ls&&!ls.classList.contains('hidden'))?'none':'flex';}
 };
 
-function init(){
-  initState();
+function renderAppFromState(){
   currentLang=state.lang||'ar';
   applyCompanyUI();
   populateFilters();
@@ -3499,11 +3502,38 @@ function init(){
   requestAnimationFrame(()=>{initSigCanvas('finance');initSigCanvas('manager');});
   renderSessionTabs();renderRows();updateHdrMonth();updateHdrDebt();
   ['m-bank','e-bank'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=bankOpts('بنك الراجحي');});
+}
+
+function init(){
+  initState();
+  renderAppFromState();
   document.getElementById('set-bank-name').addEventListener('change',function(){
     document.getElementById('set-bank-other').style.display=this.value==='other'?'block':'none';
   });
   if((state.users||[]).length>0)showLoginScreen();
   else updateHdrUserChip();
+  initCloudSync();
+}
+
+function initCloudSync(){
+  if(!window.CloudSync)return;
+  CloudSync.load('transfers').then(remote=>{
+    if(remote){
+      applyState(remote);
+      persist();
+      renderAppFromState();
+      const ls=document.getElementById('login-screen');
+      if(!ls||!ls.classList.contains('hidden')){
+        if((state.users||[]).length>0)showLoginScreen();
+        else updateHdrUserChip();
+      }
+    }else{
+      persist();
+    }
+    CloudSync.onChange('transfers',()=>{
+      CloudSync.showUpdateBanner(()=>location.reload());
+    });
+  });
 }
 
 init();

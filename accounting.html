@@ -7,6 +7,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="cloud-sync.js"></script>
 <style>
 :root{
   --pri:#0f172a;--teal:#0f4c75;--tl2:#1b6ca8;--tp:#e8f4fd;
@@ -9170,12 +9174,16 @@ CREATE TABLE EntryLines (<br>
 
 
 
-// ════ PERSISTENCE (localStorage) ════
+// ════ PERSISTENCE (localStorage + Cloud) ════
 const PERSIST_KEY='acct_sys_v6';
+function buildPersistData(){
+  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId};
+}
 function persist(){
   try{
-    const data={CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId};
+    const data=buildPersistData();
     localStorage.setItem(PERSIST_KEY,JSON.stringify(data));
+    try{window.CloudSync&&CloudSync.save('accounting',data);}catch(e){}
   }catch(e){console.error('persist:',e);}
 }
 function loadPersisted(){
@@ -9183,6 +9191,11 @@ function loadPersisted(){
     const raw=localStorage.getItem(PERSIST_KEY);
     if(!raw)return;
     const d=JSON.parse(raw);
+    applyPersistedData(d);
+  }catch(e){console.error('loadPersisted:',e);}
+}
+function applyPersistedData(d){
+  try{
     if(d.CFG!==undefined)CFG=d.CFG;
     if(d.CY!==undefined)CY=d.CY;
     if(d.accounts!==undefined)accounts=d.accounts;
@@ -9221,7 +9234,7 @@ function loadPersisted(){
     if(d.subNextNum!==undefined)subNextNum=d.subNextNum;
     if(d.custodians!==undefined)custodians=d.custodians;
     if(d.nxtCustId!==undefined)nxtCustId=d.nxtCustId;
-  }catch(e){console.error('loadPersisted:',e);}
+  }catch(e){console.error('applyPersistedData:',e);}
 }
 setInterval(persist,3000);
 window.addEventListener('beforeunload',persist);
@@ -9255,8 +9268,7 @@ document.addEventListener('keydown',function(e){
   }
 });
 
-document.addEventListener("DOMContentLoaded",function(){
-  try{loadPersisted();}catch(e){console.error(e)}
+function renderAll(){
   try{loadSettings();}catch(e){console.error(e)}
   try{renderDash();}catch(e){console.error("renderDash:",e);}
   try{renderAccs();}catch(e){console.error(e)}
@@ -9288,6 +9300,28 @@ document.addEventListener("DOMContentLoaded",function(){
     try{SS('dash',null);}catch(e2){}
   }
   try{restoreNavStates();}catch(e){console.error(e)}
+}
+
+function initCloudSync(){
+  if(!window.CloudSync)return;
+  CloudSync.load('accounting').then(remote=>{
+    if(remote){
+      applyPersistedData(remote);
+      try{localStorage.setItem(PERSIST_KEY,JSON.stringify(buildPersistData()));}catch(e){}
+      renderAll();
+    }else{
+      persist();
+    }
+    CloudSync.onChange('accounting',()=>{
+      CloudSync.showUpdateBanner(()=>location.reload());
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded",function(){
+  try{loadPersisted();}catch(e){console.error(e)}
+  renderAll();
+  initCloudSync();
 });
 </script>
 
