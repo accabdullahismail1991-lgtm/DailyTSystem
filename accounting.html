@@ -4076,12 +4076,16 @@ function getCFPeriod(){
   const to=document.getElementById("cf-to")?.value||(CY+"-12-31");
   return {from,to};
 }
+function getCashAccounts(){
+  return accounts.filter(a=>isLeaf(a.id)&&a.type==="asset"&&/نقد|صندوق|بنك|cash|bank/i.test(a.name));
+}
 function computeCashFlow(){
   const {from,to}=getCFPeriod();
   const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to);
   const depAccIds=new Set(assets.map(a=>a.depExpAccId).filter(Boolean));
+  const cashAccIds=new Set(getCashAccounts().map(a=>a.id));
 
-  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0;
+  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,actualCashChange=0;
   periodEntries.forEach(e=>{
     e.lines.forEach(l=>{
       const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
@@ -4089,6 +4093,7 @@ function computeCashFlow(){
       if(acc.type==="revenue")revenue+=cr-dr;
       if(acc.type==="expense"){expense+=dr-cr;if(depAccIds.has(acc.id))depExpense+=dr-cr;}
       if(acc.type==="equity")equityChange+=cr-dr;
+      if(cashAccIds.has(acc.id))actualCashChange+=dr-cr;
       if(l.subId){
         const sub=subLedger.find(s=>s.id===l.subId);
         if(sub&&sub.type==="customer")arChange+=dr-cr;
@@ -4103,7 +4108,9 @@ function computeCashFlow(){
   const investing=-assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to).reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
   const financing=equityChange+financingLiabChange;
   const netChange=operating+investing+financing;
-  return {from,to,netIncome,depExpense,arChange,apChange,operating,investing,financing,netChange};
+  const cashAccountNames=getCashAccounts().map(a=>a.code+" — "+a.name);
+  const reconciled=Math.abs(netChange-actualCashChange)<0.01;
+  return {from,to,netIncome,depExpense,arChange,apChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
 }
 function cfRow(label,val,indent,bold){
   return `<tr${bold?' style="font-weight:800;background:var(--g50)"':''}>
@@ -4132,9 +4139,20 @@ function renderCashFlow(){
     ${cfHeader("الأنشطة التمويلية")}
     ${cfRow("التغيّر في حقوق الملكية والقروض",cf.financing,true)}
     ${cfRow("صافي النقد من الأنشطة التمويلية",cf.financing,false,true)}
-    <tr class="tr-tot"><td>صافي التغيّر في النقدية</td>
+    <tr class="tr-tot"><td>صافي التغيّر في النقدية (محسوب)</td>
       <td style="direction:ltr;text-align:left">${cf.netChange<0?'('+fmtDisp(Math.abs(cf.netChange))+')':fmtDisp(cf.netChange)} ${cur()}</td></tr>
-    </tbody></table></div>`;
+    </tbody></table></div>
+    <div style="margin-top:12px;padding:12px 14px;border-radius:var(--r);border:1px solid ${cf.reconciled?'#86efac':'#fca5a5'};background:${cf.reconciled?'var(--gp)':'var(--rp)'}">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div style="font-size:11.5px;font-weight:700;color:${cf.reconciled?'var(--gn)':'var(--rd)'}">
+          ${cf.reconciled?'✓ يطابق التغيّر الفعلي في أرصدة النقدية والبنوك المرتبطة تلقائياً':'⚠ لا يطابق التغيّر الفعلي في أرصدة النقدية — راجع القيود خلال الفترة'}
+        </div>
+        <div style="direction:ltr;font-weight:800;color:${cf.reconciled?'var(--gn)':'var(--rd)'}">${fmtDisp(cf.actualCashChange)} ${cur()}</div>
+      </div>
+      <div style="font-size:10px;color:var(--g5);margin-top:6px">
+        الحسابات المرتبطة تلقائياً (نقد/صندوق/بنك): ${cf.cashAccountNames.length?cf.cashAccountNames.join('، '):'لا توجد حسابات نقدية — تأكد من تسمية حسابات النقد/الصندوق/البنك بشكل واضح في دليل الحسابات'}
+      </div>
+    </div>`;
 }
 function printCashFlow(){
   const cf=computeCashFlow();
@@ -4151,8 +4169,10 @@ function printCashFlow(){
     ${cfRow("صافي النقد من الأنشطة الاستثمارية",cf.investing,false,true)}
     ${cfRow("التغيّر في حقوق الملكية والقروض",cf.financing)}
     ${cfRow("صافي النقد من الأنشطة التمويلية",cf.financing,false,true)}
-    <tr class="tr-tot"><td>صافي التغيّر في النقدية</td><td style="direction:ltr;text-align:left">${fmtDisp(cf.netChange)} ${cur()}</td></tr>
-    </tbody></table>`;
+    <tr class="tr-tot"><td>صافي التغيّر في النقدية (محسوب)</td><td style="direction:ltr;text-align:left">${fmtDisp(cf.netChange)} ${cur()}</td></tr>
+    <tr><td>التغيّر الفعلي في أرصدة النقدية والبنوك</td><td style="direction:ltr;text-align:left">${fmtDisp(cf.actualCashChange)} ${cur()}</td></tr>
+    </tbody></table>
+    <div style="margin-top:8px;font-size:10px;color:#64748b">الحسابات المرتبطة تلقائياً: ${cf.cashAccountNames.length?cf.cashAccountNames.join('، '):'لا توجد'}</div>`;
   printA4(html);
 }
 

@@ -67,21 +67,8 @@ const firebaseConfig = {
   }
 
   function showUpdateBanner(onRefresh){
-    if(document.getElementById('cloud-sync-banner'))return;
-    const bar=document.createElement('div');
-    bar.id='cloud-sync-banner';
-    bar.style.cssText='position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:99999;'
-      +'background:#1f2937;color:#f3f4f6;border:1px solid #c8a45e;border-radius:10px;'
-      +'padding:10px 16px;font-family:Tajawal,sans-serif;font-size:13.5px;display:flex;'
-      +'align-items:center;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.35)';
-    bar.innerHTML='<span>🔄 يوجد تحديث جديد للبيانات من جهاز آخر</span>'
-      +'<button id="cloud-sync-refresh-btn" style="background:#c8a45e;color:#1a1a1a;border:0;'
-      +'border-radius:6px;padding:6px 14px;font-weight:700;cursor:pointer;font-family:inherit">تحديث الآن</button>';
-    document.body.appendChild(bar);
-    document.getElementById('cloud-sync-refresh-btn').addEventListener('click',function(){
-      bar.remove();
-      onRefresh();
-    });
+    // التحديث يطبَّق تلقائياً بدون أي إشعار أو تدخل من المستخدم
+    onRefresh();
   }
 
   window.CloudSync={ready,save,load,onChange,showUpdateBanner};
