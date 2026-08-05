@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>النظام المحاسبي الشامل — v5.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -13,7 +14,7 @@
 <script src="cloud-sync.js"></script>
 <style>
 :root{
-  --pri:#0f172a;--teal:#0f4c75;--tl2:#1b6ca8;--tp:#e8f4fd;
+  --pri:#0f172a;--teal:#4f46e5;--tl2:#6366f1;--tp:#eef2ff;
   --gn:#166534;--gp:#dcfce7;--rd:#991b1b;--rp:#fee2e2;
   --am:#92400e;--ap:#fef3c7;--pu:#5b21b6;--pp:#ede9fe;
   --g50:#f8fafc;--g100:#f1f5f9;--g200:#e2e8f0;--g300:#cbd5e1;
@@ -22,12 +23,12 @@
   --r:10px;--rs:7px;--rl:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--g100);color:var(--g8);direction:rtl;min-height:100vh;font-size:13px}
+body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:var(--g100);color:var(--g8);direction:rtl;min-height:100vh;font-size:13px}
 /* ── Sidebar ── */
-.sb{position:fixed;top:0;right:0;width:220px;height:100vh;background:#0d1b2a;display:flex;flex-direction:column;z-index:100;overflow-y:auto;overflow-x:hidden}
+.sb{position:fixed;top:0;right:0;width:220px;height:100vh;background:#150f2e;display:flex;flex-direction:column;z-index:100;overflow-y:auto;overflow-x:hidden}
 .sb::-webkit-scrollbar{width:4px}.sb::-webkit-scrollbar-track{background:transparent}.sb::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
 .sb-logo{padding:14px 14px 12px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:10px}
-.sb-ic{width:34px;height:34px;background:linear-gradient(135deg,var(--tl2),#0a3a5e);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.sb-ic{width:34px;height:34px;background:linear-gradient(135deg,var(--tl2),#312091);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .sb-logo-text h1{color:#fff;font-size:12px;font-weight:700;line-height:1.3}
 .sb-logo-text p{color:rgba(255,255,255,.35);font-size:9.5px;margin-top:1px}
 .sb-nav{padding:6px 5px;flex:1}
@@ -35,7 +36,7 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--g100);color
 .sb-lbl::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.06)}
 .nb{display:flex;align-items:center;gap:7px;width:100%;padding:7px 9px;background:transparent;border:none;border-radius:6px;color:rgba(255,255,255,.5);font-size:11px;font-weight:500;cursor:pointer;text-align:right;transition:background .1s,color .1s;margin-bottom:1px;font-family:inherit;white-space:nowrap;overflow:hidden}
 .nb:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85)}
-.nb.active{background:linear-gradient(90deg,rgba(27,108,168,.35),rgba(27,108,168,.15));color:#fff;border-right:2px solid var(--tl2);font-weight:700}
+.nb.active{background:linear-gradient(90deg,rgba(99,102,241,.4),rgba(99,102,241,.15));color:#fff;border-right:2px solid var(--tl2);font-weight:700}
 .nb-ic{font-size:13px;width:18px;text-align:center;flex-shrink:0}
 .nb-txt{flex:1;overflow:hidden;text-overflow:ellipsis}
 .nb-bg{background:var(--tl2);color:#fff;font-size:8.5px;font-weight:700;padding:1px 5px;border-radius:10px;min-width:16px;text-align:center;flex-shrink:0}
@@ -49,6 +50,13 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--g100);color
 .tb-r{display:flex;align-items:center;gap:8px}
 .tb-chip{font-size:11px;color:var(--g5);background:var(--g50);border:1px solid var(--g200);border-radius:var(--rs);padding:4px 10px}
 .tb-yr{font-size:11px;font-weight:700;color:var(--w);background:var(--tl2);border-radius:var(--rs);padding:4px 11px;border:none;cursor:pointer;font-family:inherit}
+.tb-search{width:260px;flex-shrink:1}
+.tb-search input{padding:7px 12px;font-size:11.5px;border-radius:20px;background:var(--g50);border-color:var(--g200)}
+.tb-search input:focus{background:var(--w)}
+.tb-bell{position:relative;width:32px;height:32px;border-radius:50%;border:1px solid var(--g200);background:var(--w);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tb-bell:hover{background:var(--g50)}
+.tb-bell-bdg{position:absolute;top:-3px;left:-3px;background:var(--rd);color:#fff;font-size:8.5px;font-weight:800;min-width:15px;height:15px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0 2px;border:1.5px solid #fff}
+.tb-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--tl2),#4338ca);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;cursor:default}
 .content{padding:18px 22px;flex:1}
 .sec{display:none}.sec.active{display:block}
 /* ── Cards ── */
@@ -72,7 +80,7 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--g100);color
 .fgrp{display:flex;flex-direction:column;gap:3px}
 label{font-size:10.5px;font-weight:700;color:var(--g6)}
 input,select,textarea{border:1.5px solid var(--g200);border-radius:var(--rs);padding:7px 10px;font-size:12px;color:var(--g8);background:var(--w);width:100%;transition:border-color .12s,box-shadow .12s;font-family:inherit}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--tl2);box-shadow:0 0 0 3px rgba(27,108,168,.09)}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--tl2);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
 input[type=number]{text-align:left;direction:ltr}
 /* ── Buttons ── */
 .btn{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:var(--rs);font-size:11.5px;font-weight:700;cursor:pointer;transition:all .12s;border:1.5px solid transparent;font-family:inherit}
@@ -291,7 +299,7 @@ tbody tr:hover{background:var(--g50)}
 /* ═══ FLOAT POPUP ═══ */
 .float-popup{position:fixed;top:0;right:0;width:460px;height:100vh;background:#fff;z-index:800;box-shadow:-6px 0 30px rgba(0,0,0,.15);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
 .float-popup.open{transform:translateX(0)}
-.float-popup .fp-hdr{padding:16px 18px;background:linear-gradient(135deg,#0d1b2a,#1e3a5f);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.float-popup .fp-hdr{padding:16px 18px;background:linear-gradient(135deg,#150f2e,#4338ca);color:#fff;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .float-popup .fp-body{padding:18px;flex:1;overflow-y:auto}
 .fp-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:799;opacity:0;transition:opacity .3s;pointer-events:none}
 .fp-overlay.open{opacity:1;pointer-events:all}
@@ -551,6 +559,11 @@ tbody tr:hover{background:var(--g50)}
 <div class="main">
 <div class="topbar">
  <div><div class="tb-t" id="pg-t">لوحة التحكم</div><div class="tb-s" id="pg-s">نظرة عامة</div></div>
+ <div class="tb-search asw no-print">
+  <input id="tb-search-inp" type="text" placeholder="🔍 ابحث عن صفحة..." autocomplete="off"
+    oninput="tbSearchInput(this.value)" onfocus="tbSearchInput(this.value)">
+  <div class="asp" id="tb-search-results"></div>
+ </div>
  <div class="tb-r">
   <button class="btn bo bxs no-print" onclick="SSNew(currentSection||'dash')" title="فتح القسم الحالي في تبويب جديد" style="font-size:11px">↗️ تبويب</button>
   <button class="btn bg bxs no-print" onclick="syncAllToGSheets()" title="مزامنة مع Google Sheets" style="font-size:11px">🟢 GS</button>
@@ -559,6 +572,8 @@ tbody tr:hover{background:var(--g50)}
   <div class="tb-chip" id="tb-dt"></div>
   <div class="tb-chip" id="tb-cur"></div>
   <button class="tb-yr" onclick="SS('yr',null)">السنة: <span id="tb-yr">2024</span></button>
+  <button class="tb-bell no-print" onclick="SS('notifs',null)" title="الإشعارات">🔔<span class="tb-bell-bdg" id="tb-bell-bdg" style="display:none">0</span></button>
+  <div class="tb-avatar no-print" id="tb-avatar" title="">شركة</div>
  </div>
 </div>
 <div class="bc-bar no-print" id="bc-bar"></div>
@@ -2695,6 +2710,38 @@ const PAGE_GROUP={
   lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',stkbal:'📊 التقارير',stkrep:'📊 التقارير',taxrpt:'📊 التقارير',whrpt:'📊 التقارير',exp:'📊 التقارير',
   notifs:'🔧 الإدارة والنظام',yr:'🔧 الإدارة والنظام',bk:'🔧 الإدارة والنظام',int:'🔧 الإدارة والنظام',
 };
+function tbSearchInput(v){
+  const el=document.getElementById('tb-search-results');
+  const q=(v||'').trim();
+  if(!q){el.classList.remove('open');el.innerHTML='';return;}
+  const matches=Object.keys(PGS).filter(id=>hasPagePerm(id)&&PGS[id][0].includes(q));
+  el.innerHTML=matches.length?matches.map(id=>
+    '<div class="ao" onclick="tbSearchGo(\''+id+'\')"><span>'+PGS[id][0]+'</span></div>'
+  ).join(''):'<div class="ao" style="color:var(--g4);cursor:default">لا توجد نتائج</div>';
+  el.classList.add('open');
+}
+function tbSearchGo(id){
+  document.getElementById('tb-search-inp').value='';
+  document.getElementById('tb-search-results').classList.remove('open');
+  SS(id,null);
+}
+function updateNotifBadge(){
+  const badge=document.getElementById('tb-bell-bdg');if(!badge)return;
+  let count=0;
+  count+=(inventory||[]).filter(i=>i.minQty>0&&i.qty<=i.minQty).length;
+  count+=(custodians||[]).filter(c=>c.status==='open').length;
+  count+=(salesInvoices||[]).filter(i=>i.status==='draft').length;
+  count+=(purchaseInvoices||[]).filter(i=>i.status==='draft').length;
+  badge.style.display=count>0?'flex':'none';
+  badge.textContent=count>99?'99+':count;
+}
+function updateTbAvatar(){
+  const el=document.getElementById('tb-avatar');if(!el)return;
+  const name=(CFG.name||'شركة').trim();
+  const initials=name.split(/\s+/).slice(0,2).map(w=>w[0]).join('');
+  el.textContent=initials||'ش';
+  el.title=name;
+}
 function renderBreadcrumb(id){
   const el=document.getElementById('bc-bar');if(!el)return;
   const[t]=PGS[id]||["",""];
@@ -2749,6 +2796,8 @@ function SS(id,btn){
   const pgS=document.getElementById("pg-s");
   if(pgS) pgS.textContent=s;
   renderBreadcrumb(id);
+  updateNotifBadge();
+  updateTbAvatar();
   if(id==="dash") renderDash();
   if(id==="set")  loadSettings();
   if(id==="acc")  {renderAccs();popParSel("ac-par",null);}
