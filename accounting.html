@@ -526,6 +526,7 @@ tbody tr:hover{background:var(--g50)}
   <button class="nb" onclick="SS('items',this)"><span class="nb-ic">📦</span><span class="nb-txt">تعريف الأصناف</span></button>
   <button class="nb" onclick="SS('gr',this)"><span class="nb-ic">📥</span><span class="nb-txt">أذونات الاستلام</span></button>
   <button class="nb" onclick="SS('stkout',this)"><span class="nb-ic">📤</span><span class="nb-txt">أذونات الإخراج</span></button>
+  <button class="nb" onclick="SS('stkadj',this)"><span class="nb-ic">🧮</span><span class="nb-txt">تسوية الجرد والتوالف</span></button>
   <button class="nb" onclick="SS('stkbal',this)"><span class="nb-ic">📊</span><span class="nb-txt">رصيد المخزون</span></button>
  </div>
 </div>
@@ -1837,6 +1838,54 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div></div>
 
+<!-- ══ INVENTORY ADJUSTMENT (STOCKTAKING / DAMAGED GOODS) SECTION ══ -->
+<div id="sec-stkadj" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🧮</div>تسوية الجرد الفعلي والبضاعة التالفة</div>
+  <button class="btn bp" onclick="openInvAdjForm()">＋ تسوية جديدة</button>
+ </div>
+ <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px" id="stkadj-summary"></div>
+ <div id="stkadj-list"></div>
+</div></div>
+
+<!-- ══ INVENTORY ADJUSTMENT MODAL ══ -->
+<div class="mb" id="m-stkadj" style="display:none" onclick="if(event.target===this)CM('m-stkadj')">
+<div class="modal modal-xl">
+ <div class="mt">🧮 تسوية مخزون — جرد فعلي / بضاعة تالفة</div>
+ <div class="fg" style="grid-template-columns:repeat(5,1fr)">
+  <div class="fgrp"><label>التاريخ *</label><input id="stkadj-date" type="date"></div>
+  <div class="fgrp"><label>رقم المستند</label><input id="stkadj-ref" type="text" placeholder="ADJ-0001"></div>
+  <div class="fgrp"><label>نوع التسوية *</label>
+   <select id="stkadj-type" onchange="stkadjTypeChanged()">
+    <option value="count">📋 جرد فعلي (فروقات)</option>
+    <option value="damage">🗑️ بضاعة تالفة / هالكة</option>
+   </select>
+  </div>
+  <div class="fgrp"><label>المستودع *</label><select id="stkadj-wh" onchange="stkadjWhChanged()" style="font-size:11.5px;padding:7px 10px;border:1px solid var(--g200);border-radius:var(--rs)"></select></div>
+  <div class="fgrp"><label id="stkadj-acc-lbl">حساب فروقات الجرد *</label>
+   <div class="asw">
+    <input id="stkadj-acc-s" type="text" placeholder="🔍 ابحث عن حساب..." oninput="SAP('stkadj-acc-s','stkadj-acc-p',selStkAdjAcc)" onclick="SAP('stkadj-acc-s','stkadj-acc-p',selStkAdjAcc)" autocomplete="off">
+    <div class="asp" id="stkadj-acc-p"></div><input type="hidden" id="stkadj-acc-id">
+   </div>
+  </div>
+ </div>
+ <div class="fgrp" style="margin-bottom:8px"><label>ملاحظات</label><input id="stkadj-notes" type="text" placeholder="سبب التسوية..."></div>
+ <!-- Lines -->
+ <div style="padding:10px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);margin-bottom:8px">
+  <div id="stkadj-lines-hdr" style="display:grid;grid-template-columns:2fr 0.9fr 0.9fr 0.9fr 1.3fr 28px;gap:5px;font-size:9.5px;font-weight:800;color:var(--g5);padding:3px 2px;margin-bottom:4px">
+   <span>الصنف</span><span>الرصيد الدفتري</span><span id="stkadj-qty-lbl">الكمية الفعلية</span><span>الفرق</span><span>ملاحظات السطر</span><span></span>
+  </div>
+  <div id="stkadj-lines"></div>
+  <button class="btn bo bsm" onclick="addAdjLine()" style="margin-top:6px">＋ صنف</button>
+ </div>
+ <div style="text-align:left;font-size:12.5px;font-weight:700;padding:6px 0">صافي أثر القيمة: <span id="stkadj-total">0.00</span></div>
+ <div class="mact">
+  <button class="btn bo" onclick="CM('m-stkadj')">إلغاء</button>
+  <button class="btn bp" onclick="saveInvAdjustment()">💾 حفظ وترحيل</button>
+ </div>
+</div></div>
+
 <div id="sec-bk" class="sec">
 <div class="card">
  <div class="chd"><div class="ct"><div class="ti">💾</div>النسخ الاحتياطي والاستعادة</div></div>
@@ -2321,6 +2370,8 @@ let goodsReceipts = [];
 let nxtGRId = 1;
 let stockIssues = [], nxtIssueId = 1;
 let inventoryMethod = "periodic";
+let invAdjustments = [], nxtInvAdjId = 1;
+let invAdjLines = [];
 
 let trMode = "full", fsTab = "is", subType = "customer", subQ = "";
 let accQ = "", entQ = "";
@@ -2883,6 +2934,7 @@ const PGS={
   cashflow:["قائمة التدفقات النقدية","التدفقات النقدية من الأنشطة التشغيلية والاستثمارية والتمويلية"],
   cc:["مراكز التكلفة","تعريف وإدارة مراكز التكلفة"],
   proj:["المشاريع","تعريف وإدارة المشاريع"],
+  stkadj:["تسوية الجرد والتوالف","تسوية فروقات الجرد الفعلي وإخراج البضاعة التالفة"],
 };
 
 const PAGE_GROUP={
@@ -2890,7 +2942,7 @@ const PAGE_GROUP={
   ent:'📝 القيود والسندات',post:'📝 القيود والسندات',vch:'📝 القيود والسندات',
   sinv:'🟢 المبيعات',sret:'🟢 المبيعات',
   pinv:'🔴 المشتريات',pret:'🔴 المشتريات',
-  wh:'📦 المخازن والمخزون',items:'📦 المخازن والمخزون',gr:'📦 المخازن والمخزون',stkout:'📦 المخازن والمخزون',
+  wh:'📦 المخازن والمخزون',items:'📦 المخازن والمخزون',gr:'📦 المخازن والمخزون',stkout:'📦 المخازن والمخزون',stkadj:'📦 المخازن والمخزون',
   ast:'🏭 الأصول والإيجارات',rent:'🏭 الأصول والإيجارات',cust:'🏭 الأصول والإيجارات',
   lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',stkbal:'📊 التقارير',stkrep:'📊 التقارير',taxrpt:'📊 التقارير',whrpt:'📊 التقارير',exp:'📊 التقارير',depsched:'📊 التقارير',cashflow:'📊 التقارير',
   notifs:'🔧 الإدارة والنظام',yr:'🔧 الإدارة والنظام',bk:'🔧 الإدارة والنظام',int:'🔧 الإدارة والنظام',
@@ -3058,6 +3110,7 @@ function SS(id,btn){
   if(id==="cc"){renderCostCenters();}
   if(id==="proj"){renderProjects();}
   if(id==="stkrep"){renderStkRep();}
+  if(id==="stkadj"){renderInvAdjustments();}
 }
 document.addEventListener("click",e=>{
   if(!e.target.closest(".asw"))document.querySelectorAll(".asp").forEach(p=>p.classList.remove("open"));
@@ -9811,6 +9864,192 @@ function saveManualIssue(){
 }
 
 // ════════════════════════════════════════════════════════════════
+// INVENTORY ADJUSTMENT — STOCKTAKING (جرد فعلي) & DAMAGED GOODS (تالف)
+// ════════════════════════════════════════════════════════════════
+function stkadjTypeChanged(){
+  const type=document.getElementById("stkadj-type").value;
+  const accLbl=document.getElementById("stkadj-acc-lbl");
+  const qtyLbl=document.getElementById("stkadj-qty-lbl");
+  if(type==="damage"){
+    accLbl.textContent="حساب مصروف التوالف *";
+    qtyLbl.textContent="الكمية التالفة";
+  }else{
+    accLbl.textContent="حساب فروقات الجرد *";
+    qtyLbl.textContent="الكمية الفعلية";
+  }
+  renderAdjLines();
+}
+function stkadjWhChanged(){
+  const whId=parseInt(document.getElementById("stkadj-wh").value)||0;
+  invAdjLines.forEach(function(l){
+    if(l.itemId) l.bookQty=whId?getItemQtyInWarehouse(l.itemId,whId):0;
+  });
+  renderAdjLines();
+}
+function openInvAdjForm(){
+  invAdjLines=[];
+  document.getElementById("stkadj-date").value=today();
+  document.getElementById("stkadj-ref").value="";
+  document.getElementById("stkadj-type").value="count";
+  document.getElementById("stkadj-notes").value="";
+  document.getElementById("stkadj-acc-s").value="";
+  document.getElementById("stkadj-acc-id").value="";
+  const whSel=document.getElementById("stkadj-wh");
+  whSel.innerHTML='<option value="">-- اختر --</option>'+(warehouses||[]).map(function(w){return '<option value="'+w.id+'">'+w.name+'</option>';}).join("");
+  stkadjTypeChanged();
+  addAdjLine();
+  document.getElementById("m-stkadj").style.display="flex";
+}
+function addAdjLine(){
+  invAdjLines.push({id:gid(),itemId:null,itemName:"",unit:"",bookQty:0,enteredQty:0,notes:""});
+  renderAdjLines();
+}
+function renderAdjLines(){
+  const el=document.getElementById("stkadj-lines");if(!el)return;
+  const type=(document.getElementById("stkadj-type")||{}).value||"count";
+  el.innerHTML=invAdjLines.map(function(l){
+    const variance=type==="damage"?-(parseFloat(l.enteredQty)||0):((parseFloat(l.enteredQty)||0)-(l.bookQty||0));
+    const vColor=variance>0?"#16a34a":variance<0?"#dc2626":"var(--g5)";
+    return '<div style="display:grid;grid-template-columns:2fr 0.9fr 0.9fr 0.9fr 1.3fr 28px;gap:5px;margin-bottom:5px;align-items:center">'+
+      '<div style="position:relative">'+
+        '<input type="text" placeholder="🔍 ابحث عن صنف..." value="'+(l.itemName||"")+'"'+
+        ' oninput="adjItemSearch('+l.id+',this.value)" onclick="adjItemSearch('+l.id+',this.value)"'+
+        ' style="width:100%;font-size:11.5px" id="adj-item-inp-'+l.id+'">'+
+        '<div id="adj-item-pop-'+l.id+'" style="display:none;position:absolute;top:100%;right:0;width:100%;z-index:300;background:#fff;border:1px solid var(--g200);border-radius:var(--r);box-shadow:var(--sh2);max-height:150px;overflow-y:auto"></div>'+
+      '</div>'+
+      '<input type="number" value="'+(l.bookQty||0)+'" readonly style="font-size:11.5px;background:var(--g50);color:var(--g5)">'+
+      '<input type="number" placeholder="0" value="'+(l.enteredQty||"")+'" min="0" step="0.01"'+
+      ' oninput="updAdjLine('+l.id+',\'enteredQty\',this.value)" style="font-size:11.5px">'+
+      '<input type="text" value="'+(variance>0?"+":"")+fmtNum(variance)+'" readonly style="font-size:11.5px;font-weight:700;color:'+vColor+';background:var(--g50)">'+
+      '<input type="text" placeholder="ملاحظات..." value="'+(l.notes||"")+'"'+
+      ' onchange="updAdjLine('+l.id+',\'notes\',this.value)" style="font-size:11.5px">'+
+      '<div onclick="invAdjLines=invAdjLines.filter(function(x){return x.id!=='+l.id+'});renderAdjLines()"'+
+      ' style="cursor:pointer;color:var(--rd);font-size:15px;text-align:center">✕</div>'+
+    '</div>';
+  }).join("");
+  const totType=type;
+  const totVal=invAdjLines.reduce(function(s,l){
+    const item=inventory.find(function(i){return i.id===l.itemId;});
+    if(!item) return s;
+    const variance=totType==="damage"?-(parseFloat(l.enteredQty)||0):((parseFloat(l.enteredQty)||0)-(l.bookQty||0));
+    return s+variance*(item.costPrice||0);
+  },0);
+  const totEl=document.getElementById("stkadj-total");
+  if(totEl){totEl.textContent=fmtNum(totVal)+" "+cur();totEl.style.color=totVal>=0?"#16a34a":"#dc2626";}
+}
+function adjItemSearch(lid,q){
+  const pop=document.getElementById("adj-item-pop-"+lid);
+  if(!pop) return;
+  const sq=(q||"").toLowerCase();
+  if(!sq){pop.style.display="none";return;}
+  const matches=inventory.filter(function(i){return i.name.toLowerCase().includes(sq)||i.code.toLowerCase().includes(sq);});
+  if(!matches.length){pop.innerHTML='<div style="padding:8px;color:var(--g4);font-size:11px">لا توجد نتائج</div>';pop.style.display="block";return;}
+  pop.innerHTML=matches.map(function(i){
+    return '<div style="padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--g100);font-size:11.5px" '+
+      'onclick="selectAdjItem('+lid+','+i.id+')">'+
+      '<span style="font-family:monospace;font-size:9.5px;color:var(--g4)">'+i.code+'</span> '+
+      '<strong>'+i.name+'</strong> <small style="color:var(--g4)">'+i.unit+'</small></div>';
+  }).join("");
+  pop.style.display="block";
+}
+function selectAdjItem(lid,itemId){
+  const item=inventory.find(function(i){return i.id===itemId;});
+  if(!item) return;
+  const l=invAdjLines.find(function(x){return x.id===lid;});
+  if(!l) return;
+  const whId=parseInt((document.getElementById("stkadj-wh")||{}).value)||0;
+  l.itemId=item.id; l.itemName=item.name; l.unit=item.unit;
+  l.bookQty=whId?getItemQtyInWarehouse(item.id,whId):0;
+  const pop=document.getElementById("adj-item-pop-"+lid);
+  if(pop) pop.style.display="none";
+  renderAdjLines();
+}
+function updAdjLine(lid,f,v){
+  const l=invAdjLines.find(function(x){return x.id===lid;});
+  if(!l) return;
+  l[f]=f==="enteredQty"?(parseFloat(v)||0):v;
+  renderAdjLines();
+}
+function selStkAdjAcc(id,lb){pickAcc("stkadj-acc-s","stkadj-acc-p","stkadj-acc-id",id,lb);}
+function saveInvAdjustment(){
+  const date=document.getElementById("stkadj-date").value;
+  const ref=document.getElementById("stkadj-ref").value.trim();
+  const type=document.getElementById("stkadj-type").value;
+  const whId=parseInt(document.getElementById("stkadj-wh").value)||0;
+  const adjAccId=parseInt(document.getElementById("stkadj-acc-id").value)||0;
+  const notes=document.getElementById("stkadj-notes").value.trim();
+  if(!date){showAlert("يرجى إدخال التاريخ","err");return;}
+  if(!whId){showAlert("يرجى تحديد المستودع","err");return;}
+  if(!adjAccId){showAlert("يرجى تحديد حساب التسوية","err");return;}
+  const whName=(warehouses.find(function(w){return w.id===whId;})||{}).name||"";
+  const jLines=[];
+  const adjLinesOut=[];
+  let hasOverIssue=false;
+  invAdjLines.forEach(function(l){
+    if(!l.itemId) return;
+    const item=inventory.find(function(i){return i.id===l.itemId;});
+    if(!item) return;
+    const variance=type==="damage"?-(parseFloat(l.enteredQty)||0):((parseFloat(l.enteredQty)||0)-(l.bookQty||0));
+    if(!variance) return;
+    const qtyAbs=Math.abs(variance);
+    const amount=qtyAbs*(item.costPrice||0);
+    if(variance<0&&qtyAbs>(l.bookQty||0)) hasOverIssue=true;
+    const mvType=variance>0?"in":"out";
+    adjLinesOut.push({itemId:item.id,itemName:item.name,bookQty:l.bookQty,enteredQty:l.enteredQty,variance,notes:l.notes||""});
+    stockMovements.push({id:nxtMoveId++,itemId:item.id,type:mvType,qty:qtyAbs,price:item.costPrice,date,ref:ref||("ADJ-"+String(nxtInvAdjId).padStart(4,"0")),whId,entryId:null});
+    item.qty=(item.qty||0)+(mvType==="in"?qtyAbs:-qtyAbs);
+    if(item.accId){
+      if(variance>0){
+        jLines.push({accId:item.accId,desc:"زيادة جرد — "+item.name,debit:amount,credit:0});
+        jLines.push({accId:adjAccId,desc:"زيادة جرد — "+item.name,debit:0,credit:amount});
+      }else{
+        jLines.push({accId:adjAccId,desc:(type==="damage"?"بضاعة تالفة — ":"عجز جرد — ")+item.name,debit:amount,credit:0});
+        jLines.push({accId:item.accId,desc:(type==="damage"?"بضاعة تالفة — ":"عجز جرد — ")+item.name,debit:0,credit:amount});
+      }
+    }
+  });
+  if(!adjLinesOut.length){showAlert("لا توجد فروقات لتسويتها — تحقق من الكميات المدخلة","err");return;}
+  if(hasOverIssue&&!confirm("⚠ بعض الأصناف: الكمية المُخرجة أكبر من الرصيد الدفتري المسجّل بهذا المستودع، وسيصبح الرصيد سالباً. هل تريد المتابعة؟"))return;
+  let entId=null;
+  if(jLines.length>=2){
+    entId=nxtEntId++;
+    entries.push({id:entId,date,desc:(type==="damage"?"إثبات بضاعة تالفة":"تسوية جرد فعلي")+" — "+whName,ref:ref||("ADJ-"+String(nxtInvAdjId).padStart(4,"0")),year:CY,lines:jLines});
+  }
+  const adjId=nxtInvAdjId++;
+  invAdjustments.push({id:adjId,ref:ref||("ADJ-"+String(adjId).padStart(4,"0")),date,type,whId,whName,adjAccId,notes,lines:adjLinesOut,entryId:entId});
+  CM("m-stkadj");
+  renderInvAdjustments();
+  showAlert("✅ تم حفظ تسوية المخزون"+(entId?" وترحيل القيد #"+entId:""));
+}
+function renderInvAdjustments(){
+  const el=document.getElementById("stkadj-list");if(!el)return;
+  const sumEl=document.getElementById("stkadj-summary");
+  const countAdj=invAdjustments.filter(function(a){return a.type==="count";});
+  const dmgAdj=invAdjustments.filter(function(a){return a.type==="damage";});
+  const totalImpact=invAdjustments.reduce(function(s,a){
+    return s+a.lines.reduce(function(s2,l){
+      const item=inventory.find(function(i){return i.id===l.itemId;});
+      return s2+(l.variance||0)*(item?item.costPrice:0);
+    },0);
+  },0);
+  if(sumEl) sumEl.innerHTML=
+    '<div class="sc bl"><div class="sl">📋 تسويات جرد</div><div class="sv">'+countAdj.length+'</div></div>'+
+    '<div class="sc rd"><div class="sl">🗑️ توالف</div><div class="sv">'+dmgAdj.length+'</div></div>'+
+    '<div class="sc am"><div class="sl">إجمالي المستندات</div><div class="sv">'+invAdjustments.length+'</div></div>'+
+    '<div class="sc '+(totalImpact>=0?"gn":"rd")+'"><div class="sl">صافي الأثر على القيمة</div><div class="sv">'+fmtNum(totalImpact)+'</div></div>';
+  if(!invAdjustments.length){el.innerHTML='<div class="empty"><span class="ei">🧮</span><p>لا توجد تسويات مسجّلة</p></div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>المستند</th><th>التاريخ</th><th>النوع</th><th>المستودع</th><th>عدد الأصناف</th><th>القيد</th><th>ملاحظات</th></tr></thead><tbody>'+
+    invAdjustments.slice().reverse().map(function(a){
+      return '<tr>'+
+        '<td><strong>'+a.ref+'</strong></td><td>'+fmtDate(a.date)+'</td>'+
+        '<td><span class="bdg '+(a.type==="damage"?"b2":"b4")+'">'+(a.type==="damage"?"🗑️ تالف":"📋 جرد")+'</span></td>'+
+        '<td>'+(a.whName||"—")+'</td><td style="text-align:center">'+a.lines.length+'</td>'+
+        '<td>'+(a.entryId?'<a onclick="printEntVch('+a.entryId+')" style="cursor:pointer;color:var(--teal)">📄#'+a.entryId+'</a>':'—')+'</td>'+
+        '<td>'+(a.notes||"—")+'</td></tr>';
+    }).join('')+'</tbody></table></div>';
+}
+
+// ════════════════════════════════════════════════════════════════
 // FINANCIAL STATEMENTS (renderFs)
 // ════════════════════════════════════════════════════════════════
 function renderFs(){
@@ -9999,7 +10238,7 @@ CREATE TABLE EntryLines (<br>
 // ════ PERSISTENCE (localStorage + Cloud) ════
 const PERSIST_KEY='acct_sys_v6';
 function buildPersistData(){
-  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId};
+  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId};
 }
 let localDirtySinceBoot=false;
 let __bootDataSnapshot=null;
@@ -10064,6 +10303,8 @@ function applyPersistedData(d){
     if(d.nxtCCId!==undefined)nxtCCId=d.nxtCCId;
     if(d.projects!==undefined)projects=d.projects;
     if(d.nxtProjId!==undefined)nxtProjId=d.nxtProjId;
+    if(d.invAdjustments!==undefined)invAdjustments=d.invAdjustments;
+    if(d.nxtInvAdjId!==undefined)nxtInvAdjId=d.nxtInvAdjId;
   }catch(e){console.error('applyPersistedData:',e);}
 }
 setInterval(persist,3000);
