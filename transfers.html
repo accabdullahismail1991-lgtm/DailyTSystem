@@ -246,7 +246,9 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
 /* MODAL */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:500;display:flex;align-items:center;justify-content:center;padding:12px;opacity:0;pointer-events:none;transition:opacity .2s}
 .overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--bg2);border:1px solid rgba(200,164,94,.22);border-radius:13px;padding:20px;max-width:480px;width:100%;transform:translateY(-12px);transition:transform .2s;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal{position:relative;background:var(--bg2);border:1px solid rgba(200,164,94,.22);border-radius:13px;padding:20px;max-width:480px;width:100%;transform:translateY(-12px);transition:transform .2s;max-height:92vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.modal-x{position:absolute;top:12px;left:12px;width:26px;height:26px;border:none;background:rgba(255,255,255,.06);color:var(--muted);border-radius:50%;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:.15s}
+.modal-x:hover{background:rgba(224,96,112,.18);color:#e8909a}
 .overlay.open .modal{transform:translateY(0)}
 .modal h3{font-size:14px;font-weight:700;color:var(--gold-l);margin-bottom:13px}
 .mf{margin-bottom:10px}
@@ -2794,6 +2796,19 @@ function bbc(b){if(b==='بنك الراجحي')return'bb-r';if(b==='البنك �
 function showToast(msg,dur=2800){const t=document.getElementById('toast');if(!t)return;t.textContent=msg;t.classList.add('show');clearTimeout(t._tid);t._tid=setTimeout(()=>t.classList.remove('show'),dur);}
 function openModal(id){const el=document.getElementById(id);if(el){el.classList.add('open');el.style.display='flex';}}
 function closeModal(id){const el=document.getElementById(id);if(el){el.classList.remove('open');el.style.display='none';}}
+// إضافة أيقونة إغلاق (✕) تلقائياً لكل نافذة منبثقة لا تملك واحدة مسبقاً
+function addModalCloseButtons(){
+  const skip={'recovery-modal':1,'preview-modal':1,'supplier-qv-modal':1,'stmt-modal':1};
+  document.querySelectorAll(".overlay[id]").forEach(function(backdrop){
+    if(skip[backdrop.id])return;
+    const modal=backdrop.querySelector(":scope > .modal");
+    if(!modal||modal.querySelector(":scope > .modal-x"))return;
+    const btn=document.createElement("button");
+    btn.type="button";btn.className="modal-x";btn.title="إغلاق";btn.innerHTML="✕";
+    btn.onclick=function(e){e.stopPropagation();closeModal(backdrop.id);};
+    modal.insertBefore(btn,modal.firstChild);
+  });
+}
 
 // ================================================================ STATE
 function applyState(saved){
@@ -3543,6 +3558,7 @@ function init(){
   if((state.users||[]).length>0)showLoginScreen();
   else updateHdrUserChip();
   initCloudSync();
+  addModalCloseButtons();
 }
 
 function initCloudSync(){

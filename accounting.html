@@ -178,7 +178,9 @@ tbody tr:hover{background:var(--g50)}
 .tab:hover{color:var(--tl2)}.tab.active{color:var(--teal);border-bottom-color:var(--teal);font-weight:800}
 /* ── Modal ── */
 .mb{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:400;display:flex;align-items:center;justify-content:center}
-.modal{background:var(--w);border-radius:var(--rl);padding:20px;box-shadow:var(--sh2);max-height:90vh;overflow-y:auto}
+.modal{position:relative;background:var(--w);border-radius:var(--rl);padding:20px;box-shadow:var(--sh2);max-height:90vh;overflow-y:auto}
+.modal-x{position:absolute;top:12px;left:12px;width:26px;height:26px;border:none;background:var(--g50);color:var(--g5);border-radius:50%;font-size:13px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:5;transition:.15s}
+.modal-x:hover{background:#fee2e2;color:#dc2626}
 .modal-sm{width:480px;max-width:95vw}
 .modal-md{width:600px;max-width:96vw}
 .modal-lg{width:780px;max-width:97vw}
@@ -1828,7 +1830,7 @@ tbody tr:hover{background:var(--g50)}
 </div>
 </div>
 <!-- Manual Stock Issue Modal -->
-<div id="m-manual-issue" style="display:none" onclick="if(event.target===this)CM('m-manual-issue')">
+<div class="mb" id="m-manual-issue" style="display:none" onclick="if(event.target===this)CM('m-manual-issue')">
 <div class="modal modal-lg">
  <div class="mt">📤 إذن إخراج يدوي</div>
  <div class="fg" style="grid-template-columns:repeat(3,1fr)">
@@ -2808,6 +2810,17 @@ const cur=()=>CFG.curSym||CFG.cur;
 const today=()=>new Date().toISOString().split("T")[0];
 const gid=()=>Date.now()+Math.random();
 const CM=id=>document.getElementById(id).style.display="none";
+// إضافة أيقونة إغلاق (✕) تلقائياً لكل نافذة منبثقة لا تملك واحدة مسبقاً
+function addModalCloseButtons(){
+  document.querySelectorAll(".mb[id]").forEach(function(backdrop){
+    const modal=backdrop.querySelector(":scope > .modal");
+    if(!modal||modal.querySelector(":scope > .modal-x"))return;
+    const btn=document.createElement("button");
+    btn.type="button";btn.className="modal-x";btn.title="إغلاق";btn.innerHTML="✕";
+    btn.onclick=function(e){e.stopPropagation();CM(backdrop.id);};
+    modal.insertBefore(btn,modal.firstChild);
+  });
+}
 
 // Alert
 function showAlert(msg,tp="ok"){
@@ -4921,9 +4934,6 @@ function selectParty(ctx, subId, name){
   if(pop) pop.style.display="none";
 }
 
-renderVouchers();renderAssets();renderRents();renderBatchPanel();
-
-
 
 // ════════════════════════════════════════════════════════════════
 // ADDITIONAL FUNCTIONS (Year, OV, Rent, Assets fixes)
@@ -5534,6 +5544,7 @@ function viewAttach(entId){
 // ════════════════════════════════════════════════════════════════
 renderVouchers();renderAssets();renderRents();renderBatchPanel();
 renderSaleInvoices();renderPurInvoices();
+addModalCloseButtons();
 
 
 
@@ -6461,13 +6472,6 @@ function doRestore(input){
   };
   reader.readAsText(file);
 }
-
-// ════════════════════════════════════════════════════════════════
-// INIT
-// ════════════════════════════════════════════════════════════════
-renderVouchers();renderAssets();renderRents();renderBatchPanel();
-renderSaleInvoices();renderPurInvoices();
-
 
 // ════════════════════════════════════════════════════════════════
 // WAREHOUSE RECEIPTS - استلامات المخزون
