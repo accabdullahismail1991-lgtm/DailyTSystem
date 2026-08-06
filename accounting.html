@@ -3310,7 +3310,7 @@ function SAP(inId,popId,cbFn){
     pop.classList.add("open"); return;
   }
   pop.innerHTML=matches.slice(0,15).map(function(a){
-    return '<div class="ao" onclick="('+cbFn+')('+a.id+',\''+
+    return '<div class="ao" onclick="window[\''+cbFn.name+'\']('+a.id+',\''+
       (a.code+' — '+a.name).replace(/'/g,"\\'")+'\')">'+
       '<span style="font-family:monospace;font-size:10px;color:var(--g5);margin-left:6px">'+a.code+'</span>'+
       '<span>'+a.name+'</span>'+
