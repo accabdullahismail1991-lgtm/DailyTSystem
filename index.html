@@ -151,6 +151,7 @@
     <div id="loading">جاري التحميل...</div>
     <iframe id="frame-transfers" title="نظام الحوالات البنكية"></iframe>
     <iframe id="frame-accounting" title="النظام المحاسبي"></iframe>
+    <iframe id="frame-taxdecl" title="إقرار ضريبة القيمة المضافة"></iframe>
   </div>
 </div>
 
@@ -169,6 +170,7 @@
         <div class="sys-check">
           <label><input type="checkbox" id="u-sys-transfers" onchange="renderAcctPagesVisibility()"> 🏦 الحوالات</label>
           <label><input type="checkbox" id="u-sys-accounting" onchange="renderAcctPagesVisibility()"> 📊 المحاسبة</label>
+          <label><input type="checkbox" id="u-sys-taxdecl" onchange="renderAcctPagesVisibility()"> 🧾 إقرار الضريبة</label>
         </div>
       </div>
       <div class="fld" id="u-acct-pages-wrap" style="display:none">
@@ -198,9 +200,9 @@
 const SHELL_KEY='unified_shell_users_v1';
 const SYS_KEY='unified_active_system';
 const SESSION_KEY='unified_shell_session';
-const SRC={transfers:'transfers.html', accounting:'accounting.html'};
-const SYS_LABEL={transfers:'🏦 نظام الحوالات البنكية', accounting:'📊 النظام المحاسبي'};
-const loaded={transfers:false, accounting:false};
+const SRC={transfers:'transfers.html', accounting:'accounting.html', taxdecl:'tax-declaration.html'};
+const SYS_LABEL={transfers:'🏦 نظام الحوالات البنكية', accounting:'📊 النظام المحاسبي', taxdecl:'🧾 إقرار ضريبة القيمة المضافة'};
+const loaded={transfers:false, accounting:false, taxdecl:false};
 
 const ACCT_PAGES=[
   ['dash','🏠 الرئيسية'],['set','⚙️ الإعدادات العامة'],['acc','📂 دليل الحسابات'],
@@ -227,7 +229,7 @@ function loadShellUsers(){
     const raw=localStorage.getItem(SHELL_KEY);
     if(raw){shellUsers=JSON.parse(raw);return;}
   }catch(e){}
-  shellUsers=[{id:uid(),name:'المدير العام',username:'admin',password:'admin123',admin:true,systems:['transfers','accounting']}];
+  shellUsers=[{id:uid(),name:'المدير العام',username:'admin',password:'admin123',admin:true,systems:['transfers','accounting','taxdecl']}];
   persistShellUsers();
 }
 function persistShellUsers(){
@@ -308,7 +310,7 @@ function switchSystem(name){
     frame.src=buildFrameSrc(name);
     loaded[name]=true;
   }
-  ['transfers','accounting'].forEach(n=>{
+  ['transfers','accounting','taxdecl'].forEach(n=>{
     document.getElementById('frame-'+n).classList.toggle('active', n===name);
     const btn=document.getElementById('btn-'+n);
     if(btn)btn.classList.toggle('active', n===name);
@@ -327,6 +329,7 @@ function resetUserForm(){
   document.getElementById('u-password').value='';
   document.getElementById('u-sys-transfers').checked=false;
   document.getElementById('u-sys-accounting').checked=false;
+  document.getElementById('u-sys-taxdecl').checked=false;
   document.getElementById('u-admin').checked=false;
   renderAcctPagesGrid(null); // null = كل الصفحات محددة (افتراضي)
   renderAcctPagesVisibility();
@@ -369,6 +372,7 @@ function editShellUser(id){
   document.getElementById('u-password').value=u.password;
   document.getElementById('u-sys-transfers').checked=(u.systems||[]).includes('transfers');
   document.getElementById('u-sys-accounting').checked=(u.systems||[]).includes('accounting');
+  document.getElementById('u-sys-taxdecl').checked=(u.systems||[]).includes('taxdecl');
   document.getElementById('u-admin').checked=!!u.admin;
   renderAcctPagesGrid(u.acctPages===undefined?null:u.acctPages);
   renderAcctPagesVisibility();
@@ -382,6 +386,7 @@ function saveShellUser(){
   const systems=[];
   if(document.getElementById('u-sys-transfers').checked)systems.push('transfers');
   if(document.getElementById('u-sys-accounting').checked)systems.push('accounting');
+  if(document.getElementById('u-sys-taxdecl').checked)systems.push('taxdecl');
   const checkedPages=Array.from(document.querySelectorAll('.u-acct-page-cb:checked')).map(cb=>cb.value);
   const acctPages=checkedPages.length===ACCT_PAGES.length?null:checkedPages;
   if(!name||!username||!password){alert('عبّي الاسم واسم المستخدم وكلمة المرور');return;}
