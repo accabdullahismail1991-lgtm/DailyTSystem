@@ -430,8 +430,9 @@
     /* Force full table layout for print even if the responsive (mobile) rules below would
        otherwise collapse the declaration tables into stacked cards on a narrow print viewport. */
     table.declaration{ font-size:10px; width:100% !important; table-layout:fixed; border-collapse:collapse !important; page-break-inside:avoid; border:1px solid #8a94a3 !important; }
+    table.declaration{ display:table !important; }
     table.declaration thead{ display:table-header-group !important; }
-    table.declaration, table.declaration tbody{ display:table !important; width:100% !important; }
+    table.declaration tbody{ display:table-row-group !important; }
     table.declaration tbody tr{ display:table-row !important; margin:0 !important; border:none !important; page-break-inside:avoid; }
     table.declaration tbody td{ display:table-cell !important; border:1px solid #8a94a3 !important; padding:3px 5px !important; vertical-align:middle; }
     table.declaration tbody td::before{ content:none !important; }
@@ -526,7 +527,6 @@
     <div>
       <h1>نموذج الإقرار الضريبي <span class="badge">ضريبة القيمة المضافة</span></h1>
       <div class="sub">مطابق لهيكل نموذج هيئة الزكاة والضريبة والجمارك (زاتكا) — نظام تفاعلي ديناميكي</div>
-      <div class="sub no-print" style="margin-top:2px; opacity:0.7;">📌 إصدار الملف: v2026-07-23-b (أساس نسختك المؤكدة + إصلاح خطأ دالة الحفظ فقط)</div>
     </div>
   </div>
 
@@ -536,6 +536,7 @@
       <button class="btn" onclick="document.getElementById('import-json-input').click()">📥 استرجاع نسخة (JSON)</button>
       <input type="file" id="import-json-input" accept=".json" style="display:none" onchange="importDataJSON(event)">
       <button class="btn" onclick="clearAll()">↺ مسح الكل</button>
+      <button class="btn" onclick="exportDeclarationXL()">📊 تصدير الإقرار (Excel)</button>
       <button class="btn" id="orientation-toggle" onclick="toggleOrientation()">🔄📄 اتجاه الطباعة: أفقي</button>
       <button class="btn primary" onclick="window.print()">🖨 طباعة / حفظ PDF</button>
       <button class="btn" onclick="printFullPage()">🖨📊 طباعة الصفحة كاملة (شامل الرسم البياني)</button>
@@ -930,6 +931,57 @@ function recalcAll(){
   }
 
   updateCharts(sAmt, sVat, pAmt, pVat);
+}
+
+function exportDeclarationXL(){
+  if(typeof XLSX === 'undefined'){ alert('تعذّر تحميل مكتبة تصدير Excel (XLSX) — تأكد من اتصال الإنترنت وأعد تحميل الصفحة.'); return; }
+  const c = {
+    name: document.getElementById('c-name').value,
+    vat: document.getElementById('c-vat').value,
+    cr: document.getElementById('c-cr').value,
+    type: document.getElementById('c-type').value,
+    year: document.getElementById('c-year').value,
+    from: document.getElementById('c-from').value,
+    to: document.getElementById('c-to').value,
+  };
+  const q1 = document.querySelector('input[name="q1"]:checked')?.value || '—';
+  const q2 = document.querySelector('input[name="q2"]:checked')?.value || '—';
+  const num = (txt)=> parseFloat(String(txt||'0').replace(/,/g,'')) || 0;
+
+  const data = [
+    ['نموذج الإقرار الضريبي - ضريبة القيمة المضافة'],
+    [`المنشأة: ${c.name||'—'}`, `الرقم الضريبي: ${c.vat||'—'}`, `السجل التجاري: ${c.cr||'—'}`],
+    [`نوع الإقرار: ${c.type||'—'}`, `السنة المالية: ${c.year||'—'}`, `الفترة: ${c.from||'—'} إلى ${c.to||'—'}`],
+    [],
+    ['م','البيان','المبلغ (ريال)','مبلغ التعديل (ريال)','مبلغ ضريبة القيمة المضافة (ريال)'],
+  ];
+  function pushRows(rows){
+    rows.forEach(r=>{
+      const tr = document.querySelector(`tr[data-key="${r.key}"]`);
+      data.push([r.n, r.label, num(tr.querySelector('.amt-input').value), num(tr.querySelector('.adj-input').value), num(tr.querySelector('.vat-input').value)]);
+    });
+  }
+  pushRows(SALES_ROWS);
+  data.push([6,'إجمالي المبيعات', num(document.getElementById('sum-s-amt').textContent), '—', num(document.getElementById('sum-s-vat').textContent)]);
+  data.push([]);
+  pushRows(PURCHASE_ROWS);
+  data.push([12,'إجمالي المشتريات', num(document.getElementById('sum-p-amt').textContent), '—', num(document.getElementById('sum-p-vat').textContent)]);
+  data.push([]);
+  data.push(['م','البيان','القيمة (ريال)']);
+  data.push([13,'إجمالي ضريبة القيمة المضافة المستحقة عن الفترة الحالية (6 − 12)', num(document.getElementById('row13').textContent)]);
+  data.push([14,'تصحيحات من الفترات السابقة (± 5,000 ريال)', num(document.getElementById('row14-input').value)]);
+  data.push([15,'ضريبة القيمة المضافة المرحّلة من فترات سابقة', num(document.getElementById('row15-input').value)]);
+  data.push([16,'صافي الضريبة المستحقة (13 + 14 − 15)', num(document.getElementById('row16').textContent)]);
+  data.push([]);
+  data.push(['هل لديك مبيعات/مشتريات بنسبة 0% أو لأشخاص خاضعين للنسبة الصفرية؟', q1]);
+  data.push(['هل لديك توريدات خاضعة بالنسبة الأساسية ضمن نظام المقاصة الحكومية؟', q2]);
+
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = [{wch:6},{wch:55},{wch:18},{wch:18},{wch:22}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'الإقرار الضريبي');
+  const safeName = (c.name||'اقرار').replace(/[\\/:*?"<>|]/g,'_');
+  XLSX.writeFile(wb, `اقرار_ضريبة_القيمة_المضافة_${safeName}_${c.from||''}_${c.to||''}.xlsx`);
 }
 
 function clearAll(){
