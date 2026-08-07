@@ -2789,7 +2789,7 @@ function applyTabPermissions(){
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function today(){return new Date().toISOString().slice(0,10);}
 function fmt(n){return(parseFloat(n)||0).toLocaleString('en-SA',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function fmtDateAr(d){if(!d)return'';try{return new Date(d+'T00:00:00').toLocaleDateString('ar-SA',{weekday:'short',year:'numeric',month:'long',day:'numeric'});}catch(e){return d;}}
+function fmtDateAr(d){if(!d)return'';try{return new Date(d+'T00:00:00').toLocaleDateString('ar-SA-u-nu-latn',{weekday:'short',year:'numeric',month:'long',day:'numeric'});}catch(e){return d;}}
 function bankOpts(sel){return BANKS.map(b=>`<option${b===sel?' selected':''}>${b}</option>`).join('');}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 let localDirtySinceBoot=false;
@@ -3436,7 +3436,7 @@ function renderActivityLog(){
   if(!log.length){tbody.innerHTML='<tr><td colspan="4" class="empty-state">لا توجد أنشطة مسجلة</td></tr>';return;}
   tbody.innerHTML=log.map(l=>{
     const d=l.timestamp?new Date(l.timestamp):null;
-    const timeStr=d?fmtDateAr(l.timestamp.slice(0,10))+' — '+d.toLocaleTimeString('ar-SA'):'—';
+    const timeStr=d?fmtDateAr(l.timestamp.slice(0,10))+' — '+d.toLocaleTimeString('ar-SA-u-nu-latn'):'—';
     return`<tr>
       <td style="font-size:10px;white-space:nowrap;">${timeStr}</td>
       <td style="font-size:11px;">${esc(l.userName||'نظام')}</td>
