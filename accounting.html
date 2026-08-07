@@ -492,6 +492,12 @@ tbody tr:hover{background:var(--g50)}
   <p style="font-size:9px;color:rgba(255,255,255,.3)">v32 | <span id="sb-yr-badge">2024</span></p>
  </div>
 </div>
+<div style="padding:0 10px 9px;border-bottom:1px solid rgba(255,255,255,.06)">
+ <button onclick="renderCompanySwitcher()" title="تبديل بين الشركات أو إضافة شركة جديدة بقاعدة بيانات منفصلة"
+   style="width:100%;font-size:10.5px;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:rgba(255,255,255,.75);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px">
+  <span>🏢</span><span>تبديل الشركة</span>
+ </button>
+</div>
 <div style="padding:9px 10px 6px;border-bottom:1px solid rgba(255,255,255,.06)">
  <input type="text" id="sb-search-inp" placeholder="🔍 ابحث عن شاشة..." oninput="sbFilterNav(this.value)"
    style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;font-size:11px;font-family:inherit">
@@ -3651,6 +3657,7 @@ function saveSettings(){
   const sbName=document.getElementById("sb-company-name"); if(sbName)sbName.textContent=CFG.name||"النظام المحاسبي";
   const sbYr=document.getElementById("sb-yr-badge"); if(sbYr)sbYr.textContent=CY;
   const sbCur=document.getElementById("sb-cur-badge"); if(sbCur)sbCur.textContent=CFG.cur+" "+CFG.curSym;
+  syncActiveCompanyName();
   showAlert("تم حفظ الإعدادات ✓");
 }
 function getCurSym(c){const m={SAR:"ر.س",AED:"د.إ",KWD:"د.ك",BHD:"د.ب",QAR:"ر.ق",OMR:"ر.ع",EGP:"ج.م",JOD:"د.أ",USD:"$",EUR:"€",GBP:"£"};return m[c]||c;}
@@ -11224,7 +11231,91 @@ CREATE TABLE EntryLines (<br>
 
 
 // ════ PERSISTENCE (localStorage + Cloud) ════
-const PERSIST_KEY='acct_sys_v6';
+// ═══ MULTI-COMPANY SUPPORT ═══
+// كل شركة تُخزَّن في مفتاح localStorage / مستند Firestore منفصل تماماً ومعزول عن باقي الشركات.
+// الشركة "default" تستخدم نفس المفاتيح القديمة بدون لاحقة، حفاظاً على توافق بيانات المستخدمين الحاليين.
+const COMPANIES_KEY='acct_companies_v1';
+const ACTIVE_COMPANY_KEY='acct_active_company_v1';
+const BASE_PERSIST_KEY='acct_sys_v6';
+const ACTIVE_COMPANY_ID=(function(){
+  try{
+    const qp=new URLSearchParams(location.search).get('company');
+    if(qp)return qp;
+  }catch(e){}
+  try{
+    const stored=localStorage.getItem(ACTIVE_COMPANY_KEY);
+    if(stored)return stored;
+  }catch(e){}
+  return 'default';
+})();
+const PERSIST_KEY=ACTIVE_COMPANY_ID==='default'?BASE_PERSIST_KEY:BASE_PERSIST_KEY+'_'+ACTIVE_COMPANY_ID;
+const CLOUD_DOC_NAME=ACTIVE_COMPANY_ID==='default'?'accounting':'accounting_'+ACTIVE_COMPANY_ID;
+let companies=[];
+function loadCompanies(){
+  try{
+    const raw=localStorage.getItem(COMPANIES_KEY);
+    companies=raw?JSON.parse(raw):[];
+  }catch(e){companies=[];}
+  let changed=false;
+  if(!companies.some(c=>c.id==='default')){
+    companies.unshift({id:'default',name:(CFG&&CFG.name)||'الشركة الرئيسية',taxNumber:'',crNumber:''});
+    changed=true;
+  }
+  if(!companies.some(c=>c.id===ACTIVE_COMPANY_ID)){
+    companies.push({id:ACTIVE_COMPANY_ID,name:'شركة جديدة',taxNumber:'',crNumber:''});
+    changed=true;
+  }
+  if(changed)persistCompanies();
+}
+function persistCompanies(){
+  try{
+    localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));
+    try{window.CloudSync&&CloudSync.save('acct_companies',companies);}catch(e){}
+  }catch(e){console.error('persistCompanies:',e);}
+}
+function syncActiveCompanyName(){
+  const c=companies.find(c=>c.id===ACTIVE_COMPANY_ID);
+  if(c&&CFG.name&&c.name!==CFG.name){c.name=CFG.name;persistCompanies();}
+}
+function switchCompany(id){
+  try{window.CloudSync&&CloudSync.flush&&CloudSync.flush(CLOUD_DOC_NAME);}catch(e){}
+  try{localStorage.setItem(ACTIVE_COMPANY_KEY,id);}catch(e){}
+  const url=new URL(location.href);
+  url.searchParams.set('company',id);
+  location.href=url.pathname+url.search;
+}
+function addCompanyPrompt(){
+  const nameEl=document.getElementById('nc-name');
+  const name=nameEl?nameEl.value.trim():'';
+  if(!name){showAlert('يرجى إدخال اسم الشركة','err');return;}
+  const id='c'+Date.now();
+  const taxEl=document.getElementById('nc-tax'),crEl=document.getElementById('nc-cr');
+  companies.push({id,name,taxNumber:taxEl?taxEl.value.trim():'',crNumber:crEl?crEl.value.trim():''});
+  persistCompanies();
+  switchCompany(id);
+}
+function renderCompanySwitcher(){
+  const rows=companies.map(function(c){
+    const active=c.id===ACTIVE_COMPANY_ID;
+    const dispName=active?(CFG.name||c.name):c.name;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 11px;border:1px solid '+(active?'var(--teal)':'var(--g200)')+';border-radius:var(--rs);margin-bottom:7px;background:'+(active?'var(--tl2)':'#fff')+'">'
+      +'<div><div style="font-weight:700;font-size:12.5px">'+(active?'✅ ':'')+dispName+'</div>'
+      +(c.taxNumber?'<div style="font-size:10.5px;color:var(--g5)">ر.ض: '+c.taxNumber+'</div>':'')+'</div>'
+      +(active?'':'<button class="btn bp bsm" onclick="switchCompany(\''+c.id+'\')">تبديل ↗️</button>')
+      +'</div>';
+  }).join('');
+  const html='<div style="margin-bottom:14px">'+rows+'</div>'
+    +'<div style="border-top:1px solid var(--g200);padding-top:12px">'
+    +'<h3 style="font-size:12.5px;margin-bottom:8px">➕ إضافة شركة جديدة</h3>'
+    +'<div class="fgrp" style="margin-bottom:7px"><label>اسم الشركة *</label><input id="nc-name" type="text" placeholder="اسم المنشأة"></div>'
+    +'<div class="fgrp" style="margin-bottom:7px"><label>الرقم الضريبي</label><input id="nc-tax" type="text"></div>'
+    +'<div class="fgrp" style="margin-bottom:10px"><label>السجل التجاري</label><input id="nc-cr" type="text"></div>'
+    +'<p style="font-size:10.5px;color:var(--g5);margin-bottom:10px">ستبدأ الشركة الجديدة بقاعدة بيانات منفصلة تماماً وفارغة عن باقي الشركات (دليل حسابات، قيود، فواتير...إلخ مستقلة بالكامل).</p>'
+    +'<button class="btn bp" onclick="addCompanyPrompt()" style="width:100%">✓ إنشاء والتبديل إليها</button>'
+    +'</div>';
+  openFloatPopup('إدارة الشركات وتعدد قواعد البيانات',html,'🏢');
+}
+
 function buildPersistData(){
   return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId};
 }
@@ -11236,7 +11327,8 @@ function persist(){
     const json=JSON.stringify(data);
     localStorage.setItem(PERSIST_KEY,json);
     if(__bootDataSnapshot!==null&&json!==__bootDataSnapshot)localDirtySinceBoot=true;
-    try{window.CloudSync&&CloudSync.save('accounting',data);}catch(e){}
+    try{window.CloudSync&&CloudSync.save(CLOUD_DOC_NAME,data);}catch(e){}
+    syncActiveCompanyName();
   }catch(e){console.error('persist:',e);}
 }
 function loadPersisted(){
@@ -11365,7 +11457,7 @@ function renderAll(){
 
 function initCloudSync(){
   if(!window.CloudSync)return;
-  CloudSync.load('accounting').then(remote=>{
+  CloudSync.load(CLOUD_DOC_NAME).then(remote=>{
     if(localDirtySinceBoot){
       // بيانات محلية جديدة تغيّرت أثناء انتظار السحابة — لا تستبدلها، هي بالفعل قيد المزامنة عبر persist()
     }else if(remote){
@@ -11375,14 +11467,28 @@ function initCloudSync(){
     }else{
       persist();
     }
-    CloudSync.onChange('accounting',()=>{
+    CloudSync.onChange(CLOUD_DOC_NAME,()=>{
       CloudSync.showUpdateBanner(()=>location.reload());
+    });
+  });
+  CloudSync.load('acct_companies').then(remote=>{
+    if(Array.isArray(remote)&&remote.length){
+      const localOnly=companies.filter(c=>!remote.some(r=>r.id===c.id));
+      companies=remote.concat(localOnly);
+      try{localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));}catch(e){}
+    }
+    CloudSync.onChange('acct_companies',remote2=>{
+      if(Array.isArray(remote2)){
+        companies=remote2;
+        try{localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));}catch(e){}
+      }
     });
   });
 }
 
 document.addEventListener("DOMContentLoaded",function(){
   try{loadPersisted();}catch(e){console.error(e)}
+  try{loadCompanies();}catch(e){console.error(e)}
   __bootDataSnapshot=JSON.stringify(buildPersistData());
   renderAll();
   initCloudSync();

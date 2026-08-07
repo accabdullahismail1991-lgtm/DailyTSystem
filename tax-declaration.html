@@ -1296,7 +1296,17 @@ function exportAuditToExcel(side){
 // has been opened at least once in this browser (its data is written to localStorage
 // there, and kept in sync with the cloud by that app independently). This is purely
 // an additional data source; it never touches or disables the Excel/PDF import below.
-const ACCT_SYS_STORAGE_KEY = 'acct_sys_v6';
+// accounting.html supports multiple companies, each with its own isolated storage key
+// ('acct_sys_v6' for the default company, 'acct_sys_v6_<id>' for any other company) and
+// records which one is currently active under 'acct_active_company_v1'. Read that same
+// pointer here so this always pulls from whichever company the user last switched to.
+const ACCT_SYS_STORAGE_KEY = (function(){
+  try{
+    const activeId = localStorage.getItem('acct_active_company_v1');
+    if(activeId && activeId !== 'default') return 'acct_sys_v6_' + activeId;
+  }catch(e){}
+  return 'acct_sys_v6';
+})();
 function fetchFromAccountingSystem(){
   const statusEl = document.getElementById('acct-link-status');
   const setLinkStatus = (msg, ok)=>{ statusEl.textContent = msg; statusEl.style.color = ok ? 'var(--good)' : 'var(--danger)'; };
