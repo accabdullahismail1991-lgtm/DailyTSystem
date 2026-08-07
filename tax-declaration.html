@@ -621,6 +621,20 @@
       </div>
     </div>
 
+    <!-- ACCOUNTING SYSTEM INTEGRATION -->
+    <div class="card" id="acct-link-card">
+      <h2><span class="dot"></span> 🔗 التكامل مع النظام المحاسبي</h2>
+      <p style="font-size:11.5px; color:var(--muted); margin-top:-6px;">
+        يجلب هذا الزر إجمالي ضريبة المخرجات (فواتير المبيعات المرحّلة) وضريبة المدخلات (فواتير المشتريات المرحّلة) للفترة
+        الضريبية المحددة أعلاه (من "بيانات المكلف") مباشرة من النظام المحاسبي المفتوح على نفس المتصفح، ويعبّئها تلقائياً في
+        البندين 1 و7. هذا مصدر إضافي — لا يُلغي أو يعطّل استيراد كشوف الحسابات الخارجية (Excel/PDF) أدناه، ويمكن استخدام الطريقتين معاً.
+      </p>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn primary" onclick="fetchFromAccountingSystem()">📥 جلب قيم الضريبة من النظام المحاسبي</button>
+        <span id="acct-link-status" style="font-size:12.5px;"></span>
+      </div>
+    </div>
+
     <!-- IMPORT -->
     <div class="card import-card">
       <h2><span class="dot"></span> جلب البيانات من كشف حساب (Excel أو PDF)</h2>
@@ -1235,6 +1249,73 @@ function exportAuditToExcel(side){
   XLSX.utils.book_append_sheet(wb, ws, side === 'sales' ? 'مبيعات' : 'مشتريات');
   const sideLabel = side === 'sales' ? 'مبيعات' : 'مشتريات';
   XLSX.writeFile(wb, `مرفق_مستورد_${sideLabel}_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ---------- Integration with the accounting system (accounting.html) ----------
+// Same-origin localStorage read of the accounting app's own persisted data blob
+// (key 'acct_sys_v6') — no iframe messaging required, works whenever accounting.html
+// has been opened at least once in this browser (its data is written to localStorage
+// there, and kept in sync with the cloud by that app independently). This is purely
+// an additional data source; it never touches or disables the Excel/PDF import below.
+const ACCT_SYS_STORAGE_KEY = 'acct_sys_v6';
+function fetchFromAccountingSystem(){
+  const statusEl = document.getElementById('acct-link-status');
+  const setLinkStatus = (msg, ok)=>{ statusEl.textContent = msg; statusEl.style.color = ok ? 'var(--good)' : 'var(--danger)'; };
+
+  const fromD = document.getElementById('c-from').value;
+  const toD = document.getElementById('c-to').value;
+  if(!fromD || !toD){
+    setLinkStatus('⚠️ حدد الفترة الضريبية (من - إلى) في بيانات المكلف أولاً.', false);
+    return;
+  }
+
+  let data;
+  try{
+    const raw = localStorage.getItem(ACCT_SYS_STORAGE_KEY);
+    if(!raw) throw new Error('no-data');
+    data = JSON.parse(raw);
+  }catch(e){
+    setLinkStatus('⚠️ لم يتم العثور على بيانات النظام المحاسبي على هذا المتصفح. افتح النظام المحاسبي مرة واحدة على الأقل من نفس الجهاز والمتصفح ثم أعد المحاولة.', false);
+    return;
+  }
+
+  const sales = Array.isArray(data.salesInvoices) ? data.salesInvoices : [];
+  const purchases = Array.isArray(data.purchaseInvoices) ? data.purchaseInvoices : [];
+
+  const salesInRange = sales.filter(i=> i.status==='posted' && !i.isReturn && i.date>=fromD && i.date<=toD);
+  const purchasesInRange = purchases.filter(i=> i.status==='posted' && !i.isReturn && i.date>=fromD && i.date<=toD);
+
+  if(!salesInRange.length && !purchasesInRange.length){
+    setLinkStatus('⚠️ لم يتم العثور على أي فواتير مرحّلة ضمن الفترة المحددة (' + fromD + ' إلى ' + toD + ') في النظام المحاسبي.', false);
+    return;
+  }
+
+  const salesBase = salesInRange.reduce((s,i)=> s + (i.subtotal||0), 0);
+  const salesVat = salesInRange.reduce((s,i)=> s + (i.tax||0), 0);
+  const purchasesBase = purchasesInRange.reduce((s,i)=> s + (i.subtotal||0), 0);
+  const purchasesVat = purchasesInRange.reduce((s,i)=> s + (i.tax||0), 0);
+
+  const summary = `الفترة ${fromD} → ${toD}:\n`
+    + `• المبيعات: ${salesInRange.length} فاتورة — الوعاء ${fmt(salesBase)} ريال — الضريبة ${fmt(salesVat)} ريال\n`
+    + `• المشتريات: ${purchasesInRange.length} فاتورة — الوعاء ${fmt(purchasesBase)} ريال — الضريبة ${fmt(purchasesVat)} ريال\n\n`
+    + `سيتم تعبئة البند 1 (المبيعات الخاضعة للنسبة الأساسية) والبند 7 (المشتريات الخاضعة للنسبة الأساسية) بهذه القيم. متابعة؟`;
+  if(!confirm(summary)) return;
+
+  const applyRow = (key, base, vat)=>{
+    const tr = document.querySelector(`tr[data-key="${key}"]`);
+    if(!tr) return;
+    const amtInput = tr.querySelector('.amt-input');
+    const vatInput = tr.querySelector('.vat-input');
+    amtInput.value = base.toFixed(2);
+    amtInput.dispatchEvent(new Event('input'));
+    vatInput.value = vat.toFixed(2);
+    vatInput.dispatchEvent(new Event('input'));
+  };
+  applyRow('s1', salesBase, salesVat);
+  applyRow('p7', purchasesBase, purchasesVat);
+  recalcAll();
+
+  setLinkStatus(`✅ تم الجلب من النظام المحاسبي: ${salesInRange.length} فاتورة مبيعات و${purchasesInRange.length} فاتورة مشتريات — تم تعبئة البندين 1 و7.`, true);
 }
 
 async function handleImport(side){

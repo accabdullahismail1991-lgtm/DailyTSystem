@@ -494,11 +494,27 @@ tbody tr:hover{background:var(--g50)}
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('set',this)"><span class="nb-ic">⚙️</span><span class="nb-txt">الإعدادات العامة</span></button>
   <button class="nb" onclick="SS('acc',this)"><span class="nb-ic">📂</span><span class="nb-txt">دليل الحسابات</span><span class="nb-bg" id="b-acc">0</span></button>
-  <button class="nb" onclick="SS('sub',this)"><span class="nb-ic">👥</span><span class="nb-txt">الحسابات التحليلية</span></button>
+  <button class="nb" onclick="SS('sub',this)"><span class="nb-ic">👥</span><span class="nb-txt">الحسابات التحليلية (الكل)</span></button>
   <button class="nb" onclick="SS('tax',this)"><span class="nb-ic">🧾</span><span class="nb-txt">إدارة الضرائب</span></button>
   <button class="nb" onclick="SS('cc',this)"><span class="nb-ic">🏷️</span><span class="nb-txt">مراكز التكلفة</span></button>
   <button class="nb" onclick="SS('proj',this)"><span class="nb-ic">📁</span><span class="nb-txt">المشاريع</span></button>
   <button class="nb" onclick="openOV()"><span class="nb-ic">📋</span><span class="nb-txt">القيد الافتتاحي</span></button>
+ </div>
+</div>
+
+<!-- ─── العملاء ─── -->
+<div class="sb-grp">
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>👤 العملاء</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-grp-body">
+  <button class="nb" onclick="openSubTab('customer',this)"><span class="nb-ic">👤</span><span class="nb-txt">قائمة العملاء</span></button>
+ </div>
+</div>
+
+<!-- ─── الموردون ─── -->
+<div class="sb-grp">
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🚚 الموردون</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-grp-body">
+  <button class="nb" onclick="openSubTab('vendor',this)"><span class="nb-ic">🏭</span><span class="nb-txt">قائمة الموردين</span></button>
  </div>
 </div>
 
@@ -512,32 +528,33 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div>
 
-<!-- ─── المبيعات ─── -->
+<!-- ─── إدارة أنظمة المبيعات ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🟢 المبيعات</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🟢 إدارة أنظمة المبيعات</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('sinv',this)"><span class="nb-ic">🟢</span><span class="nb-txt">فواتير المبيعات</span><span class="nb-bg" id="b-sinv">0</span></button>
   <button class="nb" onclick="SS('sret',this)"><span class="nb-ic">↩️</span><span class="nb-txt">مرتجعات المبيعات</span></button>
  </div>
 </div>
 
-<!-- ─── المشتريات ─── -->
+<!-- ─── إدارة أنظمة المشتريات ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🔴 المشتريات</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🔴 إدارة أنظمة المشتريات</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('pinv',this)"><span class="nb-ic">🔴</span><span class="nb-txt">فواتير المشتريات</span><span class="nb-bg" id="b-pinv">0</span></button>
   <button class="nb" onclick="SS('pret',this)"><span class="nb-ic">↩️</span><span class="nb-txt">مرتجعات المشتريات</span></button>
  </div>
 </div>
 
-<!-- ─── المخازن والمخزون ─── -->
+<!-- ─── إدارة أنظمة المخزون ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📦 المخازن والمخزون</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📦 إدارة أنظمة المخزون</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('wh',this)"><span class="nb-ic">🏗️</span><span class="nb-txt">تعريف المستودعات</span><span class="nb-bg" id="b-wh">0</span></button>
   <button class="nb" onclick="SS('items',this)"><span class="nb-ic">📦</span><span class="nb-txt">تعريف الأصناف</span></button>
   <button class="nb" onclick="SS('gr',this)"><span class="nb-ic">📥</span><span class="nb-txt">أذونات الاستلام</span></button>
   <button class="nb" onclick="SS('stkout',this)"><span class="nb-ic">📤</span><span class="nb-txt">أذونات الإخراج</span></button>
+  <button class="nb" onclick="openStockTransfer()"><span class="nb-ic">🔄</span><span class="nb-txt">التحويل بين المستودعات</span></button>
   <button class="nb" onclick="SS('stkadj',this)"><span class="nb-ic">🧮</span><span class="nb-txt">تسوية الجرد والتوالف</span></button>
   <button class="nb" onclick="SS('stkbal',this)"><span class="nb-ic">📊</span><span class="nb-txt">رصيد المخزون</span></button>
  </div>
@@ -553,27 +570,11 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div>
 
-<!-- ─── التقارير المالية ─── -->
+<!-- ─── التقارير ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📊 التقارير المالية</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📊 التقارير</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
-  <button class="nb" onclick="SS('lg',this)"><span class="nb-ic">📖</span><span class="nb-txt">الأستاذ العام</span></button>
-  <button class="nb" onclick="SS('tr',this)"><span class="nb-ic">⚖️</span><span class="nb-txt">ميزان المراجعة</span></button>
-  <button class="nb" onclick="SS('fs',this)"><span class="nb-ic">📊</span><span class="nb-txt">القوائم المالية</span></button>
-  <button class="nb" onclick="SS('cashflow',this)"><span class="nb-ic">💵</span><span class="nb-txt">التدفقات النقدية</span></button>
-  <button class="nb" onclick="SS('taxrpt',this)"><span class="nb-ic">🧾</span><span class="nb-txt">تقرير الضريبة</span></button>
-  <button class="nb" onclick="SS('ccrpt',this)"><span class="nb-ic">🏷️</span><span class="nb-txt">تقرير مراكز التكلفة والمشاريع</span></button>
- </div>
-</div>
-
-<!-- ─── تقارير المخازن والأصول ─── -->
-<div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📦 تقارير المخازن والأصول</span><span class="sb-arrow">▾</span></div>
- <div class="sb-grp-body">
-  <button class="nb" onclick="SS('stkbal',this)"><span class="nb-ic">📦</span><span class="nb-txt">رصيد المخزون</span></button>
-  <button class="nb" onclick="SS('stkrep',this)"><span class="nb-ic">📈</span><span class="nb-txt">حركات المخزون</span></button>
-  <button class="nb" onclick="SS('whrpt',this)"><span class="nb-ic">🏗️</span><span class="nb-txt">تقارير المخازن</span></button>
-  <button class="nb" onclick="SS('depsched',this)"><span class="nb-ic">🏭</span><span class="nb-txt">جدول إهلاك الأصول</span></button>
+  <button class="nb" onclick="SS('rpt',this)"><span class="nb-ic">📊</span><span class="nb-txt">مركز التقارير</span></button>
  </div>
 </div>
 
@@ -585,13 +586,13 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div>
 
-<!-- ─── الإدارة والنظام ─── -->
+<!-- ─── إدارة النظام ─── -->
 <div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🔧 الإدارة والنظام</span><span class="sb-arrow">▾</span></div>
+ <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🔧 إدارة النظام</span><span class="sb-arrow">▾</span></div>
  <div class="sb-grp-body">
-  <button class="nb" onclick="SS('notifs',this)"><span class="nb-ic">🔔</span><span class="nb-txt">الإشعارات</span></button>
-  <button class="nb" onclick="SS('yr',this)"><span class="nb-ic">🗓️</span><span class="nb-txt">إقفال السنة</span></button>
-  <button class="nb" onclick="SS('bk',this)"><span class="nb-ic">💾</span><span class="nb-txt">النسخ الاحتياطي</span></button>
+  <button class="nb" onclick="SS('yr',this)"><span class="nb-ic">🗓️</span><span class="nb-txt">إقفال وفتح الفترات المالية</span></button>
+  <button class="nb" onclick="SS('notifs',this)"><span class="nb-ic">🔔</span><span class="nb-txt">تنبيهات النظام</span></button>
+  <button class="nb" onclick="SS('bk',this)"><span class="nb-ic">💾</span><span class="nb-txt">النسخ الاحتياطي وتحديث النظام</span></button>
   <button class="nb" onclick="SS('int',this)"><span class="nb-ic">🔗</span><span class="nb-txt">الربط الخارجي</span></button>
  </div>
 </div>
@@ -1010,6 +1011,11 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div>
 </div>
+</div>
+
+<!-- REPORTS HUB -->
+<div id="sec-rpt" class="sec">
+<div id="rpt-hub"></div>
 </div>
 
 <!-- YEAR CLOSE -->
@@ -2557,6 +2563,11 @@ function getSubBal(s){
 }
 let subAccFilter=null;
 function filterSubByAcc(accId){subAccFilter=accId;SS("sub",null);}
+function openSubTab(tp){
+  SS('sub',null);
+  const btn=document.querySelector(`#sec-sub .tab[onclick*="switchSub('${tp}'"]`);
+  switchSub(tp,btn);
+}
 function switchSub(tp,btn){
   subType=tp;subQ="";subAccFilter=null;
   document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
@@ -3050,20 +3061,74 @@ const PGS={
   cc:["مراكز التكلفة","تعريف وإدارة مراكز التكلفة"],
   proj:["المشاريع","تعريف وإدارة المشاريع"],
   stkadj:["تسوية الجرد والتوالف","تسوية فروقات الجرد الفعلي وإخراج البضاعة التالفة"],
+  rpt:["مركز التقارير","جميع تقارير النظام مجمّعة حسب القسم"],
 };
 
 const PAGE_GROUP={
   set:'⚙️ الحسابات العامة',acc:'⚙️ الحسابات العامة',sub:'⚙️ الحسابات العامة',tax:'⚙️ الحسابات العامة',cc:'⚙️ الحسابات العامة',proj:'⚙️ الحسابات العامة',
   ent:'📝 القيود والسندات',post:'📝 القيود والسندات',vch:'📝 القيود والسندات',
-  sinv:'🟢 المبيعات',sret:'🟢 المبيعات',
-  pinv:'🔴 المشتريات',pret:'🔴 المشتريات',
-  wh:'📦 المخازن والمخزون',items:'📦 المخازن والمخزون',gr:'📦 المخازن والمخزون',stkout:'📦 المخازن والمخزون',stkadj:'📦 المخازن والمخزون',stkbal:'📦 المخازن والمخزون',
+  sinv:'🟢 إدارة أنظمة المبيعات',sret:'🟢 إدارة أنظمة المبيعات',
+  pinv:'🔴 إدارة أنظمة المشتريات',pret:'🔴 إدارة أنظمة المشتريات',
+  wh:'📦 إدارة أنظمة المخزون',items:'📦 إدارة أنظمة المخزون',gr:'📦 إدارة أنظمة المخزون',stkout:'📦 إدارة أنظمة المخزون',stkadj:'📦 إدارة أنظمة المخزون',stkbal:'📦 إدارة أنظمة المخزون',
   ast:'🏭 الأصول والإيجارات والعهد',rent:'🏭 الأصول والإيجارات والعهد',cust:'🏭 الأصول والإيجارات والعهد',
-  lg:'📊 التقارير المالية',tr:'📊 التقارير المالية',fs:'📊 التقارير المالية',taxrpt:'📊 التقارير المالية',cashflow:'📊 التقارير المالية',ccrpt:'📊 التقارير المالية',
-  stkrep:'📦 تقارير المخازن والأصول',whrpt:'📦 تقارير المخازن والأصول',depsched:'📦 تقارير المخازن والأصول',
+  rpt:'📊 التقارير',lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',taxrpt:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',stkrep:'📊 التقارير',whrpt:'📊 التقارير',depsched:'📊 التقارير',
   exp:'📤 التصدير',
-  notifs:'🔧 الإدارة والنظام',yr:'🔧 الإدارة والنظام',bk:'🔧 الإدارة والنظام',int:'🔧 الإدارة والنظام',
+  notifs:'🔧 إدارة النظام',yr:'🔧 إدارة النظام',bk:'🔧 إدارة النظام',int:'🔧 إدارة النظام',
 };
+
+const RPT_SECTIONS=[
+  {title:'تقارير الحسابات والمالية',icon:'📁',items:[
+    {ic:'📖',lb:'كشف حساب',go:'lg'},
+    {ic:'⚖️',lb:'ميزان المراجعة',go:'tr'},
+    {ic:'📊',lb:'القوائم المالية',go:'fs'},
+    {ic:'💵',lb:'التدفقات النقدية',go:'cashflow'},
+    {ic:'📝',lb:'سجل القيود اليومية',go:'ent'},
+    {ic:'📂',lb:'دليل الحسابات',go:'acc'},
+    {ic:'✅',lb:'الوثائق المرحلة وغير المرحلة',go:'post'},
+    {ic:'🧾',lb:'تقرير الضريبة',go:'taxrpt'},
+    {ic:'🏷️',lb:'مراكز التكلفة والمشاريع',go:'ccrpt'},
+    {ic:'🧾',lb:'سندات القبض والصرف',go:'vch'},
+  ]},
+  {title:'تقارير حسابات العملاء',icon:'👤',items:[
+    {ic:'👤',lb:'قائمة العملاء وأرصدتهم',sub:'customer'},
+    {ic:'🟢',lb:'فواتير المبيعات',go:'sinv'},
+    {ic:'↩️',lb:'مرتجعات المبيعات',go:'sret'},
+  ]},
+  {title:'تقارير حسابات الموردين',icon:'🚚',items:[
+    {ic:'🏭',lb:'قائمة الموردين وأرصدتهم',sub:'vendor'},
+    {ic:'🔴',lb:'فواتير المشتريات',go:'pinv'},
+    {ic:'↩️',lb:'مرتجعات المشتريات',go:'pret'},
+  ]},
+  {title:'تقارير الموظفين والعهد',icon:'👷',items:[
+    {ic:'👷',lb:'بيانات الموظفين',sub:'employee'},
+    {ic:'🗂️',lb:'العهد والسلف',go:'cust'},
+  ]},
+  {title:'تقارير المخزون',icon:'📦',items:[
+    {ic:'📦',lb:'رصيد المخزون',go:'stkbal'},
+    {ic:'📈',lb:'حركات المخزون',go:'stkrep'},
+    {ic:'🏗️',lb:'تقارير المخازن',go:'whrpt'},
+    {ic:'📋',lb:'بيانات الأصناف',go:'items'},
+  ]},
+  {title:'تقارير الأصول الثابتة',icon:'🏭',items:[
+    {ic:'🏭',lb:'بيانات الأصول الثابتة',go:'ast'},
+    {ic:'📉',lb:'جدول إهلاك الأصول',go:'depsched'},
+  ]},
+];
+function renderRptHub(){
+  const wrap=document.getElementById('rpt-hub');
+  if(!wrap)return;
+  wrap.innerHTML=RPT_SECTIONS.map(function(sec){
+    return '<div class="card"><div class="chd"><div class="ct"><div class="ti">'+sec.icon+'</div>'+sec.title+'</div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">'
+      +sec.items.map(function(it){
+        const action=it.sub?("openSubTab('"+it.sub+"')"):("SS('"+it.go+"',null)");
+        return '<div class="card" style="margin:0;cursor:pointer;text-align:center" onclick="'+action+'">'
+          +'<div style="font-size:24px;margin-bottom:7px">'+it.ic+'</div>'
+          +'<h3 style="font-size:12.5px;margin:0">'+it.lb+'</h3></div>';
+      }).join('')
+      +'</div></div>';
+  }).join('');
+}
 function tbSearchInput(v){
   const el=document.getElementById('tb-search-results');
   const q=(v||'').trim();
@@ -3193,6 +3258,7 @@ function SS(id,btn){
   if(id==="set")  loadSettings();
   if(id==="acc")  {renderAccs();popParSel("ac-par",null);}
   if(id==="sub")  renderSub(subType);
+  if(id==="rpt")  renderRptHub();
   if(id==="ent")  {renderEnts();if(!entLines.length)initLines();}
   if(id==="lg")   clrLg();
   if(id==="tr")   {populateTrGroupSelect();populateTrDimSelects();renderTr();}
