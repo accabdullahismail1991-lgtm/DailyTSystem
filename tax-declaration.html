@@ -522,6 +522,13 @@
 </head>
 <body>
 
+<div id="standalone-nav" class="no-print" style="display:none;position:fixed;top:10px;left:10px;z-index:9999;gap:6px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px;box-shadow:0 2px 10px rgba(0,0,0,.14);font-size:12px;">
+  <a href="index.html" style="color:var(--navy);text-decoration:none;padding:5px 10px;border-radius:5px;white-space:nowrap;font-weight:700;">🏠 النظام الموحد</a>
+  <a href="transfers.html" style="color:var(--navy);text-decoration:none;padding:5px 10px;border-radius:5px;white-space:nowrap;">🏦 الحوالات</a>
+  <a href="accounting.html" style="color:var(--navy);text-decoration:none;padding:5px 10px;border-radius:5px;white-space:nowrap;">📊 المحاسبة</a>
+</div>
+<script>if(window.self===window.top){document.getElementById('standalone-nav').style.display='flex';}</script>
+
 <div class="sheet">
   <div class="letterhead">
     <div>
@@ -677,6 +684,13 @@
             <label>البند المستهدف بالإقرار</label>
             <select id="target-box-sales"></select>
           </div>
+          <div class="field">
+            <label>تطبيق القيمة على</label>
+            <select id="apply-target-sales">
+              <option value="amt">المبلغ الأساسي (مبيعات/مشتريات الفترة)</option>
+              <option value="adj">مبلغ التعديل (مرتجعات وتصحيحات — عمود منفصل حسب نموذج الهيئة)</option>
+            </select>
+          </div>
           <button class="btn primary" id="import-btn-sales" onclick="handleImport('sales')">📥 جلب واستيراد المبيعات</button>
         </div>
         <div id="import-status-sales"></div>
@@ -716,6 +730,13 @@
           <div class="field">
             <label>البند المستهدف بالإقرار</label>
             <select id="target-box-purchases"></select>
+          </div>
+          <div class="field">
+            <label>تطبيق القيمة على</label>
+            <select id="apply-target-purchases">
+              <option value="amt">المبلغ الأساسي (مبيعات/مشتريات الفترة)</option>
+              <option value="adj">مبلغ التعديل (مرتجعات وتصحيحات — عمود منفصل حسب نموذج الهيئة)</option>
+            </select>
           </div>
           <button class="btn primary" id="import-btn-purchases" onclick="handleImport('purchases')">📥 جلب واستيراد المشتريات</button>
         </div>
@@ -1181,10 +1202,28 @@ function applyToBox(side, total, meta){
     return;
   }
 
+  const applyTargetSel = document.getElementById(`apply-target-${side}`);
+  const applyTarget = applyTargetSel ? applyTargetSel.value : 'amt';
+
   const amtInput = tr.querySelector('.amt-input');
+  const adjInput = tr.querySelector('.adj-input');
   const vatInput = tr.querySelector('.vat-input');
-  amtInput.value = baseAmount.toFixed(2);
-  if(!vatInput.disabled){ vatInput.value = vatAmount.toFixed(2); }
+  let targetLabel;
+  if(applyTarget === 'adj'){
+    // مبالغ المرتجعات/التصحيحات تُوضع في عمود "مبلغ التعديل" المنفصل وفق نموذج الهيئة،
+    // ولا تُدرج ضمن المبلغ الأساسي — الضريبة الناتجة عنها تُضاف لما هو موجود بالفعل
+    // في البند (غالباً من استيراد سابق للمبلغ الأساسي)، وليست استبدالاً له.
+    adjInput.value = baseAmount.toFixed(2);
+    if(!vatInput.disabled){
+      const existingVat = parseFloat(vatInput.value) || 0;
+      vatInput.value = (existingVat + vatAmount).toFixed(2);
+    }
+    targetLabel = 'مبلغ التعديل';
+  } else {
+    amtInput.value = baseAmount.toFixed(2);
+    if(!vatInput.disabled){ vatInput.value = vatAmount.toFixed(2); }
+    targetLabel = 'المبلغ الأساسي';
+  }
   recalcAll();
 
   // make the update visible: scroll to the row and flash-highlight it briefly
@@ -1195,7 +1234,7 @@ function applyToBox(side, total, meta){
   setTimeout(()=>{ tr.style.backgroundColor = prevBg; }, 1600);
 
   const signNote = total < 0 ? ' ⚠️ القيمة سالبة — قد يشير هذا لعكس اتجاه الحركة، جرّب زر "تبديل الأعمدة" أعلاه إن لزم.' : '';
-  setStatus(side, `✅ تم تعبئة البند "${targetSelect.options[targetSelect.selectedIndex].text}" في الإقرار: القيمة الخاضعة ${fmt(baseAmount)} ريال، الضريبة ${fmt(vatAmount)} ريال — بناءً على صافي محدد قدره ${fmt(total)} ريال.${signNote}`, total<0 ? 'err' : 'ok');
+  setStatus(side, `✅ تم تعبئة (${targetLabel}) للبند "${targetSelect.options[targetSelect.selectedIndex].text}" في الإقرار: القيمة ${fmt(baseAmount)} ريال، الضريبة ${fmt(vatAmount)} ريال — بناءً على صافي محدد قدره ${fmt(total)} ريال.${signNote}`, total<0 ? 'err' : 'ok');
 
   // Save the import audit trail (source files + the exact rows used) so it can be archived
   // with this declaration and reviewed/re-exported later, even after the page reloads.
