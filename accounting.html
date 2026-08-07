@@ -874,7 +874,15 @@ tbody tr:hover{background:var(--g50)}
 <!-- LEDGER -->
 <div id="sec-lg" class="sec">
 <div class="card">
- <div class="chd"><div class="ct"><div class="ti">🔍</div>اختيار الحساب والفترة</div></div>
+ <div class="chd">
+  <div class="ct"><div class="ti">🔍</div>اختيار الحساب والفترة</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bg bsm" onclick="const id=parseInt(document.getElementById('lg-id').value)||0;if(!id){showAlert('يرجى اختيار حساب أولاً','err');return;}expSingleLgXL(id);">📊 Excel</button>
+   <button class="btn bo bsm" onclick="const id=parseInt(document.getElementById('lg-id').value)||0;if(!id){showAlert('يرجى اختيار حساب أولاً','err');return;}expSingleLgPDF(id);">📄 PDF</button>
+   <button class="btn ba bsm no-print" onclick="const id=parseInt(document.getElementById('lg-id').value)||0;if(!id){showAlert('يرجى اختيار حساب أولاً','err');return;}printLedgerVch(id);">🖨️ طباعة كشف الحساب</button>
+   <button class="btn bo bsm no-print" onclick="printLgReport()">🖨️ طباعة الأستاذ العام كاملاً</button>
+  </div>
+ </div>
  <div class="fg-row">
   <div class="fgrp asw" style="min-width:270px">
    <label>بحث عن الحساب</label>
@@ -1038,7 +1046,10 @@ tbody tr:hover{background:var(--g50)}
 <div id="sec-audit" class="sec">
 <div class="card" style="display:flex;justify-content:space-between;align-items:center">
   <div class="chd" style="margin:0"><div class="ct"><div class="ti">🩺</div>فحص وتدقيق البيانات</div></div>
-  <button class="btn bp bsm" onclick="renderAudit()">🔄 إعادة الفحص الآن</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bp bsm" onclick="renderAudit()">🔄 إعادة الفحص الآن</button>
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
+  </div>
 </div>
 <p style="font-size:11.5px;color:var(--g5);margin:-6px 0 14px">
   فحص شامل لسلامة القيود اليومية وميزان المراجعة: يكتشف القيود غير المتوازنة أو المحفوظة كمسودة ناقصة (لا تظهر في
@@ -1195,7 +1206,9 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">🧾</div>سندات القبض والصرف</div>
-  <div style="display:flex;gap:6px">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bg bsm" onclick="expVouchersXL()">📊 Excel</button>
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
    <button class="btn bg" onclick="openVoucherForm('receipt')">🟢 سند قبض</button>
    <button class="btn bd" onclick="openVoucherForm('payment')">🔴 سند صرف</button>
   </div>
@@ -1221,9 +1234,10 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">🏭</div>الأصول الثابتة وجدول الإهلاك</div>
-  <div style="display:flex;gap:6px">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
    <button class="btn bp" onclick="openAddAsset()">＋ إضافة أصل</button>
    <button class="btn bg bsm" onclick="expAstXL()">📊 Excel</button>
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
   </div>
  </div>
  <!-- Batch posting -->
@@ -1257,9 +1271,10 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">🏠</div>الإيجارات المدفوعة مقدماً</div>
-  <div style="display:flex;gap:6px">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
    <button class="btn bp" onclick="openAddRent()">＋ إضافة عقد إيجار</button>
    <button class="btn bg bsm" onclick="expRentXL()">📊 Excel</button>
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
   </div>
  </div>
  <!-- Batch posting -->
@@ -1310,8 +1325,10 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">🟢</div>فواتير المبيعات</div>
-  <div style="display:flex;gap:6px">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
    <input id="sinv-s" type="text" placeholder="🔍 بحث..." style="width:140px;font-size:11px;padding:5px 8px" oninput="renderSaleInvoices()">
+   <button class="btn bg bsm" onclick="expInvoiceListXL('sale')">📊 Excel</button>
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
    <button class="btn bp" onclick="openSaleInvForm()">＋ فاتورة مبيعات</button>
   </div>
  </div>
@@ -1325,8 +1342,10 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">🔴</div>فواتير المشتريات</div>
-  <div style="display:flex;gap:6px">
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
    <input id="pinv-s" type="text" placeholder="🔍 بحث..." style="width:140px;font-size:11px;padding:5px 8px" oninput="renderPurInvoices()">
+   <button class="btn bg bsm" onclick="expInvoiceListXL('purchase')">📊 Excel</button>
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
    <button class="btn bd" onclick="openPurInvForm()">＋ فاتورة مشتريات</button>
   </div>
  </div>
@@ -1341,7 +1360,10 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">🏗️</div>تعريف المستودعات</div>
-  <button class="btn bp bsm" onclick="document.getElementById('wh-form').style.display=document.getElementById('wh-form').style.display==='none'?'flex':'none'">＋ مستودع</button>
+  <div style="display:flex;gap:6px">
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
+   <button class="btn bp bsm" onclick="document.getElementById('wh-form').style.display=document.getElementById('wh-form').style.display==='none'?'flex':'none'">＋ مستودع</button>
+  </div>
  </div>
  <div id="wh-form" style="display:none;gap:8px;align-items:flex-end;padding:10px;background:var(--g50);border-radius:var(--r);margin-bottom:10px;flex-wrap:wrap">
   <div class="fgrp"><label>الكود</label><input id="wh-code" type="text" placeholder="WH-001" style="width:90px"></div>
@@ -1561,7 +1583,11 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">↩️</div>مرتجعات المبيعات وإشعارات الدائن</div>
-  <button class="btn bp" onclick="SS('sinv',null)">← العودة للفواتير</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bd bsm" onclick="openReturnSelector('sale')">↩️ إنشاء مرتجع مبيعات</button>
+   <button class="btn bo bsm" onclick="window.print()">🖨️ طباعة</button>
+   <button class="btn bp bsm" onclick="SS('sinv',null)">← العودة للفواتير</button>
+  </div>
  </div>
  <div id="sret-tb"></div>
 </div>
@@ -1572,7 +1598,11 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">↩️</div>مرتجعات المشتريات وإشعارات المدين</div>
-  <button class="btn bp" onclick="SS('pinv',null)">← العودة للفواتير</button>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bg bsm" onclick="openReturnSelector('purchase')">↩️ إنشاء مرتجع مشتريات</button>
+   <button class="btn bo bsm" onclick="window.print()">🖨️ طباعة</button>
+   <button class="btn bp bsm" onclick="SS('pinv',null)">← العودة للفواتير</button>
+  </div>
  </div>
  <div id="pret-tb"></div>
 </div>
@@ -1604,28 +1634,6 @@ tbody tr:hover{background:var(--g50)}
   <div class="fgrp s2"><label>الحساب الرئيسي في الدليل</label><select id="qa-acc-sel"></select></div>
  </div>
  <div class="mact"><button class="btn bo" onclick="CM('m-qa-party')">إلغاء</button><button class="btn bp" onclick="saveQuickParty()">💾 إضافة</button></div>
-</div></div>
-
-
-
-<!-- ══ SALE RETURNS SECTION ══ -->
-<div id="sec-sret" class="sec">
-<div class="card">
- <div class="chd">
-  <div class="ct"><div class="ti">↩️</div>مرتجعات المبيعات</div>
-  <button class="btn bd" onclick="openReturnSelector('sale')">↩️ إنشاء مرتجع مبيعات</button>
- </div>
- <div id="sret-tb"></div>
-</div></div>
-
-<!-- ══ PURCHASE RETURNS SECTION ══ -->
-<div id="sec-pret" class="sec">
-<div class="card">
- <div class="chd">
-  <div class="ct"><div class="ti">↩️</div>مرتجعات المشتريات</div>
-  <button class="btn bg" onclick="openReturnSelector('purchase')">↩️ إنشاء مرتجع مشتريات</button>
- </div>
- <div id="pret-tb"></div>
 </div></div>
 
 <!-- ══ RETURN SELECTOR MODAL ══ -->
@@ -1786,7 +1794,10 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">📥</div>استلامات البضاعة (أذونات الاستلام)</div>
-  <button class="btn bp" onclick="openGoodsReceipt()">＋ أذن استلام جديد</button>
+  <div style="display:flex;gap:6px">
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
+   <button class="btn bp" onclick="openGoodsReceipt()">＋ أذن استلام جديد</button>
+  </div>
  </div>
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px" id="gr-summary"></div>
  <div id="gr-list"></div>
@@ -1865,7 +1876,10 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd">
   <div class="ct"><div class="ti">🗂️</div>العهد المالية</div>
-  <button class="btn bp" onclick="openAddCustodian()">＋ عهدة جديدة</button>
+  <div style="display:flex;gap:6px">
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
+   <button class="btn bp" onclick="openAddCustodian()">＋ عهدة جديدة</button>
+  </div>
  </div>
  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:12px" id="cust-summary"></div>
  <div id="cust-tb"></div>
@@ -3899,7 +3913,7 @@ function renderFS(tab){
 function printLedgerVch(accId){
   const acc=accounts.find(a=>a.id===accId);if(!acc)return;
   let bal=parseFloat(acc.open)||0;if(NORM[acc.type]==="cr")bal=-bal;
-  const rels=entries.filter(e=>e.lines.some(l=>l.accId===accId)).sort((a,b)=>a.date.localeCompare(b.date));
+  const rels=postedEntries().filter(e=>e.lines.some(l=>l.accId===accId)).sort((a,b)=>a.date.localeCompare(b.date));
   let rows=`<tr style="background:#f0f9ff"><td colspan="3" style="padding:6px 9px;border:1px solid #e2e8f0;font-weight:700">رصيد افتتاحي</td>
     <td style="padding:6px 9px;border:1px solid #e2e8f0">—</td><td style="padding:6px 9px;border:1px solid #e2e8f0">—</td>
     <td style="padding:6px 9px;border:1px solid #e2e8f0;direction:ltr;font-weight:700">${fmtNum(Math.abs(bal))} ${cur()}</td></tr>`;
@@ -4032,6 +4046,31 @@ function expTrPDF(){
       columnStyles:{3:{halign:"left"},4:{halign:"left"}}});
   }
   doc.save(`trial_${CY}_ar.pdf`);showAlert("تم التصدير PDF");
+}
+function expVouchersXL(){
+  if(typeof XLSX==="undefined"){showAlert("مكتبة Excel غير محملة","err");return;}
+  const data=[["سندات القبض والصرف — "+CFG.name],[`السنة: ${CY} | التاريخ: ${fmtDateISO(new Date())}`],[],
+    ["#","النوع","التاريخ","المرجع","الطرف","المبلغ","البيان","الحالة"]];
+  vouchers.forEach(function(v){
+    data.push([v.id,v.type==="receipt"?"قبض":"صرف",fmtDateISO(v.date),v.ref||"",v.party||"",v.amount||0,v.desc||"",
+      v.status==="posted"?"مرحّل":"مسودة"]);
+  });
+  XLSX.writeFile(mkWB("السندات",data,[{wch:8},{wch:8},{wch:13},{wch:13},{wch:22},{wch:13},{wch:26},{wch:10}]),
+    `vouchers_${CY}.xlsx`);showAlert("تم التصدير Excel");
+}
+function expInvoiceListXL(type){
+  if(typeof XLSX==="undefined"){showAlert("مكتبة Excel غير محملة","err");return;}
+  const list=type==="sale"?salesInvoices:purchaseInvoices;
+  const partyKey=type==="sale"?"customer":"vendor";
+  const title=type==="sale"?"فواتير المبيعات":"فواتير المشتريات";
+  const data=[[title+" — "+CFG.name],[`السنة: ${CY} | التاريخ: ${fmtDateISO(new Date())}`],[],
+    ["#","التاريخ","المرجع",type==="sale"?"العميل":"المورد","الصافي","الضريبة","الإجمالي","الحالة","مرتجع؟"]];
+  list.forEach(function(inv){
+    data.push([inv.id,fmtDateISO(inv.date),inv.ref||"",inv[partyKey]||"",inv.subtotal||0,inv.tax||0,inv.total||0,
+      inv.status==="posted"?"مرحّل":"مسودة",inv.isReturn?"نعم":"—"]);
+  });
+  XLSX.writeFile(mkWB(title,data,[{wch:8},{wch:13},{wch:13},{wch:26},{wch:13},{wch:12},{wch:13},{wch:10},{wch:9}]),
+    `${type}_invoices_${CY}.xlsx`);showAlert("تم التصدير Excel");
 }
 function expJrnXL(){
   const data=[[`سجل القيود — السنة ${CY} — ${CFG.name}`],[`التاريخ: ${fmtDateISO(new Date())} | العملة: ${cur()}`],[],["#","التاريخ","البيان","المرجع","الحساب","مدين","دائن"]];
@@ -10160,7 +10199,7 @@ function printLgReport(){
   let html='<div style="text-align:center;font-size:13px;font-weight:700;color:'+hc+';margin-bottom:12px">دفتر الأستاذ العام</div>';
   filtAccs.forEach(function(acc){
     const lines=[];
-    entries.forEach(function(e){
+    postedEntries().forEach(function(e){
       e.lines.filter(function(l){return l.accId===acc.id;}).forEach(function(l){
         lines.push({date:e.date,ref:e.ref||'',desc:l.desc||e.desc||'',dr:l.debit||0,cr:l.credit||0});
       });
