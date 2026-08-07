@@ -224,10 +224,26 @@ let localDirtySinceBoot=false;
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
+function migrateShellUsers(){
+  // ترقية الحسابات الموجودة مسبقاً: أي مستخدم مدير كان معرّفاً قبل إضافة نظام
+  // إقرار الضريبة لن يملك "taxdecl" ضمن قائمة أنظمته المحفوظة — امنحه الوصول تلقائياً
+  let changed=false;
+  shellUsers.forEach(u=>{
+    if(u.admin&&!(u.systems||[]).includes('taxdecl')){
+      u.systems=[...(u.systems||[]),'taxdecl'];
+      changed=true;
+    }
+  });
+  return changed;
+}
 function loadShellUsers(){
   try{
     const raw=localStorage.getItem(SHELL_KEY);
-    if(raw){shellUsers=JSON.parse(raw);return;}
+    if(raw){
+      shellUsers=JSON.parse(raw);
+      if(migrateShellUsers())persistShellUsers();
+      return;
+    }
   }catch(e){}
   shellUsers=[{id:uid(),name:'المدير العام',username:'admin',password:'admin123',admin:true,systems:['transfers','accounting','taxdecl']}];
   persistShellUsers();
@@ -426,7 +442,8 @@ if(window.CloudSync){
       // بيانات محلية جديدة تغيّرت أثناء انتظار السحابة — لا تستبدلها، هي بالفعل قيد المزامنة عبر persistShellUsers()
     }else if(remote&&remote.length){
       shellUsers=remote;
-      try{localStorage.setItem(SHELL_KEY,JSON.stringify(shellUsers));}catch(e){}
+      if(migrateShellUsers()){persistShellUsers();}
+      else{try{localStorage.setItem(SHELL_KEY,JSON.stringify(shellUsers));}catch(e){}}
     }else{
       persistShellUsers();
     }
