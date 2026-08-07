@@ -3114,20 +3114,25 @@ const RPT_SECTIONS=[
     {ic:'📉',lb:'جدول إهلاك الأصول',go:'depsched'},
   ]},
 ];
+const RPT_SEC_COLORS=[['#eef2ff','#4338ca'],['#fef3c7','#92400e'],['#dcfce7','#166534'],['#fee2e2','#991b1b'],['#ede9fe','#5b21b6'],['#e0f2fe','#075985']];
 function renderRptHub(){
   const wrap=document.getElementById('rpt-hub');
   if(!wrap)return;
-  wrap.innerHTML=RPT_SECTIONS.map(function(sec){
-    return '<div class="card"><div class="chd"><div class="ct"><div class="ti">'+sec.icon+'</div>'+sec.title+'</div></div>'
-      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px">'
-      +sec.items.map(function(it){
-        const action=it.sub?("openSubTab('"+it.sub+"')"):("SS('"+it.go+"',null)");
-        return '<div class="card" style="margin:0;cursor:pointer;text-align:center" onclick="'+action+'">'
-          +'<div style="font-size:24px;margin-bottom:7px">'+it.ic+'</div>'
-          +'<h3 style="font-size:12.5px;margin:0">'+it.lb+'</h3></div>';
-      }).join('')
-      +'</div></div>';
-  }).join('');
+  wrap.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px">'
+    +RPT_SECTIONS.map(function(sec,si){
+      const[bg,fg]=RPT_SEC_COLORS[si%RPT_SEC_COLORS.length];
+      return '<div class="card" style="margin:0;padding:0;overflow:hidden">'
+        +'<div class="chd" style="padding:14px 16px;margin:0;border-bottom:1px solid var(--g100)"><div class="ct"><div class="ti">'+sec.icon+'</div>'+sec.title+'</div></div>'
+        +'<div>'+sec.items.map(function(it){
+          const action=it.sub?("openSubTab('"+it.sub+"')"):("SS('"+it.go+"',null)");
+          return '<div onclick="'+action+'" style="display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-bottom:1px solid var(--g100)" '
+            +'onmouseover="this.style.background=\'var(--g50)\'" onmouseout="this.style.background=\'\'">'
+            +'<span style="width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none;background:'+bg+';color:'+fg+'">'+it.ic+'</span>'
+            +'<span style="flex:1;font-size:12.5px;font-weight:600">'+it.lb+'</span>'
+            +'<span style="color:var(--g300);font-size:13px">←</span></div>';
+        }).join('')+'</div></div>';
+    }).join('')
+    +'</div>';
 }
 function tbSearchInput(v){
   const el=document.getElementById('tb-search-results');
@@ -3251,6 +3256,7 @@ function SS(id,btn){
     +'style="font-size:10px;padding:2px 7px;background:var(--tp);border:1px solid var(--tl2);border-radius:4px;color:var(--tl2);cursor:pointer;vertical-align:middle;margin-right:6px">↗️ تبويب</button>';
   const pgS=document.getElementById("pg-s");
   if(pgS) pgS.textContent=s;
+  if(t) document.title=t+' — '+((typeof CFG!=='undefined'&&CFG.name)?CFG.name:'النظام المحاسبي');
   renderBreadcrumb(id);
   updateNotifBadge();
   updateTbAvatar();
