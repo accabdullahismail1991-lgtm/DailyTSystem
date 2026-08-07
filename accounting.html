@@ -2999,6 +2999,19 @@ function isLeaf(id){
   return getLevel(a)===4;
 }
 function isL5Entry(id){return isLeaf(id);}
+function resolveLeafAccount(accId){
+  // يُستخدم عند توجيه قيود العملاء/الموردين/المخازن تلقائياً: الحساب المرتبط بسجل
+  // تحليلي (عميل/مورد) أو بمستودع كثيراً ما يكون حساب "مجمّع" (مستوى أعلى) وليس ورقياً
+  // بالضرورة — فبدل تجاهله والقفز لحساب عام غير مرتبط بهذا العميل/المورد تحديداً،
+  // ننزل لأول حساب فرعي ورقي تحت نفس الفرع فعلياً، فيبقى القيد موجّهاً للفرع الصحيح
+  // من دليل الحسابات مع الحفاظ الكامل على ربط الحساب التحليلي (subId).
+  if(!accId) return null;
+  const a=accounts.find(function(x){return x.id===accId;});
+  if(!a) return null;
+  if(isLeaf(a.id)) return a;
+  const leafId=getDescendants(a.id).find(function(id){return isLeaf(id);});
+  return leafId ? accounts.find(function(x){return x.id===leafId;}) : null;
+}
 function getBalance(id,inclChildren=false){
   const a=accounts.find(x=>x.id===id);if(!a)return 0;
   let b=parseFloat(a.open)||0;
@@ -9344,7 +9357,7 @@ function getInvAcc(whId){
   // Best inventory account (prefer warehouse-linked, else first L5 inventory account)
   const wh = whId && warehouses ? warehouses.find(function(w){return w.id===whId;}) : null;
   if(wh&&wh.accId){
-    const wa=accounts.find(function(a){return a.id===wh.accId&&isLeaf(a.id);});
+    const wa=resolveLeafAccount(wh.accId);
     if(wa) return wa;
   }
   return accounts.find(function(a){
@@ -9363,7 +9376,7 @@ function getApAcc(vendorSubId){
   if(vendorSubId){
     const sub=subLedger.find(function(s){return s.id===vendorSubId;});
     if(sub&&sub.mainAccId){
-      const a=accounts.find(function(a){return a.id===sub.mainAccId&&isLeaf(a.id);});
+      const a=resolveLeafAccount(sub.mainAccId);
       if(a) return a;
     }
   }
@@ -9375,7 +9388,7 @@ function getArAcc(customerSubId){
   if(customerSubId){
     const sub=subLedger.find(function(s){return s.id===customerSubId;});
     if(sub&&sub.mainAccId){
-      const a=accounts.find(function(a){return a.id===sub.mainAccId&&isLeaf(a.id);});
+      const a=resolveLeafAccount(sub.mainAccId);
       if(a) return a;
     }
   }
