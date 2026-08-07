@@ -529,6 +529,14 @@
 </div>
 <script>if(window.self===window.top){document.getElementById('standalone-nav').style.display='flex';}</script>
 
+<div id="company-modal-overlay" class="no-print" style="display:none;position:fixed;inset:0;background:rgba(15,45,78,.45);z-index:10000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:10px;max-width:440px;width:92%;max-height:82vh;overflow-y:auto;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,.25)">
+    <h2 style="margin:0 0 12px;color:var(--navy);font-size:15px">🏢 إدارة الشركات وتعدد قواعد البيانات</h2>
+    <div id="company-modal-body"></div>
+    <div style="text-align:left;margin-top:14px"><button class="btn" onclick="closeCompanyModal()">إغلاق</button></div>
+  </div>
+</div>
+
 <div class="sheet">
   <div class="letterhead">
     <div>
@@ -543,6 +551,7 @@
       <button class="btn" onclick="document.getElementById('import-json-input').click()">📥 استرجاع نسخة (JSON)</button>
       <input type="file" id="import-json-input" accept=".json" style="display:none" onchange="importDataJSON(event)">
       <button class="btn" onclick="clearAll()">↺ مسح الكل</button>
+      <button class="btn no-print" onclick="renderCompanySwitcher()" title="تبديل بين الشركات أو إضافة شركة جديدة بقاعدة بيانات منفصلة">🏢 تبديل الشركة</button>
       <button class="btn" onclick="exportDeclarationXL()">📊 تصدير الإقرار (Excel)</button>
       <button class="btn" id="orientation-toggle" onclick="toggleOrientation()">🔄📄 اتجاه الطباعة: أفقي</button>
       <button class="btn primary" onclick="window.print()">🖨 طباعة / حفظ PDF</button>
@@ -1300,13 +1309,28 @@ function exportAuditToExcel(side){
 // ('acct_sys_v6' for the default company, 'acct_sys_v6_<id>' for any other company) and
 // records which one is currently active under 'acct_active_company_v1'. Read that same
 // pointer here so this always pulls from whichever company the user last switched to.
-const ACCT_SYS_STORAGE_KEY = (function(){
+// ═══ MULTI-COMPANY SUPPORT (shared across accounting/transfers/tax-declaration) ═══
+// Resolved once, here, before anything else in this file reads it — a ?company= link
+// also writes the pointer to localStorage immediately so every downstream read (this
+// file's own declaration storage, the accounting-system bridge above) stays consistent
+// with what the URL says, not a stale value left over from a previous company.
+const COMPANIES_KEY = 'acct_companies_v1';
+const ACTIVE_COMPANY_KEY = 'acct_active_company_v1';
+const ACTIVE_COMPANY_ID = (function(){
   try{
-    const activeId = localStorage.getItem('acct_active_company_v1');
-    if(activeId && activeId !== 'default') return 'acct_sys_v6_' + activeId;
+    const qp = new URLSearchParams(location.search).get('company');
+    if(qp){
+      try{ localStorage.setItem(ACTIVE_COMPANY_KEY, qp); }catch(e){}
+      return qp;
+    }
   }catch(e){}
-  return 'acct_sys_v6';
+  try{
+    const stored = localStorage.getItem(ACTIVE_COMPANY_KEY);
+    if(stored) return stored;
+  }catch(e){}
+  return 'default';
 })();
+const ACCT_SYS_STORAGE_KEY = ACTIVE_COMPANY_ID === 'default' ? 'acct_sys_v6' : 'acct_sys_v6_' + ACTIVE_COMPANY_ID;
 function fetchFromAccountingSystem(){
   const statusEl = document.getElementById('acct-link-status');
   const setLinkStatus = (msg, ok)=>{ statusEl.textContent = msg; statusEl.style.color = ok ? 'var(--good)' : 'var(--danger)'; };
@@ -1726,7 +1750,75 @@ window.addEventListener('beforeprint', formatInputsForPrint);
 window.addEventListener('afterprint', restoreInputsAfterPrint);
 
 // ---------- Saved records (history) ----------
-const STORAGE_KEY = 'zatca_vat_declarations_v1';
+// كل شركة تحصل على سجل إقرارات منفصل تماماً، بالاعتماد على ACTIVE_COMPANY_ID
+// المُحدَّد أعلاه (مشترك مع نظامي المحاسبة والحوالات على نفس المتصفح).
+const BASE_STORAGE_KEY = 'zatca_vat_declarations_v1';
+const STORAGE_KEY = ACTIVE_COMPANY_ID === 'default' ? BASE_STORAGE_KEY : BASE_STORAGE_KEY + '_' + ACTIVE_COMPANY_ID;
+
+let companies = [];
+function loadCompanies(){
+  try{
+    const raw = localStorage.getItem(COMPANIES_KEY);
+    companies = raw ? JSON.parse(raw) : [];
+  }catch(e){ companies = []; }
+  let changed = false;
+  if(!companies.some(c=>c.id==='default')){
+    companies.unshift({id:'default', name:'الشركة الرئيسية', taxNumber:'', crNumber:''});
+    changed = true;
+  }
+  if(!companies.some(c=>c.id===ACTIVE_COMPANY_ID)){
+    companies.push({id:ACTIVE_COMPANY_ID, name:'شركة جديدة', taxNumber:'', crNumber:''});
+    changed = true;
+  }
+  if(changed) persistCompanies();
+}
+function persistCompanies(){
+  try{ localStorage.setItem(COMPANIES_KEY, JSON.stringify(companies)); }catch(e){}
+}
+function switchCompany(id){
+  try{ localStorage.setItem(ACTIVE_COMPANY_KEY, id); }catch(e){}
+  const url = new URL(location.href);
+  url.searchParams.set('company', id);
+  location.href = url.pathname + url.search;
+}
+function addCompanyPrompt(){
+  const nameEl = document.getElementById('nc-name');
+  const name = nameEl ? nameEl.value.trim() : '';
+  if(!name){ alert('يرجى إدخال اسم الشركة'); return; }
+  const id = 'c' + Date.now();
+  const taxEl = document.getElementById('nc-tax'), crEl = document.getElementById('nc-cr');
+  companies.push({id, name, taxNumber: taxEl ? taxEl.value.trim() : '', crNumber: crEl ? crEl.value.trim() : ''});
+  persistCompanies();
+  switchCompany(id);
+}
+function closeCompanyModal(){
+  const ov = document.getElementById('company-modal-overlay');
+  if(ov) ov.style.display = 'none';
+}
+function renderCompanySwitcher(){
+  const rows = companies.map(function(c){
+    const active = c.id === ACTIVE_COMPANY_ID;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 11px;border:1px solid '+(active?'var(--navy)':'var(--line)')+';border-radius:8px;margin-bottom:7px;background:'+(active?'#eef4fa':'#fff')+'">'
+      +'<div><div style="font-weight:700;font-size:12.5px">'+(active?'✅ ':'')+c.name+'</div>'
+      +(c.taxNumber?'<div style="font-size:10.5px;color:#6b7785">ر.ض: '+c.taxNumber+'</div>':'')+'</div>'
+      +(active?'':'<button class="btn primary" style="padding:5px 12px;font-size:11px" onclick="switchCompany(\''+c.id+'\')">تبديل ↗️</button>')
+      +'</div>';
+  }).join('');
+  const body = document.getElementById('company-modal-body');
+  if(!body) return;
+  body.innerHTML = '<div style="margin-bottom:14px">'+rows+'</div>'
+    +'<div style="border-top:1px solid var(--line);padding-top:12px">'
+    +'<h3 style="font-size:12.5px;margin-bottom:8px">➕ إضافة شركة جديدة</h3>'
+    +'<div class="field" style="margin-bottom:7px"><label>اسم الشركة *</label><input id="nc-name" type="text" placeholder="اسم المنشأة"></div>'
+    +'<div class="field" style="margin-bottom:7px"><label>الرقم الضريبي</label><input id="nc-tax" type="text"></div>'
+    +'<div class="field" style="margin-bottom:10px"><label>السجل التجاري</label><input id="nc-cr" type="text"></div>'
+    +'<p style="font-size:10.5px;color:#6b7785;margin-bottom:10px">ستبدأ الشركة الجديدة بسجل إقرارات منفصل تماماً وفارغ عن باقي الشركات.</p>'
+    +'<button class="btn primary" style="width:100%" onclick="addCompanyPrompt()">✓ إنشاء والتبديل إليها</button>'
+    +'</div>';
+  const ov = document.getElementById('company-modal-overlay');
+  if(ov) ov.style.display = 'flex';
+}
+loadCompanies();
 
 function getRecords(){
   try{

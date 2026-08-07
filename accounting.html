@@ -11242,7 +11242,12 @@ const BASE_PERSIST_KEY='acct_sys_v6';
 const ACTIVE_COMPANY_ID=(function(){
   try{
     const qp=new URLSearchParams(location.search).get('company');
-    if(qp)return qp;
+    if(qp){
+      // مزامنة فورية للمؤشر المشترك حتى تتّفق باقي الأنظمة (الحوالات/الإقرار الضريبي)
+      // على نفس الشركة النشطة عند فتح هذا الملف عبر رابط ?company= مباشرة
+      try{localStorage.setItem(ACTIVE_COMPANY_KEY,qp);}catch(e){}
+      return qp;
+    }
   }catch(e){}
   try{
     const stored=localStorage.getItem(ACTIVE_COMPANY_KEY);

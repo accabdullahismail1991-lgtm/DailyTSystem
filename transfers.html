@@ -593,6 +593,7 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
       <div class="pill"><div class="v" id="hdr-debt">0.00</div><div class="l">إجمالي المديونيات</div></div>
       <div class="badge-d" id="hdr-date"></div>
       <div class="lang-btn" id="hdr-user-chip" style="cursor:pointer;" onclick="showTab('users')" title="إدارة المستخدمين"></div>
+      <button class="lang-btn" onclick="renderCompanySwitcher()" title="تبديل بين الشركات أو إضافة شركة جديدة بقاعدة بيانات منفصلة">🏢 الشركة</button>
       <div style="display:flex;gap:4px;"><button class="lang-btn active" id="lang-ar" onclick="setLang('ar')">عربي</button><button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button></div>
     </div>
   </div>
@@ -1058,6 +1059,14 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
 </div><!-- /main -->
 
 <!-- MODALS -->
+<div class="overlay" id="company-modal">
+  <div class="modal">
+    <h3>🏢 إدارة الشركات وتعدد قواعد البيانات</h3>
+    <div id="company-modal-body"></div>
+    <div class="ma"><button class="btn btn-teal" onclick="closeModal('company-modal')">إغلاق</button></div>
+  </div>
+</div>
+
 <div class="overlay" id="sup-modal">
   <div class="modal">
     <h3>إضافة / تعديل مورد</h3>
@@ -1558,7 +1567,101 @@ tbody td{padding:6px 9px;vertical-align:middle;font-size:11px}
 </div>
 
 <script>
-const SK='bat_v5';
+// ═══ MULTI-COMPANY SUPPORT ═══
+// نفس آلية النظام المحاسبي بالضبط: كل شركة تُخزَّن بمفتاح localStorage ومستند
+// Firestore منفصلين تماماً. سجل الشركات ومؤشر "الشركة النشطة" مشتركان مع باقي
+// أنظمة المنصّة (نفس المفاتيح المستخدمة في accounting.html) حتى يبقى اختيار
+// الشركة موحّداً عبر كل الأنظمة على نفس المتصفح.
+const COMPANIES_KEY='acct_companies_v1';
+const ACTIVE_COMPANY_KEY='acct_active_company_v1';
+const BASE_SK='bat_v5';
+const ACTIVE_COMPANY_ID=(function(){
+  try{
+    const qp=new URLSearchParams(location.search).get('company');
+    if(qp){
+      // مزامنة فورية للمؤشر المشترك حتى تتّفق باقي الأنظمة (المحاسبة/الإقرار الضريبي)
+      // على نفس الشركة النشطة عند فتح هذا الملف عبر رابط ?company= مباشرة
+      try{localStorage.setItem(ACTIVE_COMPANY_KEY,qp);}catch(e){}
+      return qp;
+    }
+  }catch(e){}
+  try{
+    const stored=localStorage.getItem(ACTIVE_COMPANY_KEY);
+    if(stored)return stored;
+  }catch(e){}
+  return 'default';
+})();
+const SK=ACTIVE_COMPANY_ID==='default'?BASE_SK:BASE_SK+'_'+ACTIVE_COMPANY_ID;
+const TR_CLOUD_DOC_NAME=ACTIVE_COMPANY_ID==='default'?'transfers':'transfers_'+ACTIVE_COMPANY_ID;
+let companies=[];
+function loadCompanies(){
+  try{
+    const raw=localStorage.getItem(COMPANIES_KEY);
+    companies=raw?JSON.parse(raw):[];
+  }catch(e){companies=[];}
+  let changed=false;
+  if(!companies.some(c=>c.id==='default')){
+    companies.unshift({id:'default',name:(state&&state.company&&state.company.name)||'الشركة الرئيسية',taxNumber:'',crNumber:''});
+    changed=true;
+  }
+  if(!companies.some(c=>c.id===ACTIVE_COMPANY_ID)){
+    companies.push({id:ACTIVE_COMPANY_ID,name:'شركة جديدة',taxNumber:'',crNumber:''});
+    changed=true;
+  }
+  if(changed)persistCompanies();
+}
+function persistCompanies(){
+  try{
+    localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));
+    try{window.CloudSync&&CloudSync.save('acct_companies',companies);}catch(e){}
+  }catch(e){console.error('persistCompanies:',e);}
+}
+function syncActiveCompanyName(){
+  const c=companies.find(c=>c.id===ACTIVE_COMPANY_ID);
+  const nm=state&&state.company&&state.company.name;
+  if(c&&nm&&c.name!==nm){c.name=nm;persistCompanies();}
+}
+function switchCompany(id){
+  try{window.CloudSync&&CloudSync.flush&&CloudSync.flush(TR_CLOUD_DOC_NAME);}catch(e){}
+  try{localStorage.setItem(ACTIVE_COMPANY_KEY,id);}catch(e){}
+  const url=new URL(location.href);
+  url.searchParams.set('company',id);
+  location.href=url.pathname+url.search;
+}
+function addCompanyPrompt(){
+  const nameEl=document.getElementById('nc-name');
+  const name=nameEl?nameEl.value.trim():'';
+  if(!name){showToast('يرجى إدخال اسم الشركة');return;}
+  const id='c'+Date.now();
+  const taxEl=document.getElementById('nc-tax'),crEl=document.getElementById('nc-cr');
+  companies.push({id,name,taxNumber:taxEl?taxEl.value.trim():'',crNumber:crEl?crEl.value.trim():''});
+  persistCompanies();
+  switchCompany(id);
+}
+function renderCompanySwitcher(){
+  const rows=companies.map(function(c){
+    const active=c.id===ACTIVE_COMPANY_ID;
+    const dispName=active?((state&&state.company&&state.company.name)||c.name):c.name;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 11px;border:1px solid '+(active?'#d4a843':'#e2e8f0')+';border-radius:8px;margin-bottom:7px;background:'+(active?'rgba(212,168,67,.1)':'#fff')+'">'
+      +'<div><div style="font-weight:700;font-size:12.5px">'+(active?'✅ ':'')+dispName+'</div>'
+      +(c.taxNumber?'<div style="font-size:10.5px;color:#94a3b8">ر.ض: '+c.taxNumber+'</div>':'')+'</div>'
+      +(active?'':'<button class="btn btn-gold" style="padding:5px 12px;font-size:11px" onclick="switchCompany(\''+c.id+'\')">تبديل ↗️</button>')
+      +'</div>';
+  }).join('');
+  const body=document.getElementById('company-modal-body');
+  if(!body)return;
+  body.innerHTML='<div style="margin-bottom:14px">'+rows+'</div>'
+    +'<div style="border-top:1px solid #e2e8f0;padding-top:12px">'
+    +'<h3 style="font-size:12.5px;margin-bottom:8px">➕ إضافة شركة جديدة</h3>'
+    +'<div class="mf"><label>اسم الشركة *</label><input id="nc-name" type="text" placeholder="اسم المنشأة"></div>'
+    +'<div class="mf"><label>الرقم الضريبي</label><input id="nc-tax" type="text"></div>'
+    +'<div class="mf"><label>السجل التجاري</label><input id="nc-cr" type="text"></div>'
+    +'<p style="font-size:10.5px;color:#94a3b8;margin:6px 0 10px">ستبدأ الشركة الجديدة بقاعدة بيانات منفصلة تماماً وفارغة عن باقي الشركات.</p>'
+    +'<button class="btn btn-gold" style="width:100%" onclick="addCompanyPrompt()">✓ إنشاء والتبديل إليها</button>'
+    +'</div>';
+  openModal('company-modal');
+}
+
 const BANKS=['بنك الراجحي','البنك الأهلي','بنك البلاد','بنك الإنماء','بنك الانماء','مدفوعات سداد','البنك الاهلي','بنك الرياض','البنك العربي','بنك ساب','بنك الجزيرة','البنك السعودي الفرنسي'];
 const COLORS=['#d4a843','#2ec4b6','#3b82f6','#f59e0b','#22c55e','#f43f5e','#8b5cf6','#ec4899'];
 const PRESETS=[
@@ -2793,8 +2896,20 @@ function fmtDateAr(d){if(!d)return'';try{return new Date(d+'T00:00:00').toLocale
 function bankOpts(sel){return BANKS.map(b=>`<option${b===sel?' selected':''}>${b}</option>`).join('');}
 function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 let localDirtySinceBoot=false;
-function persist(){localDirtySinceBoot=true;try{localStorage.setItem(SK,JSON.stringify(state));}catch(e){console.warn(e);}try{window.CloudSync&&CloudSync.save('transfers',state);}catch(e){}}
-window.addEventListener('beforeunload',()=>{try{window.CloudSync&&CloudSync.flush&&CloudSync.flush('transfers');}catch(e){}});
+let __lastCloudSyncJson=null;
+function persist(){
+  localDirtySinceBoot=true;
+  const json=JSON.stringify(state);
+  try{localStorage.setItem(SK,json);}catch(e){console.warn(e);}
+  // إرسال إلى Firestore فقط عند تغيّر البيانات فعلياً منذ آخر إرسال — لتفادي إرسال
+  // نفس البيانات بشكل متكرر وإنهاك طابور الكتابة في Firestore خلال جلسة طويلة
+  if(json!==__lastCloudSyncJson){
+    __lastCloudSyncJson=json;
+    try{window.CloudSync&&CloudSync.save(TR_CLOUD_DOC_NAME,state);}catch(e){}
+  }
+  syncActiveCompanyName();
+}
+window.addEventListener('beforeunload',()=>{try{window.CloudSync&&CloudSync.flush&&CloudSync.flush(TR_CLOUD_DOC_NAME);}catch(e){}});
 function load(){try{const r=localStorage.getItem(SK);return r?JSON.parse(r):null;}catch(e){return null;}}
 function bankBg(b){const m={'بنك الراجحي':'rgba(0,100,0,.15)','البنك الأهلي':'rgba(0,60,120,.15)','بنك البلاد':'rgba(120,0,0,.15)','بنك الإنماء':'rgba(0,100,120,.15)','بنك الرياض':'rgba(180,140,0,.15)'};return m[b]||'rgba(100,100,100,.12)';}
 function bankEmoji(b){const m={'بنك الراجحي':'🟩','البنك الأهلي':'🟦','بنك البلاد':'🟥','بنك الإنماء':'🔷','بنك الرياض':'🟡'};return m[b]||'🏦';}
@@ -3558,6 +3673,7 @@ function renderAppFromState(){
 
 function init(){
   initState();
+  loadCompanies();
   renderAppFromState();
   document.getElementById('set-bank-name').addEventListener('change',function(){
     document.getElementById('set-bank-other').style.display=this.value==='other'?'block':'none';
@@ -3570,7 +3686,7 @@ function init(){
 
 function initCloudSync(){
   if(!window.CloudSync)return;
-  CloudSync.load('transfers').then(remote=>{
+  CloudSync.load(TR_CLOUD_DOC_NAME).then(remote=>{
     if(localDirtySinceBoot){
       // بيانات محلية جديدة تغيّرت أثناء انتظار السحابة — لا تستبدلها، هي بالفعل قيد المزامنة عبر persist()
     }else if(remote){
@@ -3585,8 +3701,21 @@ function initCloudSync(){
     }else{
       persist();
     }
-    CloudSync.onChange('transfers',()=>{
+    CloudSync.onChange(TR_CLOUD_DOC_NAME,()=>{
       CloudSync.showUpdateBanner(()=>location.reload());
+    });
+  });
+  CloudSync.load('acct_companies').then(remote=>{
+    if(Array.isArray(remote)&&remote.length){
+      const localOnly=companies.filter(c=>!remote.some(r=>r.id===c.id));
+      companies=remote.concat(localOnly);
+      try{localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));}catch(e){}
+    }
+    CloudSync.onChange('acct_companies',remote2=>{
+      if(Array.isArray(remote2)){
+        companies=remote2;
+        try{localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));}catch(e){}
+      }
     });
   });
 }
