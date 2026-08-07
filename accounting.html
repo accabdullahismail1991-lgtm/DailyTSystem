@@ -10098,6 +10098,7 @@ function printA4(html, landscape){
     .co{font-size:10px;color:#64748b}
     .no-print{display:none!important}
     tfoot td{background:#f1f5f9;font-weight:700}
+    .a4-print-footer{margin-top:16px;padding-top:6px;border-top:1px solid #e2e8f0;font-size:8.5px;color:#94a3b8;text-align:center}
   </style>
   <div class="hdr">
     <div>
@@ -10109,7 +10110,8 @@ function printA4(html, landscape){
       <div>السنة المالية: ${CY}</div>
     </div>
   </div>
-  ${html}`;
+  ${html}
+  <div class="a4-print-footer">تمت الطباعة بتاريخ ووقت: ${nowStr()}</div>`;
   frame.style.display='block';
   window.print();
   setTimeout(function(){frame.style.display='none';},1000);
