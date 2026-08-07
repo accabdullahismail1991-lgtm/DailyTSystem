@@ -11323,13 +11323,21 @@ function buildPersistData(){
 }
 let localDirtySinceBoot=false;
 let __bootDataSnapshot=null;
+let __lastCloudSyncJson=null;
 function persist(){
   try{
     const data=buildPersistData();
     const json=JSON.stringify(data);
     localStorage.setItem(PERSIST_KEY,json);
     if(__bootDataSnapshot!==null&&json!==__bootDataSnapshot)localDirtySinceBoot=true;
-    try{window.CloudSync&&CloudSync.save(CLOUD_DOC_NAME,data);}catch(e){}
+    // إرسال إلى Firestore فقط إذا تغيّرت البيانات فعلياً منذ آخر إرسال — تجنّباً لإرسال
+    // نفس البيانات كل 3 ثوانٍ إلى ما لا نهاية طالما التبويب مفتوح (وهو ما كان يُراكم كتابات
+    // في طابور Firestore حتى رسالة "Write stream exhausted maximum allowed queued writes"
+    // عند أي تعثّر مؤقت بالشبكة أثناء جلسة طويلة)
+    if(json!==__lastCloudSyncJson){
+      __lastCloudSyncJson=json;
+      try{window.CloudSync&&CloudSync.save(CLOUD_DOC_NAME,data);}catch(e){}
+    }
     syncActiveCompanyName();
   }catch(e){console.error('persist:',e);}
 }
@@ -11464,7 +11472,9 @@ function initCloudSync(){
       // بيانات محلية جديدة تغيّرت أثناء انتظار السحابة — لا تستبدلها، هي بالفعل قيد المزامنة عبر persist()
     }else if(remote){
       applyPersistedData(remote);
-      try{localStorage.setItem(PERSIST_KEY,JSON.stringify(buildPersistData()));}catch(e){}
+      const mergedJson=JSON.stringify(buildPersistData());
+      try{localStorage.setItem(PERSIST_KEY,mergedJson);}catch(e){}
+      __lastCloudSyncJson=mergedJson;
       renderAll();
     }else{
       persist();
