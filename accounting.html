@@ -1455,10 +1455,14 @@ tbody tr:hover{background:var(--g50)}
 
 <div class="card">
  <div class="chd"><div class="ct"><div class="ti">1️⃣</div>استيراد / مزامنة دليل الحسابات</div></div>
- <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+ <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
   <input type="file" id="coa-file-input" accept=".xlsx,.xls,.pdf" onchange="handleCOAFile(this)" style="font-size:11px">
-  <button class="btn bp bsm" onclick="commitCOAImport()">✓ استيراد الحسابات المفقودة</button>
+  <button class="btn bp bsm" onclick="commitCOAImport()">✓ تنفيذ الاستيراد</button>
  </div>
+ <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;color:var(--g6);margin-bottom:10px">
+  <input type="checkbox" id="coa-replace-mode" onchange="renderCOAPreview()" style="width:15px;height:15px">
+  🔄 حذف/استبدال الحسابات غير الموجودة بالملف المستورد (فقط إن لم تكن عليها أي قيود أو حسابات فرعية)
+ </label>
  <div id="coa-import-preview"></div>
 </div>
 
@@ -7967,9 +7971,16 @@ function inferCOARootType(name){
 }
 // يُنشئ الحسابات المفقودة فقط (لا يمس الموجود) محافظاً على التسلسل الهرمي عبر مطابقة بادئة الرمز،
 // بمعزل عن قاعدة "طول زوجي" الخاصة بإدخال الحسابات يدوياً في هذا النظام — لأن ترقيم النظام المصدر مختلف
-function importCOARows(rows){
+// opts.replaceMode: يحذف أيضاً أي حساب موجود بنظامنا حالياً وغير موجود بالملف المستورد، بشرط
+// ألا يكون عليه أي حركات (نفس شرط delAcc() تماماً: لا قيود مرتبطة به ولا حسابات فرعية تتبعه) —
+// يُستخدم لمزامنة الدليل بالكامل مع المصدر الخارجي، لا فقط إضافة الناقص منه.
+// opts.dryRun: يحسب النتيجة كاملة (بما فيها ما سيُحذف) دون أي تعديل فعلي على البيانات — للمعاينة.
+function importCOARows(rows,opts){
+  opts=opts||{};
+  const replaceMode=!!opts.replaceMode,dryRun=!!opts.dryRun;
   const sorted=rows.slice().sort(function(a,b){return a.code.length-b.code.length||a.code.localeCompare(b.code);});
   let created=0,skipped=0;
+  const createdList=[];
   sorted.forEach(function(r){
     if(accounts.find(function(a){return a.code===r.code;})){skipped++;return;}
     let parent=null,bestLen=0;
@@ -7977,11 +7988,35 @@ function importCOARows(rows){
       if(r.code!==a.code&&r.code.indexOf(a.code)===0&&a.code.length>bestLen){parent=a;bestLen=a.code.length;}
     });
     const type=parent?parent.type:inferCOARootType(r.name);
-    accounts.push({id:nxtAccId++,code:r.code,name:r.name,type:type,open:0,par:parent?parent.id:null,cfActivity:null});
+    if(!dryRun)accounts.push({id:nxtAccId++,code:r.code,name:r.name,type:type,open:0,par:parent?parent.id:null,cfActivity:null});
     created++;
+    createdList.push({code:r.code,name:r.name});
   });
-  accounts.sort(function(a,b){return a.code.localeCompare(b.code);});
-  return {created:created,skipped:skipped,total:rows.length};
+  if(!dryRun)accounts.sort(function(a,b){return a.code.localeCompare(b.code);});
+
+  let removed=0,keptBlocked=0;
+  const removedList=[],keptList=[];
+  if(replaceMode){
+    const importedCodes={};
+    rows.forEach(function(r){importedCodes[r.code]=true;});
+    // الأعمق أولاً حتى تُحسب "له فروع" بشكل صحيح بعد حذف الفروع التي حُذفت بالفعل بهذا التمرير
+    const toConsider=accounts.filter(function(a){return !importedCodes[a.code];})
+      .sort(function(a,b){return b.code.length-a.code.length;});
+    toConsider.forEach(function(a){
+      const hasMovements=entries.some(function(e){return e.lines.some(function(l){return l.accId===a.id;});});
+      const hasChildren=accounts.some(function(x){return x.par===a.id;});
+      if(hasMovements||hasChildren){
+        keptBlocked++;
+        keptList.push({code:a.code,name:a.name,reason:hasMovements?'عليه قيود':'له حسابات فرعية'});
+        return;
+      }
+      if(!dryRun)accounts=accounts.filter(function(x){return x.id!==a.id;});
+      removed++;
+      removedList.push({code:a.code,name:a.name});
+    });
+  }
+  return {created:created,skipped:skipped,total:rows.length,createdList:createdList,
+    removed:removed,keptBlocked:keptBlocked,removedList:removedList,keptList:keptList};
 }
 
 // ── كشف حركة مركز التكلفة: استخراج {ccCode, ccName, entries:[{accCode,accName,date,doc,desc,debit,credit}]} ──
@@ -8161,19 +8196,55 @@ async function handleCOAFile(input){
     }
     if(!rows.length){showAlert('لم يتم العثور على أي حسابات قابلة للقراءة في الملف','err');if(prev)prev.innerHTML='';return;}
     __coaPendingRows=rows;
-    if(prev)prev.innerHTML='<div class="empty" style="padding:12px;text-align:right">✅ تم العثور على <strong>'+rows.length+'</strong> حساب في الملف.<br><span style="font-size:11px;color:var(--g5)">'
-      +rows.slice(0,10).map(function(r){return r.code+' — '+r.name;}).join('<br>')+(rows.length>10?'<br>...':'')+'</span></div>';
+    renderCOAPreview();
   }catch(e){console.error(e);showAlert('تعذّرت قراءة الملف: '+e.message,'err');if(prev)prev.innerHTML='';}
+}
+function renderCOAPreview(){
+  const prev=document.getElementById('coa-import-preview');
+  if(!prev||!__coaPendingRows)return;
+  const replaceMode=(document.getElementById('coa-replace-mode')||{}).checked;
+  const res=importCOARows(__coaPendingRows,{replaceMode:replaceMode,dryRun:true});
+  let html='<div class="sg">'
+    +'<div class="sc"><div class="sl">حسابات بالملف</div><div class="sv">'+res.total+'</div></div>'
+    +'<div class="sc"><div class="sl">سيُنشأ (جديد)</div><div class="sv" style="color:var(--gn)">'+res.created+'</div></div>'
+    +'<div class="sc"><div class="sl">موجود مسبقاً (تخطي)</div><div class="sv">'+res.skipped+'</div></div>';
+  if(replaceMode){
+    html+='<div class="sc"><div class="sl">سيُحذف (غير موجود بالملف وبلا حركات)</div><div class="sv" style="color:var(--rd)">'+res.removed+'</div></div>'
+      +'<div class="sc"><div class="sl">لن يُحذف (عليه حركات/فروع)</div><div class="sv" style="color:var(--am)">'+res.keptBlocked+'</div></div>';
+  }
+  html+='</div>';
+  if(replaceMode&&res.removed){
+    html+='<div class="empty" style="padding:10px;text-align:right;border:1px solid var(--rp);background:var(--rp);border-radius:var(--r);margin-bottom:10px">'
+      +'⚠️ سيتم حذف الحسابات التالية نهائياً لعدم وجودها بالملف المستورد وعدم وجود أي حركات عليها:<br>'
+      +'<span style="font-size:11px">'+res.removedList.map(function(r){return r.code+' — '+r.name;}).join('<br>')+'</span></div>';
+  }
+  if(replaceMode&&res.keptBlocked){
+    html+='<div class="empty" style="padding:10px;text-align:right;border:1px solid var(--ap);background:var(--ap);border-radius:var(--r);margin-bottom:10px">'
+      +'ℹ️ الحسابات التالية غير موجودة بالملف لكن لن تُحذف لوجود حركات أو فروع عليها (احذفها يدوياً إن رغبت بعد مراجعتها):<br>'
+      +'<span style="font-size:11px">'+res.keptList.map(function(r){return r.code+' — '+r.name+' ('+r.reason+')';}).join('<br>')+'</span></div>';
+  }
+  if(res.createdList.length){
+    html+='<div class="empty" style="padding:10px;text-align:right">✅ حسابات جديدة ستُنشأ:<br><span style="font-size:11px;color:var(--g5)">'
+      +res.createdList.slice(0,10).map(function(r){return r.code+' — '+r.name;}).join('<br>')+(res.createdList.length>10?'<br>...':'')+'</span></div>';
+  }
+  prev.innerHTML=html;
 }
 function commitCOAImport(){
   if(!can('edit')){showAlert('⛔ لا تملك صلاحية الإضافة','err');return;}
   if(!__coaPendingRows||!__coaPendingRows.length){showAlert('يرجى اختيار ملف دليل الحسابات أولاً','err');return;}
-  const res=importCOARows(__coaPendingRows);
+  const replaceMode=(document.getElementById('coa-replace-mode')||{}).checked;
+  if(replaceMode){
+    const preview=importCOARows(__coaPendingRows,{replaceMode:true,dryRun:true});
+    if(preview.removed&&!confirm('سيتم حذف '+preview.removed+' حساباً نهائياً لعدم وجودها بالملف المستورد (تم التأكد من عدم وجود أي حركات عليها). متابعة؟'))return;
+  }
+  const res=importCOARows(__coaPendingRows,{replaceMode:replaceMode});
   __coaPendingRows=null;
   document.getElementById('coa-import-preview').innerHTML='';
   document.getElementById('coa-file-input').value='';
   renderAccs();updateBadges();
-  showAlert('تم استيراد دليل الحسابات: '+res.created+' حساب جديد، '+res.skipped+' موجود مسبقاً ✓');
+  let msg='تم استيراد دليل الحسابات: '+res.created+' حساب جديد، '+res.skipped+' موجود مسبقاً';
+  if(replaceMode)msg+='، '+res.removed+' تم حذفه'+(res.keptBlocked?'، '+res.keptBlocked+' تعذّر حذفه (عليه حركات/فروع)':'');
+  showAlert(msg+' ✓');
 }
 
 // ── واجهة الاستخدام: رفع ومطابقة كشف حركة مركز تكلفة ──
