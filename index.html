@@ -471,6 +471,16 @@ function migrateShellUsers(){
       changed=true;
     }
   });
+  // ترقية صلاحيات صفحات النظام المحاسبي: أي مستخدم مدير له قائمة صفحات مقيَّدة (وليست
+  // "الكل" — والتي تُخزَّن null) محفوظة من قبل إضافة صفحة جديدة (مثال: ccimport) لن تظهر
+  // له تلقائياً رغم كونه مديراً — امنح المدراء تحديداً كل صفحة جديدة أُضيفت للنظام مستقبلاً،
+  // حفاظاً على تناسق ما كان "غير مقيَّد" فعلياً معهم قبل ظهور تلك الصفحة أصلاً
+  shellUsers.forEach(u=>{
+    if(u.admin&&Array.isArray(u.acctPages)){
+      const missing=ACCT_PAGES.map(p=>p[0]).filter(id=>!u.acctPages.includes(id));
+      if(missing.length){u.acctPages=[...u.acctPages,...missing];changed=true;}
+    }
+  });
   return changed;
 }
 function loadShellUsers(){
