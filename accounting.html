@@ -597,14 +597,6 @@ tbody tr:hover{background:var(--g50)}
  </div>
 </div>
 
-<!-- ─── التصدير ─── -->
-<div class="sb-grp">
- <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>📤 التصدير</span><span class="sb-arrow">▾</span></div>
- <div class="sb-grp-body">
-  <button class="nb" onclick="SS('exp',this)"><span class="nb-ic">📤</span><span class="nb-txt">مركز التصدير</span></button>
- </div>
-</div>
-
 <!-- ─── إدارة النظام ─── -->
 <div class="sb-grp">
  <div class="sb-lbl sb-toggle" onclick="sbToggle(this)"><span>🔧 إدارة النظام</span><span class="sb-arrow">▾</span></div>
@@ -1034,31 +1026,6 @@ tbody tr:hover{background:var(--g50)}
   <button class="tab" onclick="switchFS('eq',this)">💼 حقوق الملكية</button>
  </div>
  <div id="fs-body"></div>
-</div>
-</div>
-
-<!-- EXPORT -->
-<div id="sec-exp" class="sec">
-<div class="card"><div class="chd"><div class="ct"><div class="ti">📤</div>تصدير التقارير</div></div>
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(195px,1fr));gap:12px">
- <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">⚖️</div><h3 style="font-size:12.5px;margin-bottom:4px">ميزان المراجعة</h3><p style="font-size:11px;color:var(--g5);margin-bottom:10px">مع الأرصدة الافتتاحية والختامية</p><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="expTrXL()">📊 Excel</button><button class="btn bo bsm" onclick="expTrPDF()">📄 PDF</button></div></div>
- <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">📖</div><h3 style="font-size:12.5px;margin-bottom:4px">كشف حساب</h3>
-  <div class="asw" style="margin-bottom:8px"><input id="ex-s" type="text" placeholder="🔍 ابحث..." oninput="SAP('ex-s','ex-p',selExpAcc)" onclick="SAP('ex-s','ex-p',selExpAcc)" autocomplete="off" style="font-size:11px"><div class="asp" id="ex-p"></div><input type="hidden" id="ex-id"></div>
-  <div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="expLgXL()">📊 Excel</button><button class="btn bo bsm" onclick="expLgPDF()">📄 PDF</button></div>
- </div>
- <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">📝</div><h3 style="font-size:12.5px;margin-bottom:4px">سجل القيود</h3><p style="font-size:11px;color:var(--g5);margin-bottom:10px">جميع القيود اليومية</p><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="expJrnXL()">📊 Excel</button><button class="btn bo bsm" onclick="expJrnPDF()">📄 PDF</button></div></div>
- <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">📋</div><h3 style="font-size:12.5px;margin-bottom:4px">دليل الحسابات</h3><p style="font-size:11px;color:var(--g5);margin-bottom:10px">شجرة الحسابات والأرصدة</p><div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="expAccXL()">📊 Excel</button><button class="btn bo bsm" onclick="expAccPDF()">📄 PDF</button></div></div>
- <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">📊</div><h3 style="font-size:12.5px;margin-bottom:4px">القوائم المالية</h3><p style="font-size:11px;color:var(--g5);margin-bottom:10px">قائمة الدخل والميزانية</p><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-   <input id="exp-fs-from" type="date" style="font-size:11px;padding:5px 9px;width:130px">
-   <input id="exp-fs-to" type="date" style="font-size:11px;padding:5px 9px;width:130px">
-   <button class="btn bg bsm" onclick="expFSXL(document.getElementById('exp-fs-from').value,document.getElementById('exp-fs-to').value)">📊 Excel</button>
-   <button class="btn bo bsm" onclick="expFSPDF(document.getElementById('exp-fs-from').value,document.getElementById('exp-fs-to').value)">📄 PDF</button>
-  </div></div>
- <div class="card" style="margin:0"><div style="font-size:20px;margin-bottom:7px">👥</div><h3 style="font-size:12.5px;margin-bottom:4px">التقارير التحليلية</h3>
-  <select id="ex-sub-ty" style="margin-bottom:8px;font-size:11px"><option value="customer">عملاء</option><option value="vendor">موردون</option><option value="employee">موظفون</option><option value="advance">عهد وسلف</option></select>
-  <div style="display:flex;gap:6px"><button class="btn bg bsm" onclick="expSubXLt()">📊</button><button class="btn bo bsm" onclick="expSubPDFt()">📄</button></div>
- </div>
-</div>
 </div>
 </div>
 
@@ -2781,8 +2748,6 @@ function showSubDetail(subId){
 }
 function expSubXL(){ expSubTypeXL(subType); }
 function expSubPDF(){ expSubTypePDF(subType); }
-function expSubXLt(){ expSubTypeXL(document.getElementById("ex-sub-ty").value); }
-function expSubPDFt(){ expSubTypePDF(document.getElementById("ex-sub-ty").value); }
 
 // ═══════════════════════════════════════════════════════
 // ENTRIES
@@ -3219,7 +3184,6 @@ const PGS={
   lg:["الأستاذ العام","كشف حركة الحسابات"],
   tr:["ميزان المراجعة","عرض الأرصدة بأكثر من طريقة مع فلتر التواريخ"],
   fs:["القوائم المالية","قائمة الدخل والميزانية وحقوق الملكية"],
-  exp:["تصدير التقارير","Excel وPDF بدعم العربية الكامل"],
   yr:["إقفال السنة المالية","إقفال وافتتاح السنة الجديدة"],
   vch:["سندات القبض والصرف","تسجيل وترحيل سندات القبض والصرف"],
   ast:["الأصول الثابتة والإهلاك","إدارة الأصول وجداول الإهلاك"],
@@ -3265,7 +3229,6 @@ const PAGE_GROUP={
   ast:'🏭 الأصول والإيجارات والعهد',rent:'🏭 الأصول والإيجارات والعهد',cust:'🏭 الأصول والإيجارات والعهد',
   rpt:'📊 التقارير',kpi:'📊 التقارير',lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',taxrpt:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',stkrep:'📊 التقارير',whrpt:'📊 التقارير',depsched:'📊 التقارير',
   audit:'🔧 إدارة النظام',
-  exp:'📤 التصدير',
   notifs:'🔧 إدارة النظام',yr:'🔧 إدارة النظام',bk:'🔧 إدارة النظام',int:'🔧 إدارة النظام',
 };
 
@@ -3730,7 +3693,6 @@ function pickAcc(inId,popId,hidId,id,lbl){
   document.getElementById(popId).classList.remove("open");
 }
 function selLgAcc(id,lb){pickAcc("lg-s","lg-p","lg-id",id,lb);renderLg();}
-function selExpAcc(id,lb){pickAcc("ex-s","ex-p","ex-id",id,lb);}
 function popParSel(selId,excId){
   const sel=document.getElementById(selId);if(!sel)return;
   sel.innerHTML='<option value="">— جذر —</option>'+accounts.filter(a=>a.id!==excId).map(a=>`<option value="${a.id}">${"—".repeat(getLevel(a))} ${a.code} ${a.name}</option>`).join("");
@@ -4352,8 +4314,6 @@ function expSingleLgPDF(id){
     columnStyles:{3:{halign:"left"},4:{halign:"left"},5:{halign:"left"}}});
   doc.save(`acct_${d.acc.code}_${CY}_ar.pdf`);showAlert("تم التصدير PDF");
 }
-function expLgXL(){const id=parseInt(document.getElementById("ex-id").value);if(!id){showAlert("يرجى اختيار حساب","err");return;}expSingleLgXL(id);}
-function expLgPDF(){const id=parseInt(document.getElementById("ex-id").value);if(!id){showAlert("يرجى اختيار حساب","err");return;}expSingleLgPDF(id);}
 
 function mkWB(sheetName,data,cols){const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(data);if(cols)ws["!cols"]=cols;XLSX.utils.book_append_sheet(wb,ws,sheetName);return wb;}
 
