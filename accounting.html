@@ -9,6 +9,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -612,6 +613,7 @@ tbody tr:hover{background:var(--g50)}
   <button class="nb" onclick="SS('bk',this)"><span class="nb-ic">💾</span><span class="nb-txt">النسخ الاحتياطي وتحديث النظام</span></button>
   <button class="nb" onclick="SS('int',this)"><span class="nb-ic">🔗</span><span class="nb-txt">الربط الخارجي</span></button>
   <button class="nb" onclick="SS('audit',this)"><span class="nb-ic">🩺</span><span class="nb-txt">فحص وتدقيق البيانات</span></button>
+  <button class="nb" onclick="SS('ccimport',this)"><span class="nb-ic">🏢📥</span><span class="nb-txt">استيراد بيانات خارجية</span></button>
  </div>
 </div>
 
@@ -1439,6 +1441,38 @@ tbody tr:hover{background:var(--g50)}
  </div>
  <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px" id="cc-summary"></div>
  <div id="cc-tb"></div>
+</div>
+</div>
+
+<!-- ══ EXTERNAL IMPORT / RECONCILIATION SECTION ══ -->
+<div id="sec-ccimport" class="sec">
+<p style="font-size:11.5px;color:var(--g5);margin:-2px 0 14px;line-height:1.7">
+  استيراد بيانات من أنظمة محاسبية خارجية (دليل حسابات وكشوفات حركة مراكز التكلفة) وتطبيقها على
+  <strong>الشركة النشطة حالياً</strong>. كشوفات مراكز التكلفة لا تُنشئ أي قيود جديدة — فقط تُطابق حركاتها مع
+  قيود موجودة فعلاً بنفس الحساب والتاريخ والمبلغ، وتُلحق بها مركز التكلفة والرقم المرجعي من النظام المصدر.
+  عند رفع نسخة محدَّثة لاحقاً، يُعاد فحص الحركات غير المطابقة فقط دون تكرار ما سبق ترحيله.
+</p>
+
+<div class="card">
+ <div class="chd"><div class="ct"><div class="ti">1️⃣</div>استيراد / مزامنة دليل الحسابات</div></div>
+ <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+  <input type="file" id="coa-file-input" accept=".xlsx,.xls,.pdf" onchange="handleCOAFile(this)" style="font-size:11px">
+  <button class="btn bp bsm" onclick="commitCOAImport()">✓ استيراد الحسابات المفقودة</button>
+ </div>
+ <div id="coa-import-preview"></div>
+</div>
+
+<div class="card">
+ <div class="chd"><div class="ct"><div class="ti">2️⃣</div>استيراد ومطابقة كشف حركة مركز تكلفة</div></div>
+ <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+  <input type="file" id="cc-file-input" accept=".xlsx,.xls,.pdf" onchange="handleCCStatementFile(this)" style="font-size:11px">
+ </div>
+ <div id="cc-import-preview"></div>
+</div>
+
+<div class="card">
+ <div class="chd"><div class="ct"><div class="ti">📋</div>سجل المطابقات</div></div>
+ <div id="cc-import-log"></div>
 </div>
 </div>
 
@@ -2399,6 +2433,8 @@ function renderThemeSwatches(activeId){
 
 let costCenters=[], nxtCCId=1;
 let projects=[], nxtProjId=1;
+// سجل استيراد/مطابقة كشوفات مراكز التكلفة الخارجية — يمنع إعادة معالجة نفس الحركة عند رفع نسخة محدَّثة من نفس الملف
+let ccImportLog=[], nxtCCLogId=1;
 
 
 function ccProjMiniHtml(l,updFnName){
@@ -3230,6 +3266,7 @@ const PGS={
   rpt:["مركز التقارير","جميع تقارير النظام مجمّعة حسب القسم"],
   audit:["فحص وتدقيق البيانات","اكتشاف القيود غير المتوازنة وفوارق ميزان المراجعة"],
   kpi:["مؤشرات الأداء والتوجهات العامة","نظرة شاملة على أداء كل موديول مع الرسوم البيانية"],
+  ccimport:["استيراد بيانات خارجية","استيراد دليل حسابات ومطابقة كشوفات مراكز التكلفة من أنظمة أخرى"],
 };
 
 const PAGE_GROUP={
@@ -3240,7 +3277,7 @@ const PAGE_GROUP={
   wh:'📦 إدارة أنظمة المخزون',items:'📦 إدارة أنظمة المخزون',gr:'📦 إدارة أنظمة المخزون',stkout:'📦 إدارة أنظمة المخزون',stkadj:'📦 إدارة أنظمة المخزون',stkbal:'📦 إدارة أنظمة المخزون',
   ast:'🏭 الأصول والإيجارات والعهد',rent:'🏭 الأصول والإيجارات والعهد',cust:'🏭 الأصول والإيجارات والعهد',
   rpt:'📊 التقارير',kpi:'📊 التقارير',lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',taxrpt:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',stkrep:'📊 التقارير',whrpt:'📊 التقارير',depsched:'📊 التقارير',
-  audit:'🔧 إدارة النظام',
+  audit:'🔧 إدارة النظام',ccimport:'🔧 إدارة النظام',
   notifs:'🔧 إدارة النظام',yr:'🔧 إدارة النظام',bk:'🔧 إدارة النظام',int:'🔧 إدارة النظام',
 };
 
@@ -3578,6 +3615,7 @@ function SS(id,btn){
   if(id==="rpt")  renderRptHub();
   if(id==="audit")renderAudit();
   if(id==="kpi")  renderKpi();
+  if(id==="ccimport")renderCCImportLog();
   if(id==="ent")  {renderEnts();if(!entLines.length)initLines();}
   if(id==="lg")   renderLg();
   if(id==="tr")   {populateTrGroupSelect();populateTrDimSelects();renderTr();}
@@ -7827,6 +7865,399 @@ function deleteCC(id){
   renderCostCenters();showAlert("تم الحذف","warn");
 }
 
+// ════════════════════════════════════════════════════════════════
+// استيراد ومطابقة البيانات الخارجية (دليل حسابات + كشوفات مراكز تكلفة)
+// من أنظمة محاسبية أخرى — يعمل على الشركة النشطة حالياً (نظام تعدد الشركات)
+// بدون أي حاجة لفحص يدوي أو AI عند كل تحديث للملفات: كل التحليل كود ثابت.
+// ════════════════════════════════════════════════════════════════
+
+// ── PDF: استخراج الصفوف كنص، مرتّبة من اليسار لليمين حسب الإحداثيات الفعلية
+// (أدق بكثير من استخراج pdftotext النصي العادي الذي يُعيد ترتيب النص RTL بشكل غير موثوق) ──
+if(window.pdfjsLib){
+  try{pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';}catch(e){}
+}
+async function pdfExtractRows(file){
+  if(!window.pdfjsLib)throw new Error('مكتبة قراءة PDF غير متاحة (تحقق من الاتصال بالإنترنت) — يُفضّل استخدام ملف Excel بدلاً من ذلك');
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const rows=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const content=await page.getTextContent();
+    const byY={};
+    content.items.forEach(function(it){
+      const t=(it.str||'').trim();
+      if(!t)return;
+      const y=Math.round(it.transform[5]/2)*2; // تجميع بتفاوت بسيط لمعالجة فروق طفيفة بالمحاذاة الرأسية
+      if(!byY[y])byY[y]=[];
+      byY[y].push({text:t,x:it.transform[4]});
+    });
+    const ys=Object.keys(byY).map(Number).sort(function(a,b){return b-a;});
+    ys.forEach(function(y){
+      const parts=byY[y].sort(function(a,b){return a.x-b.x;}).map(function(o){return o.text;});
+      rows.push(parts.join(' | '));
+    });
+  }
+  return rows;
+}
+
+// ── تحويل تاريخ إكسل (رقم تسلسلي أو نص DD/MM/YYYY) إلى ISO ──
+function excelDateToISO(v){
+  if(v===null||v===undefined||v==='')return'';
+  if(typeof v==='number'){
+    const d=new Date(Math.round((v-25569)*86400*1000));
+    return d.toISOString().slice(0,10);
+  }
+  const s=String(v).trim();
+  const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m2)return m2[0].slice(0,10);
+  return s;
+}
+
+// ── دليل الحسابات: استخراج الصفوف (رمز + اسم) من Excel أو PDF ──
+function extractCOARowsFromExcelAOA(aoa){
+  let codeCol=-1,nameCol=-1,headerRow=-1;
+  for(let r=0;r<Math.min(aoa.length,20);r++){
+    const row=aoa[r]||[];
+    let c=-1,n=-1;
+    row.forEach(function(cell,i){
+      const s=String(cell||'').trim();
+      if(c===-1&&/(رقم الحساب|Acc\.?\s*Code|Account\s*Code)/i.test(s))c=i;
+      if(n===-1&&/(اسم الحساب|أسم الحساب|Account\s*Name)/i.test(s))n=i;
+    });
+    if(c!==-1&&n!==-1){codeCol=c;nameCol=n;headerRow=r;break;}
+  }
+  if(codeCol===-1){codeCol=0;nameCol=1;headerRow=0;}
+  const rows=[];
+  for(let r=headerRow+1;r<aoa.length;r++){
+    const row=aoa[r]||[];
+    const code=String(row[codeCol]||'').trim();
+    const name=String(row[nameCol]||'').trim();
+    if(!code||!name)continue;
+    if(!/^\d{1,9}$/.test(code))continue;
+    rows.push({code:code,name:name});
+  }
+  return rows;
+}
+function extractCOARowsFromPdfLines(lines){
+  const rows=[];
+  lines.forEach(function(line){
+    if(/Page \d+ of|صفحة|Chart Of Account|دليل الحسابات|Acc\.?\s*Code|رقم الحساب|Account\s*Name|اسم الحساب|أسم الحساب/i.test(line))return;
+    const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
+    let code=null,nameParts=[];
+    parts.forEach(function(p){
+      if(!code&&/^\d{1,9}$/.test(p))code=p;
+      else nameParts.push(p);
+    });
+    if(!code)return;
+    let name=nameParts.join(' ').trim().replace(new RegExp('^'+code+'\\s+'),'').trim();
+    if(!name)return;
+    rows.push({code:code,name:name});
+  });
+  return rows;
+}
+function inferCOARootType(name){
+  if(/اصول|أصول/.test(name))return'asset';
+  if(/خصوم/.test(name))return'liability';
+  if(/حقوق\s*الملكية|ملكية/.test(name))return'equity';
+  if(/ايراد|إيراد/.test(name))return'revenue';
+  return'expense'; // يغطي المصروفات والتكاليف/تكلفة البضاعة المباعة (لا يوجد نوع "تكلفة" مستقل بنظامنا)
+}
+// يُنشئ الحسابات المفقودة فقط (لا يمس الموجود) محافظاً على التسلسل الهرمي عبر مطابقة بادئة الرمز،
+// بمعزل عن قاعدة "طول زوجي" الخاصة بإدخال الحسابات يدوياً في هذا النظام — لأن ترقيم النظام المصدر مختلف
+function importCOARows(rows){
+  const sorted=rows.slice().sort(function(a,b){return a.code.length-b.code.length||a.code.localeCompare(b.code);});
+  let created=0,skipped=0;
+  sorted.forEach(function(r){
+    if(accounts.find(function(a){return a.code===r.code;})){skipped++;return;}
+    let parent=null,bestLen=0;
+    accounts.forEach(function(a){
+      if(r.code!==a.code&&r.code.indexOf(a.code)===0&&a.code.length>bestLen){parent=a;bestLen=a.code.length;}
+    });
+    const type=parent?parent.type:inferCOARootType(r.name);
+    accounts.push({id:nxtAccId++,code:r.code,name:r.name,type:type,open:0,par:parent?parent.id:null,cfActivity:null});
+    created++;
+  });
+  accounts.sort(function(a,b){return a.code.localeCompare(b.code);});
+  return {created:created,skipped:skipped,total:rows.length};
+}
+
+// ── كشف حركة مركز التكلفة: استخراج {ccCode, ccName, entries:[{accCode,accName,date,doc,desc,debit,credit}]} ──
+function extractCCStatementFromExcelAOA(aoa){
+  let ccCode=null,ccName=null;
+  for(let r=0;r<Math.min(aoa.length,10);r++){
+    const row=(aoa[r]||[]).map(function(c){return String(c||'').trim();});
+    if(row.some(function(c){return /Cost Center|مركز التكلفة/.test(c);})){
+      const codeC=row.find(function(c){return /^\d+$/.test(c);});
+      const nameC=row.find(function(c){return c&&!/^\d+$/.test(c)&&!/Cost Center|مركز التكلفة/.test(c);});
+      if(codeC)ccCode=codeC;
+      if(nameC)ccName=nameC;
+    }
+  }
+  let headerRow=-1,col={};
+  for(let r=0;r<Math.min(aoa.length,15);r++){
+    const row=aoa[r]||[];
+    let dateC=-1,docC=-1,descC=-1,drC=-1,crC=-1;
+    row.forEach(function(cell,i){
+      const s=String(cell||'').trim();
+      if(dateC===-1&&/^(Date|التاريخ)$/i.test(s))dateC=i;
+      if(docC===-1&&/^(Document|مستند|مﺴتﻨد)$/i.test(s))docC=i;
+      if(descC===-1&&/^(Descreption|Description|البيان)$/i.test(s))descC=i;
+      if(drC===-1&&/^(Debit|مدين)$/i.test(s))drC=i;
+      if(crC===-1&&/^(Credit|دائن)$/i.test(s))crC=i;
+    });
+    if(dateC!==-1&&drC!==-1&&crC!==-1){headerRow=r;col={date:dateC,doc:docC,desc:descC,dr:drC,cr:crC};break;}
+  }
+  const entries=[];
+  if(headerRow===-1)return{ccCode:ccCode,ccName:ccName,entries:entries};
+  let curAccCode=null,curAccName=null;
+  for(let r=headerRow+1;r<aoa.length;r++){
+    const row=aoa[r]||[];
+    const dateVal=row[col.date];
+    if(!dateVal){
+      const codeCell=row.find(function(c){return /^\d{4,12}$/.test(String(c||'').trim());});
+      if(codeCell){
+        curAccCode=String(codeCell).trim();
+        curAccName=row.map(function(c){return String(c||'').trim();}).filter(function(s){return s&&s!==curAccCode&&!/%$/.test(s);}).join(' ');
+      }
+      continue;
+    }
+    if(!curAccCode)continue;
+    const dateStr=excelDateToISO(dateVal);
+    const debit=parseFloat(row[col.dr])||0;
+    const credit=parseFloat(row[col.cr])||0;
+    if(debit===0&&credit===0)continue;
+    entries.push({
+      accCode:curAccCode,accName:curAccName,date:dateStr,
+      doc:col.doc>-1?String(row[col.doc]||'').trim():'',
+      desc:col.desc>-1?String(row[col.desc]||'').trim():'',
+      debit:debit,credit:credit
+    });
+  }
+  return {ccCode:ccCode,ccName:ccName,entries:entries};
+}
+function parseCCStatementFromPdfLines(lines){
+  let ccCode=null,ccName=null;
+  const entries=[];
+  let curAccCode=null,curAccName=null;
+  const dateRe=/(\d{2}\/\d{2}\/\d{4})/;
+  const numRe=/-?\(?[\d,]+\.\d{2}\)?/g;
+  // نسخة غير عامة (بدون g) للاختبار المنطقي فقط — إعادة استخدام regex عام مع .test() يُراكم
+  // lastIndex بين الاستدعاءات وينتج نتائج متذبذبة خاطئة؛ هذه مرساة بالكامل (^...$) لاختبار قيمة كاملة
+  const numTestRe=/^-?\(?[\d,]+\.\d{2}\)?$/;
+  lines.forEach(function(line){
+    if(/Page \d+ of|^\d{1,2}\/\d{1,2}\/\d{2,4}\s*\d{1,2}:\d{2}/.test(line))return;
+    if(/Cost Center|مركز التكلفة/.test(line)){
+      const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
+      const codePart=parts.find(function(p){return /^\d+$/.test(p);});
+      const namePart=parts.find(function(p){return p&&!/^\d+$/.test(p)&&!/^(Cost Center|مركز التكلفة)$/.test(p);});
+      if(codePart)ccCode=codePart;
+      if(namePart)ccName=namePart;
+      return;
+    }
+    const dateMatch=line.match(dateRe);
+    const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
+    if(!dateMatch){
+      if(/رصيد العام السابق|Balance|Descreption|Document|البيان|مستند|مﺴتﻨد|التاريخ|^Date/i.test(line))return;
+      const codePart=parts.find(function(p){return /^\d{4,12}$/.test(p);});
+      if(codePart){
+        curAccCode=codePart;
+        curAccName=parts.filter(function(p){return p!==codePart&&!/%$/.test(p)&&!numTestRe.test(p);}).join(' ').trim();
+      }
+      return;
+    }
+    if(!curAccCode)return;
+    const nums=(line.match(numRe)||[]).map(function(s){return parseFloat(s.replace(/[(),]/g,''))||0;});
+    if(nums.length<2)return;
+    const credit=nums[nums.length-2];
+    const debit=nums[nums.length-1];
+    const dateToken=dateMatch[1];
+    const docMatch=parts.find(function(p){return /^\d{1,6}$/.test(p);});
+    const desc=parts.filter(function(p){return p!==dateToken&&p!==docMatch&&!numTestRe.test(p);}).join(' ').trim();
+    entries.push({accCode:curAccCode,accName:curAccName,date:excelDateToISO(dateToken),doc:docMatch||'',desc:desc,debit:debit,credit:credit});
+  });
+  return {ccCode:ccCode,ccName:ccName,entries:entries};
+}
+
+// ── محرك المطابقة والترحيل: يطابق كل حركة مع قيد موجود فعلاً بنفس الحساب/التاريخ/المبلغ
+// ويُلحق مركز التكلفة به فقط — لا يُنشئ أي قيد جديد إطلاقاً (كل سطر بالكشف طرف واحد من
+// قيد متوازن، والطرف المقابل غير ظاهر بهذا التقرير، فلا يمكن تكوين قيد كامل منه بأمان) ──
+function ccImportKey(row){
+  const side=row.debit>0?'D':'C';
+  const amt=(row.debit>0?row.debit:row.credit).toFixed(2);
+  return [row.accCode,row.date,side,amt,row.doc||''].join('|');
+}
+function reconcileCCStatement(parsed, sourceLabel, dryRun){
+  sourceLabel=sourceLabel||'استيراد خارجي';
+  if(!parsed.ccCode)return{error:'تعذّر التعرّف على رمز مركز التكلفة في الملف'};
+  let cc=costCenters.find(function(c){return c.code===parsed.ccCode;});
+  const ccIsNew=!cc;
+  if(!cc)cc={id:dryRun?0:nxtCCId++,code:parsed.ccCode,name:parsed.ccName||('مركز '+parsed.ccCode),active:true};
+  if(!dryRun&&ccIsNew)costCenters.push(cc);
+  const results=[];
+  parsed.entries.forEach(function(row){
+    const key=ccImportKey(row);
+    const existing=ccImportLog.find(function(l){return l.key===key;});
+    if(existing&&existing.status==='matched'){
+      results.push(Object.assign({},row,{key:key,status:'skipped',note:'مطابَق ومُرحَّل مسبقاً'}));
+      return;
+    }
+    const acc=accounts.find(function(a){return a.code===row.accCode;});
+    if(!acc){
+      results.push(Object.assign({},row,{key:key,status:'no-account',note:'رمز الحساب '+row.accCode+' غير موجود بدليل الحسابات — استورد دليل الحسابات أولاً'}));
+      return;
+    }
+    const side=row.debit>0?'debit':'credit';
+    const amt=side==='debit'?row.debit:row.credit;
+    const candidates=[];
+    entries.forEach(function(e){
+      if(e.date!==row.date)return;
+      e.lines.forEach(function(l,li){
+        if(l.accId!==acc.id)return;
+        const lAmt=side==='debit'?l.debit:l.credit;
+        if(Math.abs((lAmt||0)-amt)>0.01)return;
+        if(l.costCenterId&&l.costCenterId!==cc.id)return;
+        candidates.push({entry:e,line:l,lineIdx:li});
+      });
+    });
+    let status,entryId=null,lineIdx=null;
+    if(candidates.length===1){status='matched';entryId=candidates[0].entry.id;lineIdx=candidates[0].lineIdx;}
+    else if(candidates.length===0)status='unmatched';
+    else status='ambiguous';
+    if(!dryRun){
+      if(status==='matched'){
+        candidates[0].line.costCenterId=cc.id;
+        candidates[0].line.extRef=row.doc||candidates[0].line.extRef||'';
+        candidates[0].line.extSrc=sourceLabel;
+      }
+      const rec={id:existing?existing.id:nxtCCLogId++,key:key,entryId:entryId,lineIdx:lineIdx,ccId:cc.id,
+        accCode:row.accCode,accName:row.accName,date:row.date,amount:amt,side:side,ref:row.doc,desc:row.desc,
+        status:status,srcLabel:sourceLabel,importedAt:new Date().toISOString()};
+      if(existing)Object.assign(existing,rec);else ccImportLog.push(rec);
+    }
+    results.push(Object.assign({},row,{key:key,status:status,entryId:entryId,candidateCount:candidates.length}));
+  });
+  return {cc:cc,ccIsNew:ccIsNew,results:results};
+}
+
+// ── واجهة الاستخدام: رفع دليل الحسابات ──
+let __coaPendingRows=null;
+async function handleCOAFile(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const prev=document.getElementById('coa-import-preview');
+  try{
+    let rows;
+    if(/\.pdf$/i.test(file.name)){
+      const lines=await pdfExtractRows(file);
+      rows=extractCOARowsFromPdfLines(lines);
+    }else{
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+      rows=extractCOARowsFromExcelAOA(aoa);
+    }
+    if(!rows.length){showAlert('لم يتم العثور على أي حسابات قابلة للقراءة في الملف','err');if(prev)prev.innerHTML='';return;}
+    __coaPendingRows=rows;
+    if(prev)prev.innerHTML='<div class="empty" style="padding:12px;text-align:right">✅ تم العثور على <strong>'+rows.length+'</strong> حساب في الملف.<br><span style="font-size:11px;color:var(--g5)">'
+      +rows.slice(0,10).map(function(r){return r.code+' — '+r.name;}).join('<br>')+(rows.length>10?'<br>...':'')+'</span></div>';
+  }catch(e){console.error(e);showAlert('تعذّرت قراءة الملف: '+e.message,'err');if(prev)prev.innerHTML='';}
+}
+function commitCOAImport(){
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية الإضافة','err');return;}
+  if(!__coaPendingRows||!__coaPendingRows.length){showAlert('يرجى اختيار ملف دليل الحسابات أولاً','err');return;}
+  const res=importCOARows(__coaPendingRows);
+  __coaPendingRows=null;
+  document.getElementById('coa-import-preview').innerHTML='';
+  document.getElementById('coa-file-input').value='';
+  renderAccs();updateBadges();
+  showAlert('تم استيراد دليل الحسابات: '+res.created+' حساب جديد، '+res.skipped+' موجود مسبقاً ✓');
+}
+
+// ── واجهة الاستخدام: رفع ومطابقة كشف حركة مركز تكلفة ──
+let __ccPendingParsed=null, __ccPendingSource='';
+async function handleCCStatementFile(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  try{
+    let parsed;
+    if(/\.pdf$/i.test(file.name)){
+      const lines=await pdfExtractRows(file);
+      parsed=parseCCStatementFromPdfLines(lines);
+    }else{
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+      parsed=extractCCStatementFromExcelAOA(aoa);
+    }
+    if(!parsed.entries.length){showAlert('لم يتم العثور على أي حركات قابلة للقراءة في الملف','err');return;}
+    __ccPendingParsed=parsed;
+    __ccPendingSource=file.name;
+    renderCCPreview(reconcileCCStatement(parsed,file.name,true));
+  }catch(e){console.error(e);showAlert('تعذّرت قراءة الملف: '+e.message,'err');}
+}
+const CC_STATUS_LBL={
+  matched:'<span class="bdg b4">✅ سيُطابَق</span>',
+  unmatched:'<span class="bdg b2">⏳ غير مطابق</span>',
+  ambiguous:'<span class="bdg b3">⚠ متعدد الاحتمالات</span>',
+  'no-account':'<span class="bdg b1">❌ حساب غير موجود</span>',
+  skipped:'<span class="bdg" style="background:var(--g100);color:var(--g5)">↩️ مطابَق مسبقاً</span>'
+};
+function renderCCPreview(res){
+  const box=document.getElementById('cc-import-preview');
+  if(!box)return;
+  if(res.error){box.innerHTML='<div class="empty"><span class="ei">⚠️</span><p>'+res.error+'</p></div>';return;}
+  const counts={};
+  res.results.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
+  const rows=res.results.map(function(r){
+    return '<tr><td>'+fmtDate(r.date)+'</td><td><strong>'+r.accCode+'</strong><br><span style="font-size:10px;color:var(--g5)">'+(r.accName||'')+'</span></td>'
+      +'<td>'+(r.doc||'—')+'</td><td style="max-width:280px;font-size:11px">'+(r.desc||'')+'</td>'
+      +'<td style="direction:ltr;text-align:left">'+fmtDisp(r.debit||0)+'</td><td style="direction:ltr;text-align:left">'+fmtDisp(r.credit||0)+'</td>'
+      +'<td>'+(CC_STATUS_LBL[r.status]||r.status)+(r.note?'<div style="font-size:9.5px;color:var(--g5);margin-top:2px">'+r.note+'</div>':'')+'</td></tr>';
+  }).join('');
+  box.innerHTML=''
+    +'<div class="sg">'
+    +'<div class="sc"><div class="sl">مركز التكلفة</div><div class="sv" style="font-size:13px">'+res.cc.code+' — '+res.cc.name+(res.ccIsNew?' <span class="bdg b3">جديد</span>':'')+'</div></div>'
+    +'<div class="sc"><div class="sl">سيُطابَق الآن</div><div class="sv" style="color:var(--gn)">'+(counts.matched||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">غير مطابق (سيُعاد لاحقاً)</div><div class="sv" style="color:var(--am)">'+(counts.unmatched||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">متعدد الاحتمالات</div><div class="sv" style="color:var(--rd)">'+(counts.ambiguous||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">مطابَق مسبقاً (تخطي)</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
+    +'</div>'
+    +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>الحساب</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="actions" style="margin-top:10px">'
+    +'<button class="btn bp" onclick="commitCCImport()">✅ تأكيد وترحيل المطابقات ('+(counts.matched||0)+')</button>'
+    +'</div>';
+}
+function commitCCImport(){
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية الإضافة','err');return;}
+  if(!__ccPendingParsed){showAlert('لا يوجد ملف مُحمَّل للمعاينة','err');return;}
+  const res=reconcileCCStatement(__ccPendingParsed,__ccPendingSource,false);
+  __ccPendingParsed=null;
+  document.getElementById('cc-import-preview').innerHTML='';
+  document.getElementById('cc-file-input').value='';
+  const matched=res.results.filter(function(r){return r.status==='matched';}).length;
+  renderEnts();updateBadges();renderCCImportLog();
+  showAlert('تم الترحيل: تمت مطابقة وإلحاق مركز التكلفة بـ '+matched+' حركة ✓');
+}
+function renderCCImportLog(){
+  const el=document.getElementById('cc-import-log');
+  if(!el)return;
+  if(!ccImportLog.length){el.innerHTML='<div class="empty"><span class="ei">📋</span><p>لا يوجد سجل استيراد بعد</p></div>';return;}
+  const sorted=ccImportLog.slice().sort(function(a,b){return (b.importedAt||'').localeCompare(a.importedAt||'');});
+  el.innerHTML='<div class="tw"><table><thead><tr><th>تاريخ الحركة</th><th>الحساب</th><th>المبلغ</th><th>المرجع</th><th>مركز التكلفة</th><th>الحالة</th><th>وقت الاستيراد</th></tr></thead><tbody>'
+    +sorted.map(function(l){
+      const cc=costCenters.find(function(c){return c.id===l.ccId;});
+      return '<tr><td>'+fmtDate(l.date)+'</td><td>'+l.accCode+'<br><span style="font-size:10px;color:var(--g5)">'+(l.accName||'')+'</span></td>'
+        +'<td style="direction:ltr;text-align:left">'+fmtDisp(l.amount||0)+'</td><td>'+(l.ref||'—')+'</td>'
+        +'<td>'+(cc?cc.code+' — '+cc.name:'—')+'</td><td>'+(CC_STATUS_LBL[l.status]||l.status)+'</td>'
+        +'<td style="font-size:10.5px;color:var(--g5)">'+(l.importedAt?new Date(l.importedAt).toLocaleString('en-US'):'—')+'</td></tr>';
+    }).join('')
+    +'</tbody></table></div>';
+}
+
 function renderProjects(){
   const el=document.getElementById("proj-tb");if(!el)return;
   const sumEl=document.getElementById("proj-summary");
@@ -11336,7 +11767,7 @@ function renderCompanySwitcher(){
 }
 
 function buildPersistData(){
-  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId};
+  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId};
 }
 let localDirtySinceBoot=false;
 let __bootDataSnapshot=null;
@@ -11412,6 +11843,8 @@ function applyPersistedData(d){
     if(d.nxtProjId!==undefined)nxtProjId=d.nxtProjId;
     if(d.invAdjustments!==undefined)invAdjustments=d.invAdjustments;
     if(d.nxtInvAdjId!==undefined)nxtInvAdjId=d.nxtInvAdjId;
+    if(d.ccImportLog!==undefined)ccImportLog=d.ccImportLog;
+    if(d.nxtCCLogId!==undefined)nxtCCLogId=d.nxtCCLogId;
   }catch(e){console.error('applyPersistedData:',e);}
 }
 setInterval(persist,3000);
