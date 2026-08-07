@@ -623,7 +623,11 @@ tbody tr:hover{background:var(--g50)}
 <!-- ═══ MAIN ═══ -->
 <div class="main">
 <div class="topbar">
- <div><div class="tb-t" id="pg-t">لوحة التحكم</div><div class="tb-s" id="pg-s">نظرة عامة</div></div>
+ <div style="display:flex;align-items:center;gap:8px">
+  <button id="tb-back-btn" onclick="SSBack()" title="العودة للصفحة السابقة" class="no-print"
+    style="display:none;font-size:13px;padding:6px 9px;border-radius:6px;border:1px solid var(--g200);background:#fff;cursor:pointer;color:var(--g6)">⬅️</button>
+  <div><div class="tb-t" id="pg-t">لوحة التحكم</div><div class="tb-s" id="pg-s">نظرة عامة</div></div>
+ </div>
  <div class="tb-search asw no-print">
   <input id="tb-search-inp" type="text" placeholder="🔍 ابحث عن صفحة..." autocomplete="off"
     oninput="tbSearchInput(this.value)" onfocus="tbSearchInput(this.value)">
@@ -2322,6 +2326,22 @@ let entries = [], entLines = [], eeLines = [], ovLines = [];
 // قيود المسودة (isDraft: غير متوازنة أو بسطر واحد فقط) لا يجوز أن تدخل في أي تقرير رسمي
 // (ميزان المراجعة، الأستاذ العام، القوائم المالية...) — فقط القيود المكتملة والمتوازنة فعلياً.
 function postedEntries(){return entries.filter(function(e){return !e.isDraft;});}
+// يمنع تسجيل أي حركة بتاريخ يقع ضمن سنة مالية مُقفلة بالفعل (yearHist)، أو خارج نطاق
+// السنة المالية الحالية إن كانت له تواريخ بداية/نهاية محددة صراحةً بالإعدادات (CFG.fyStart/fyEnd).
+function validateEntryDate(dateStr){
+  if(!dateStr) return {ok:false,msg:'التاريخ مطلوب'};
+  const yr=parseInt(String(dateStr).slice(0,4),10);
+  if(typeof yearHist!=='undefined'&&yearHist.some(function(h){return h.yr===yr;})){
+    return {ok:false,msg:'⛔ لا يمكن تسجيل حركة بتاريخ ضمن سنة مالية مُقفلة ('+yr+') — تم إقفال هذه السنة وترحيل أرصدتها.'};
+  }
+  if(CFG.fyStart&&dateStr<CFG.fyStart){
+    return {ok:false,msg:'⛔ التاريخ ('+dateStr+') قبل بداية السنة المالية الحالية ('+CFG.fyStart+')'};
+  }
+  if(CFG.fyEnd&&dateStr>CFG.fyEnd){
+    return {ok:false,msg:'⛔ التاريخ ('+dateStr+') بعد نهاية السنة المالية الحالية ('+CFG.fyEnd+')'};
+  }
+  return {ok:true};
+}
 let costCenters=[], nxtCCId=1;
 let projects=[], nxtProjId=1;
 
@@ -2599,6 +2619,7 @@ function editSubRecord(id) {
   document.getElementById("sl-acc").value=s.mainAccId;
 }
 function delSubRecord(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(!confirm("حذف هذا السجل التحليلي؟"))return;
   subLedger=subLedger.filter(s=>s.id!==id);renderSub(subType);showAlert("تم الحذف","warn");
 }
@@ -2662,21 +2683,22 @@ function showSubDetail(subId){
   const s=subLedger.find(x=>x.id===subId);if(!s)return;
   const mainAcc=accounts.find(a=>a.id===s.mainAccId);
   let b=parseFloat(s.open)||0;if(mainAcc&&NORM[mainAcc.type]==="cr")b=-b;
-  const rels=entries.filter(e=>e.lines.some(l=>l.subId===subId)).sort((a,x)=>a.date.localeCompare(x.date));
+  const rels=postedEntries().filter(e=>e.lines.some(l=>l.subId===subId)).sort((a,x)=>a.date.localeCompare(x.date));
   let tDr=0,tCr=0,rows="";
   rels.forEach(e=>e.lines.filter(l=>l.subId===subId).forEach(l=>{
     b+=l.debit-l.credit;tDr+=l.debit;tCr+=l.credit;
     rows+=`<tr><td>${fmtDate(e.date)}</td><td>${l.desc||e.desc}</td><td style="color:var(--g4)">${e.ref||"—"}</td>
+      <td style="text-align:center;white-space:nowrap"><a onclick="openEditEntry(${e.id})" title="عرض/فتح القيد" style="cursor:pointer;color:var(--tl2);font-weight:700">👁 #${e.id}</a></td>
       <td style="direction:ltr;text-align:left">${l.debit?fmtDisp(l.debit):"—"}</td>
       <td style="direction:ltr;text-align:left">${l.credit?fmtDisp(l.credit):"—"}</td>
       <td style="direction:ltr;text-align:left;font-weight:700;color:${b>=0?"var(--gn)":"var(--rd)"}">${fmtDisp(Math.abs(b))} <small>${b>=0?"م":"د"}</small></td></tr>`;
   }));
   document.getElementById("sub-detail-title").innerHTML=`<div class="ti">📖</div><span class="bdg b6">${s.code}</span> ${s.name}${mainAcc?" ← "+mainAcc.name:""}`;
   document.getElementById("sub-detail-body").innerHTML=`
-    <div class="tw"><table><thead><tr><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead><tbody>
-      <tr class="tr-op"><td colspan="3"><strong>رصيد افتتاحي</strong></td><td>—</td><td>—</td><td style="direction:ltr;text-align:left;font-weight:700">${fmtDisp(Math.abs(parseFloat(s.open)||0))}</td></tr>
-      ${rows||'<tr><td colspan="6" style="text-align:center;color:var(--g4);padding:14px">لا توجد حركات مرتبطة</td></tr>'}
-      <tr class="tr-tot"><td colspan="3">المجموع</td><td style="direction:ltr;text-align:left">${fmtDisp(tDr)}</td><td style="direction:ltr;text-align:left">${fmtDisp(tCr)}</td><td style="direction:ltr;text-align:left">${fmtDisp(Math.abs(b))}</td></tr>
+    <div class="tw"><table><thead><tr><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>القيد</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead><tbody>
+      <tr class="tr-op"><td colspan="4"><strong>رصيد افتتاحي</strong></td><td>—</td><td>—</td><td style="direction:ltr;text-align:left;font-weight:700">${fmtDisp(Math.abs(parseFloat(s.open)||0))}</td></tr>
+      ${rows||'<tr><td colspan="7" style="text-align:center;color:var(--g4);padding:14px">لا توجد حركات مرتبطة</td></tr>'}
+      <tr class="tr-tot"><td colspan="4">المجموع</td><td style="direction:ltr;text-align:left">${fmtDisp(tDr)}</td><td style="direction:ltr;text-align:left">${fmtDisp(tCr)}</td><td style="direction:ltr;text-align:left">${fmtDisp(Math.abs(b))}</td></tr>
     </tbody></table></div>`;
   document.getElementById("sub-detail-card").style.display="block";
   document.getElementById("sub-detail-card").scrollIntoView({behavior:"smooth",block:"start"});
@@ -2800,11 +2822,13 @@ function openNewEntryModal(){
   document.getElementById("m-new-ent").style.display="flex";
 }
 function saveEnt(){
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية إضافة أو تعديل القيود','err');return;}
   const date=document.getElementById("en-dt").value;
   const desc=document.getElementById("en-desc").value.trim();
   const ref=document.getElementById("en-ref").value.trim();
   const custId=parseInt((document.getElementById("en-ref")||{}).getAttribute("data-cust-id"))||0;
   if(!date){showAlert("يرجى إدخال التاريخ","err");return;}
+  const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
   if(!desc){showAlert("يرجى إدخال البيان","err");return;}
   // Filter valid lines (account selected + amount > 0)
   const valid=entLines.filter(function(l){
@@ -2920,9 +2944,11 @@ function calcEeTots(){
   document.getElementById("ee-bal").innerHTML=ok?'<span class="balg bt-ok">✓ متوازن</span>':td>0?'<span class="balg bt-err">⚠ غير متوازن</span>':"";
 }
 function saveEE(){
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية تعديل القيود','err');return;}
   const id=parseInt(document.getElementById("ee-id").value);
   const date=document.getElementById("ee-date").value,desc=document.getElementById("ee-desc").value.trim(),ref=document.getElementById("ee-ref").value.trim();
   if(!date||!desc){showAlert("يرجى إدخال التاريخ والبيان","err");return;}
+  const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
   const valid=eeLines.filter(l=>l.accId&&((parseFloat(l.dr)||0)+(parseFloat(l.cr)||0)>0));
   const td=valid.reduce((s,l)=>s+(parseFloat(l.dr)||0),0),tc=valid.reduce((s,l)=>s+(parseFloat(l.cr)||0),0);
   if(Math.abs(td-tc)>0.01){showAlert("القيد غير متوازن","err");return;}
@@ -2931,7 +2957,7 @@ function saveEE(){
   ent.lines=valid.map(l=>({accId:parseInt(l.accId),desc:typeof l.desc==="string"?l.desc:"",debit:parseFloat(l.dr)||0,credit:parseFloat(l.cr)||0,subId:l.subId||null,costCenterId:l.costCenterId||null,projectId:l.projectId||null}));
   CM("m-ee");renderEnts();showAlert("تم تعديل القيد ✓");
 }
-function delEnt(id){if(!confirm("حذف هذا القيد؟"))return;entries=entries.filter(e=>e.id!==id);renderEnts();updateBadges();showAlert("تم الحذف","warn");}
+function delEnt(id){if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}if(!confirm("حذف هذا القيد؟"))return;entries=entries.filter(e=>e.id!==id);renderEnts();updateBadges();showAlert("تم الحذف","warn");}
 function filterEnts(q){entQ=q.toLowerCase();renderEnts();}
 
 function fmtCode(code){
@@ -3387,6 +3413,10 @@ function renderBreadcrumb(id){
 // ═══ NAVIGATION ═══
 // ═══ PAGE PERMISSIONS (passed in from the unified shell, if any) ═══
 let ALLOWED_PAGES=null; // null = غير مقيّد (تشغيل مباشر خارج القشرة الموحدة)
+// ═══ ACTION PERMISSIONS (edit/delete/post — passed in from the unified shell, if any) ═══
+// عند التشغيل المباشر خارج القشرة (لا توجد معاملات بالرابط) تبقى كل الصلاحيات مفتوحة،
+// حفاظاً على التوافق مع الاستخدام المستقل القائم.
+let PERMS={canEdit:true,canDelete:true,canPost:true};
 (function(){
   try{
     const params=new URLSearchParams(location.search);
@@ -3394,8 +3424,12 @@ let ALLOWED_PAGES=null; // null = غير مقيّد (تشغيل مباشر خا�
       const p=params.get('pages');
       ALLOWED_PAGES=p?p.split(','):[];
     }
+    if(params.has('canEdit'))PERMS.canEdit=params.get('canEdit')==='1';
+    if(params.has('canDelete'))PERMS.canDelete=params.get('canDelete')==='1';
+    if(params.has('canPost'))PERMS.canPost=params.get('canPost')==='1';
   }catch(e){}
 })();
+function can(action){return !!PERMS[action];}
 function hasPagePerm(id){return !ALLOWED_PAGES||ALLOWED_PAGES.includes(id);}
 function applyPagePermissions(){
   if(!ALLOWED_PAGES)return;
@@ -3409,8 +3443,23 @@ function firstAllowedPage(){
   return ALLOWED_PAGES[0]||null;
 }
 
+let navHistory=[];
+let navIsBack=false;
+function SSBack(){
+  if(!navHistory.length)return;
+  const prev=navHistory.pop();
+  navIsBack=true;
+  SS(prev,null);
+}
 function SS(id,btn){
   if(!hasPagePerm(id)){showAlert('⛔ لا تملك صلاحية الوصول لهذه الصفحة','err');return;}
+  if(window.currentSection&&window.currentSection!==id&&!navIsBack){
+    navHistory.push(window.currentSection);
+    if(navHistory.length>30)navHistory.shift();
+  }
+  navIsBack=false;
+  const backBtn=document.getElementById('tb-back-btn');
+  if(backBtn)backBtn.style.display=navHistory.length?'inline-block':'none';
   window.currentSection = id;
   // Update URL hash for linking
   try{if(history&&history.replaceState)history.replaceState(null,null,"#"+id);}catch(e){}
@@ -3739,6 +3788,7 @@ function updateEaCfActHint(a){
   hint.textContent="التصنيف التلقائي الحالي: "+(CF_ACTIVITY_LABELS[getDefaultCFActivity(a)]||"—");
 }
 function saveEditAcc(){
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية تعديل الحسابات','err');return;}
   const id=parseInt(document.getElementById("ea-id").value);
   const code=document.getElementById("ea-code").value.trim();
   const name=document.getElementById("ea-name").value.trim();
@@ -3754,6 +3804,7 @@ function saveEditAcc(){
   CM("m-ea");renderAccs();showAlert("تم التعديل");
 }
 function delAcc(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(entries.some(e=>e.lines.some(l=>l.accId===id))){showAlert("لا يمكن حذف حساب له قيود","err");return;}
   if(accounts.some(a=>a.par===id)){showAlert("لا يمكن حذف حساب له فروع","err");return;}
   if(!confirm("حذف هذا الحساب؟"))return;
@@ -4362,6 +4413,7 @@ function popVchAccounts() {
   contraSel.innerHTML = allOpts;
 }
 function saveVoucher() {
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية إضافة أو تعديل السندات','err');return;}
   const type = document.getElementById("vf-type").value;
   const date = document.getElementById("vf-date").value;
   const ref = document.getElementById("vf-ref").value.trim();
@@ -4373,6 +4425,7 @@ function saveVoucher() {
   const existId = parseInt(document.getElementById("vf-id").value)||0;
   if(!date||!amount||!cashAccId||!contraAccId){showAlert("يرجى إكمال البيانات المطلوبة","err");return;}
   if(amount<=0){showAlert("المبلغ يجب أن يكون أكبر من صفر","err");return;}
+  const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
   const vch = {id:existId||nxtVchId++, type, date, ref, amount, desc, party, cashAccId, contraAccId, status:"draft", entryId:null};
   if(existId) {
     const idx = vouchers.findIndex(v=>v.id===existId);
@@ -4381,6 +4434,7 @@ function saveVoucher() {
   CM("m-vf"); renderVouchers(); showAlert(type==="receipt"?"تم حفظ سند القبض":"تم حفظ سند الصرف");
 }
 function postVoucher(id) {
+  if(!can('post')){showAlert('⛔ لا تملك صلاحية الترحيل','err');return;}
   const v = vouchers.find(x=>x.id===id); if(!v||v.status==="posted") return;
   const cashAcc = accounts.find(a=>a.id===v.cashAccId);
   const contraAcc = accounts.find(a=>a.id===v.contraAccId);
@@ -4405,6 +4459,7 @@ function postVoucher(id) {
   showAlert("تم ترحيل السند كقيد يومي رقم "+entId+" ✓");
 }
 function deleteVoucher(id) {
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   const v = vouchers.find(x=>x.id===id);
   if(v?.status==="posted"){showAlert("لا يمكن حذف سند مرحّل","err");return;}
   if(!confirm("حذف هذا السند؟"))return;
@@ -4917,6 +4972,7 @@ function popAssetAccounts() {
   if(depAcc) document.getElementById("ast-dep-exp-acc").value=depAcc.id;
 }
 function deleteAsset(id) {
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(!confirm("حذف هذا الأصل؟"))return;
   assets=assets.filter(a=>a.id!==id); renderAssets(); showAlert("تم الحذف","warn");
 }
@@ -5157,6 +5213,7 @@ function popRentAccounts() {
   if(exp) document.getElementById("rent-exp-acc").value=exp.id;
 }
 function deleteRent(id) {
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(!confirm("حذف هذا الإيجار؟"))return;
   rents=rents.filter(r=>r.id!==id); renderRents(); showAlert("تم الحذف","warn");
 }
@@ -5611,6 +5668,7 @@ function calcSaleInvTotals(){
 function saveSaleInv(mode){
   try{
 
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية إضافة أو تعديل الفواتير','err');return;}
   const date=document.getElementById("sinv-date").value;
   const ref=document.getElementById("sinv-ref").value.trim();
   const customer=document.getElementById("sinv-customer").value.trim();
@@ -5619,6 +5677,7 @@ function saveSaleInv(mode){
   const notes=document.getElementById("sinv-notes").value.trim();
   const editId=parseInt(document.getElementById("sinv-edit-id").value)||0;
   if(!date||!customer){showAlert("يرجى إدخال التاريخ واسم العميل","err");return;}
+  const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
   // Auto-pick first L5 AR account if none selected
   if(!accId){
     const arAcc=accounts.find(function(a){return isLeaf(a.id)&&(a.type==="asset")&&(a.name.includes("مدين")||a.name.includes("عملاء")||a.name.includes("ذمم"));});
@@ -5639,6 +5698,7 @@ function saveSaleInv(mode){
   }catch(e){console.error("saveSaleInv:",e);showAlert && showAlert("خطأ: " + e.message, "err");}
 }
 function postSaleInv(id){
+  if(!can('post')){showAlert('⛔ لا تملك صلاحية الترحيل','err');return;}
   const inv=salesInvoices.find(function(i){return i.id===id;});
   if(!inv||inv.status==="posted")return;
   if(!inv.accId){
@@ -5761,6 +5821,7 @@ function postSaleInv(id){
 
 
 function deleteSaleInv(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   const inv=salesInvoices.find(function(i){return i.id===id;});
   if(inv&&inv.status==="posted"){showAlert("لا يمكن حذف فاتورة مرحّلة","err");return;}
   if(!confirm("حذف هذه الفاتورة؟"))return;
@@ -5890,6 +5951,7 @@ function calcPurInvTotals(){
 function savePurInv(mode){
   try{
 
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية إضافة أو تعديل الفواتير','err');return;}
   const date=document.getElementById("pinv-date").value;
   const ref=document.getElementById("pinv-ref").value.trim();
   const vendor=document.getElementById("pinv-vendor").value.trim();
@@ -5903,6 +5965,7 @@ function savePurInv(mode){
   const notes=document.getElementById("pinv-notes").value.trim();
   const editId=parseInt(document.getElementById("pinv-edit-id").value)||0;
   if(!date||!vendor){showAlert("يرجى إدخال التاريخ واسم المورد","err");return;}
+  const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
   const validItems=purInvItems.filter(function(it){return it.desc&&(it.qty||0)*(it.price||0)>0;});
   if(!validItems.length){showAlert("يرجى إدخال بند واحد","err");return;}
   const sub=validItems.reduce(function(s,it){return s+it.total;},0);
@@ -5923,6 +5986,7 @@ function savePurInv(mode){
   }catch(e){console.error("savePurInv:",e);showAlert && showAlert("خطأ: " + e.message, "err");}
 }
 function postPurInv(id){
+  if(!can('post')){showAlert('⛔ لا تملك صلاحية الترحيل','err');return;}
   const inv=purchaseInvoices.find(function(i){return i.id===id;});
   if(!inv||inv.status==="posted") return;
   // ── Get/auto-pick AP account ──
@@ -5987,6 +6051,7 @@ function postPurInv(id){
 
 
 function deletePurInv(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   const inv=purchaseInvoices.find(function(i){return i.id===id;});
   if(inv&&inv.status==="posted"){showAlert("لا يمكن حذف فاتورة مرحّلة","err");return;}
   if(!confirm("حذف؟"))return;
@@ -6522,6 +6587,7 @@ function addWarehouse(){
   ["wh-code","wh-name","wh-loc","wh-edit-id"].forEach(function(id){document.getElementById(id).value="";});
 }
 function deleteWarehouse(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(warehouses.length<=1){showAlert("يجب وجود مستودع واحد على الأقل","warn");return;}
   if(!confirm("حذف المستودع؟"))return;
   warehouses=warehouses.filter(function(w){return w.id!==id;});renderWarehouses();showAlert("تم الحذف","warn");
@@ -7099,6 +7165,7 @@ function calcGrTotal() {
   if(el) el.textContent = fmtNum(tot) + " " + cur();
 }
 function saveGoodsReceipt(mode) {
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية إضافة أو تعديل أذونات الاستلام','err');return;}
   const date = document.getElementById("gr-date").value;
   const ref  = document.getElementById("gr-ref").value.trim();
   const whId = parseInt(document.getElementById("gr-wh").value)||null;
@@ -7106,6 +7173,7 @@ function saveGoodsReceipt(mode) {
   const subId = parseInt(document.getElementById("gr-sub-id").value)||null;
   const notes = document.getElementById("gr-notes").value.trim();
   if(!date||!whId){showAlert("يرجى تحديد التاريخ والمستودع","err");return;}
+  const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
   const validItems = grItems.filter(function(it){return it.itemId&&it.qty>0;});
   if(!validItems.length){showAlert("يرجى إضافة صنف واحد على الأقل","err");return;}
   const total = validItems.reduce(function(s,it){return s+it.qty*it.cost;},0);
@@ -7220,6 +7288,7 @@ function renderItemsDef() {
   }catch(e){console.error("renderItemsDef:",e);showAlert && showAlert("خطأ: " + e.message, "err");}
 }
 function deleteItem(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(!confirm("حذف هذا الصنف؟ (لن تُحذف حركاته)"))return;
   inventory=inventory.filter(function(i){return i.id!==id;});
   renderItemsDef();renderInventory();showAlert("تم الحذف","warn");
@@ -7462,6 +7531,7 @@ function saveCC(){
   CM("m-cc");renderCostCenters();showAlert("تم حفظ مركز التكلفة ✓");
 }
 function deleteCC(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(!confirm("حذف مركز التكلفة؟ لن يتأثر أي قيد سابق مرتبط به."))return;
   costCenters=costCenters.filter(function(c){return c.id!==id;});
   renderCostCenters();showAlert("تم الحذف","warn");
@@ -7507,6 +7577,7 @@ function saveProj(){
   CM("m-proj");renderProjects();showAlert("تم حفظ المشروع ✓");
 }
 function deleteProj(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
   if(!confirm("حذف المشروع؟ لن يتأثر أي قيد سابق مرتبط به."))return;
   projects=projects.filter(function(p){return p.id!==id;});
   renderProjects();showAlert("تم الحذف","warn");
@@ -9398,6 +9469,7 @@ function getArAcc(customerSubId){
 }
 
 function postGoodsReceipt(id){
+  if(!can('post')){showAlert('⛔ لا تملك صلاحية الترحيل','err');return;}
   const gr=goodsReceipts.find(function(g){return g.id===id;});
   if(!gr||gr.status==="posted"){showAlert("الإذن مرحّل مسبقاً","info");return;}
   const invAcc   =getInvAcc(gr.whId);
@@ -10145,7 +10217,7 @@ function renderLg(){
   let html='';
   filtAccs.forEach(function(acc){
     const lines=[];
-    entries.filter(function(e){
+    postedEntries().filter(function(e){
       return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);
     }).forEach(function(e){
       e.lines.filter(function(l){return l.accId===acc.id&&(!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId);}).forEach(function(l){
@@ -10185,7 +10257,10 @@ function renderLg(){
           +'<td style="white-space:nowrap;font-size:10.5px">'+fmtDate(l.date)+'</td>'
           +'<td style="font-family:monospace;font-size:10px;color:'+hc+'">'+l.ref+'</td>'
           +'<td>'+l.desc+(l.sub?' <small style="color:#7c3aed">/ '+l.sub.name+'</small>':'')+dimBadge+'</td>'
-          +'<td style="text-align:center;font-size:10px"><a onclick="printEntVch('+l.entId+')" style="cursor:pointer;color:'+hc+'">#'+l.entId+'</a></td>'
+          +'<td style="text-align:center;font-size:10px;white-space:nowrap">'
+            +'<a onclick="openEditEntry('+l.entId+')" title="عرض/فتح القيد" style="cursor:pointer;color:'+hc+';font-weight:700">👁 #'+l.entId+'</a>'
+            +' <a onclick="printEntVch('+l.entId+')" title="طباعة القيد" style="cursor:pointer;color:var(--g4)">🖨️</a>'
+          +'</td>'
           +'<td style="direction:ltr;text-align:left;color:#1d4ed8;font-weight:'+(l.dr?700:400)+'">'+( l.dr?fmtNum(l.dr):'')+'</td>'
           +'<td style="direction:ltr;text-align:left;color:#16a34a;font-weight:'+(l.cr?700:400)+'">'+( l.cr?fmtNum(l.cr):'')+'</td>'
           +'<td style="direction:ltr;text-align:left;font-weight:700;color:'+(runBal>0?"#1d4ed8":runBal<0?"#dc2626":"#64748b")+'">'+fmtNum(Math.abs(runBal))+(runBal<0?' Cr':'')+'</td>'
@@ -10351,7 +10426,7 @@ function renderStkRep(){
         +'<td style="direction:ltr;text-align:left;font-weight:700">'+fmtNum(m.totalCost)+'</td>'
         +'<td style="font-size:10.5px;color:var(--g5)">'+m.source+(m.customer?" — "+m.customer:"")+'</td>'
         +'<td>'+(m.posted
-          ?'<span class="bdg b4">✅ مرحّل</span>'+(m.entryId?'<a onclick="printEntVch('+m.entryId+')" style="cursor:pointer;margin-right:4px;font-size:10px"> #'+m.entryId+'</a>':"")
+          ?'<span class="bdg b4">✅ مرحّل</span>'+(m.entryId?'<a onclick="openEditEntry('+m.entryId+')" title="عرض/فتح القيد" style="cursor:pointer;margin-right:4px;font-size:10px;font-weight:700"> 👁 #'+m.entryId+'</a>':"")
           :'<span class="bdg b5">⏳</span>')
         +'</td>'
         +'</tr>';

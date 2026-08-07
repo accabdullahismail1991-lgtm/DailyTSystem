@@ -183,6 +183,13 @@
         </label>
         <div id="u-acct-pages-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:5px;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:6px"></div>
       </div>
+      <div class="fld">
+        <label style="display:flex;align-items:center;justify-content:space-between">
+          <span>مجموعة الصلاحيات (تعديل / حذف / ترحيل)</span>
+          <a href="#" onclick="openPermGroupsModal();return false" style="color:var(--gold);font-size:11.5px">🔑 إدارة المجموعات</a>
+        </label>
+        <select id="u-permgroup"></select>
+      </div>
       <div class="fld"><label><input type="checkbox" id="u-admin"> مدير (يقدر يدير المستخدمين)</label></div>
       <div style="display:flex;gap:8px;margin-top:12px">
         <button class="btn btn-gold" onclick="saveShellUser()">حفظ</button>
@@ -191,6 +198,38 @@
     </div>
     <div style="margin-top:16px;text-align:left">
       <button class="btn" onclick="closeUsersModal()">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="perm-groups-modal">
+  <div class="modal-box">
+    <h2>🔑 مجموعات الصلاحيات</h2>
+    <p style="font-size:12px;color:var(--muted);margin-top:-6px">
+      تتحكم كل مجموعة في إمكانية التعديل/الحذف/الترحيل داخل النظام المحاسبي فقط. الوصول للصفحات نفسه يبقى محكوماً
+      بقائمة "صفحات النظام المحاسبي المسموحة" أعلاه.
+    </p>
+    <div id="perm-groups-list"></div>
+    <div class="u-form">
+      <div style="font-weight:700;font-size:13px;margin-bottom:10px" id="pg-form-title">➕ إضافة مجموعة صلاحيات</div>
+      <input type="hidden" id="pg-edit-id">
+      <div class="fld"><label>اسم المجموعة</label><input id="pg-name" type="text" placeholder="مثال: محاسب مساعد"></div>
+      <div class="fld">
+        <label><input type="checkbox" id="pg-can-edit" checked> ✏️ يمكنه التعديل والإضافة</label>
+      </div>
+      <div class="fld">
+        <label><input type="checkbox" id="pg-can-delete"> 🗑 يمكنه الحذف</label>
+      </div>
+      <div class="fld">
+        <label><input type="checkbox" id="pg-can-post" checked> ✅ يمكنه ترحيل القيود والفواتير والسندات</label>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-gold" onclick="savePermGroup()">حفظ المجموعة</button>
+        <button class="btn" onclick="resetPermGroupForm()">إلغاء</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;text-align:left">
+      <button class="btn" onclick="closePermGroupsModal()">إغلاق</button>
     </div>
   </div>
 </div>
@@ -223,6 +262,89 @@ const ACCT_PAGES=[
 let shellUsers=[];
 let currentShellUser=null;
 let localDirtySinceBoot=false;
+
+// ==================== Permission groups (edit / delete / post) ====================
+const PERM_GROUPS_KEY='unified_perm_groups_v1';
+const DEFAULT_PERM_GROUPS=[
+  {id:'full',name:'👑 مدير كامل الصلاحيات',canEdit:true,canDelete:true,canPost:true},
+  {id:'editor',name:'✏️ محرر (بدون حذف)',canEdit:true,canDelete:false,canPost:true},
+  {id:'viewer',name:'👁 عرض فقط',canEdit:false,canDelete:false,canPost:false},
+];
+let permGroups=[];
+function loadPermGroups(){
+  try{
+    const raw=localStorage.getItem(PERM_GROUPS_KEY);
+    if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed)&&parsed.length){permGroups=parsed;return;}}
+  }catch(e){}
+  permGroups=DEFAULT_PERM_GROUPS.map(function(g){return Object.assign({},g);});
+  persistPermGroups();
+}
+function persistPermGroups(){
+  try{localStorage.setItem(PERM_GROUPS_KEY,JSON.stringify(permGroups));}catch(e){}
+  try{window.CloudSync&&CloudSync.saveNow('perm_groups',permGroups);}catch(e){}
+}
+function getPermGroup(id){return permGroups.find(function(g){return g.id===id;})||permGroups.find(function(g){return g.id==='full';})||DEFAULT_PERM_GROUPS[0];}
+function openPermGroupsModal(){renderPermGroupsList();resetPermGroupForm();document.getElementById('perm-groups-modal').classList.add('open');}
+function closePermGroupsModal(){document.getElementById('perm-groups-modal').classList.remove('open');}
+function resetPermGroupForm(){
+  document.getElementById('pg-form-title').textContent='➕ إضافة مجموعة صلاحيات';
+  document.getElementById('pg-edit-id').value='';
+  document.getElementById('pg-name').value='';
+  document.getElementById('pg-can-edit').checked=true;
+  document.getElementById('pg-can-delete').checked=false;
+  document.getElementById('pg-can-post').checked=true;
+}
+function renderPermGroupsList(){
+  const el=document.getElementById('perm-groups-list');
+  el.innerHTML=permGroups.map(function(g){
+    const flags=[g.canEdit?'✏️ تعديل':'',g.canDelete?'🗑 حذف':'',g.canPost?'✅ ترحيل':''].filter(Boolean).join(' — ')||'عرض فقط';
+    const usedBy=shellUsers.filter(function(u){return u.permGroupId===g.id;}).length;
+    return '<div class="u-row">'
+      +'<div><div class="u-name">'+esc(g.name)+'</div><div class="u-meta">'+flags+' · '+usedBy+' مستخدم</div></div>'
+      +'<div class="u-actions">'
+      +'<button class="btn" onclick="editPermGroup(\''+g.id+'\')">تعديل</button>'
+      +(g.id!=='full'?'<button class="btn btn-danger" onclick="deletePermGroup(\''+g.id+'\')">حذف</button>':'')
+      +'</div></div>';
+  }).join('')||'<div style="color:var(--muted);font-size:13px">لا توجد مجموعات</div>';
+}
+function editPermGroup(id){
+  const g=getPermGroup(id);if(!g)return;
+  document.getElementById('pg-form-title').textContent='✏️ تعديل مجموعة صلاحيات';
+  document.getElementById('pg-edit-id').value=g.id;
+  document.getElementById('pg-name').value=g.name;
+  document.getElementById('pg-can-edit').checked=!!g.canEdit;
+  document.getElementById('pg-can-delete').checked=!!g.canDelete;
+  document.getElementById('pg-can-post').checked=!!g.canPost;
+}
+function savePermGroup(){
+  const id=document.getElementById('pg-edit-id').value;
+  const name=document.getElementById('pg-name').value.trim();
+  if(!name){alert('يرجى إدخال اسم المجموعة');return;}
+  const canEdit=document.getElementById('pg-can-edit').checked;
+  const canDelete=document.getElementById('pg-can-delete').checked;
+  const canPost=document.getElementById('pg-can-post').checked;
+  if(id){
+    const g=getPermGroup(id);
+    Object.assign(g,{name,canEdit,canDelete,canPost});
+  }else{
+    permGroups.push({id:uid(),name,canEdit,canDelete,canPost});
+  }
+  persistPermGroups();renderPermGroupsList();resetPermGroupForm();populatePermGroupSelect();
+}
+function deletePermGroup(id){
+  if(id==='full')return;
+  const usedBy=shellUsers.filter(function(u){return u.permGroupId===id;}).length;
+  if(usedBy&&!confirm('هذه المجموعة مستخدمة من '+usedBy+' مستخدم، وسيتم نقلهم لمجموعة "مدير كامل الصلاحيات". متابعة؟'))return;
+  shellUsers.forEach(function(u){if(u.permGroupId===id)u.permGroupId='full';});
+  permGroups=permGroups.filter(function(g){return g.id!==id;});
+  persistPermGroups();persistShellUsers();renderPermGroupsList();populatePermGroupSelect();
+}
+function populatePermGroupSelect(){
+  const sel=document.getElementById('u-permgroup');if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML=permGroups.map(function(g){return '<option value="'+g.id+'">'+esc(g.name)+'</option>';}).join('');
+  sel.value=permGroups.some(function(g){return g.id===cur;})?cur:'full';
+}
 
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
@@ -314,8 +436,12 @@ function enterShell(){
 
 function buildFrameSrc(name){
   if(name==='accounting'&&currentShellUser){
+    const params=[];
     const ap=currentShellUser.acctPages;
-    if(Array.isArray(ap))return SRC[name]+'?pages='+encodeURIComponent(ap.join(','));
+    if(Array.isArray(ap))params.push('pages='+encodeURIComponent(ap.join(',')));
+    const g=getPermGroup(currentShellUser.permGroupId||'full');
+    params.push('canEdit='+(g.canEdit?1:0),'canDelete='+(g.canDelete?1:0),'canPost='+(g.canPost?1:0));
+    if(params.length)return SRC[name]+'?'+params.join('&');
   }
   return SRC[name];
 }
@@ -337,7 +463,7 @@ function switchSystem(name){
 }
 
 // ==================== Manage users modal ====================
-function openUsersModal(){renderUsersList();resetUserForm();document.getElementById('users-modal').classList.add('open');}
+function openUsersModal(){renderUsersList();resetUserForm();populatePermGroupSelect();document.getElementById('users-modal').classList.add('open');}
 function closeUsersModal(){document.getElementById('users-modal').classList.remove('open');}
 function resetUserForm(){
   document.getElementById('u-form-title').textContent='➕ إضافة مستخدم جديد';
@@ -349,6 +475,8 @@ function resetUserForm(){
   document.getElementById('u-sys-accounting').checked=false;
   document.getElementById('u-sys-taxdecl').checked=false;
   document.getElementById('u-admin').checked=false;
+  populatePermGroupSelect();
+  document.getElementById('u-permgroup').value='full';
   renderAcctPagesGrid(null); // null = كل الصفحات محددة (افتراضي)
   renderAcctPagesVisibility();
 }
@@ -392,6 +520,8 @@ function editShellUser(id){
   document.getElementById('u-sys-accounting').checked=(u.systems||[]).includes('accounting');
   document.getElementById('u-sys-taxdecl').checked=(u.systems||[]).includes('taxdecl');
   document.getElementById('u-admin').checked=!!u.admin;
+  populatePermGroupSelect();
+  document.getElementById('u-permgroup').value=u.permGroupId||'full';
   renderAcctPagesGrid(u.acctPages===undefined?null:u.acctPages);
   renderAcctPagesVisibility();
 }
@@ -407,15 +537,16 @@ function saveShellUser(){
   if(document.getElementById('u-sys-taxdecl').checked)systems.push('taxdecl');
   const checkedPages=Array.from(document.querySelectorAll('.u-acct-page-cb:checked')).map(cb=>cb.value);
   const acctPages=checkedPages.length===ACCT_PAGES.length?null:checkedPages;
+  const permGroupId=(document.getElementById('u-permgroup')||{}).value||'full';
   if(!name||!username||!password){alert('عبّي الاسم واسم المستخدم وكلمة المرور');return;}
   const dupe=shellUsers.find(u=>u.username===username&&u.id!==id);
   if(dupe){alert('اسم المستخدم مستخدم مسبقاً');return;}
   if(id){
     const u=shellUsers.find(x=>x.id===id);
-    Object.assign(u,{name,username,password,admin,systems,acctPages});
+    Object.assign(u,{name,username,password,admin,systems,acctPages,permGroupId});
     if(currentShellUser&&currentShellUser.id===id)currentShellUser=u;
   }else{
-    shellUsers.push({id:uid(),name,username,password,admin,systems,acctPages});
+    shellUsers.push({id:uid(),name,username,password,admin,systems,acctPages,permGroupId});
   }
   localDirtySinceBoot=true;
   persistShellUsers();
@@ -437,7 +568,16 @@ function deleteShellUser(id){
 
 // ==================== Boot ====================
 window.addEventListener('beforeunload',()=>{try{window.CloudSync&&CloudSync.flushAll&&CloudSync.flushAll();}catch(e){}});
+loadPermGroups();
 loadShellUsers();
+if(window.CloudSync){
+  CloudSync.load('perm_groups').then(remote=>{
+    if(Array.isArray(remote)&&remote.length){permGroups=remote;try{localStorage.setItem(PERM_GROUPS_KEY,JSON.stringify(permGroups));}catch(e){}}
+    CloudSync.onChange('perm_groups',function(remote2){
+      if(Array.isArray(remote2)&&remote2.length){permGroups=remote2;try{localStorage.setItem(PERM_GROUPS_KEY,JSON.stringify(permGroups));}catch(e){}}
+    });
+  });
+}
 if(window.CloudSync){
   CloudSync.load('shell_users').then(remote=>{
     if(localDirtySinceBoot){
