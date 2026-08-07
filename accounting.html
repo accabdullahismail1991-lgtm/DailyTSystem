@@ -8008,12 +8008,25 @@ function extractCOARowsFromPdfLines(lines){
   });
   return rows;
 }
-function inferCOARootType(name){
+function inferCOARootType(code,name){
+  name=name||'';
   if(/اصول|أصول/.test(name))return'asset';
   if(/خصوم/.test(name))return'liability';
   if(/حقوق\s*الملكية|ملكية/.test(name))return'equity';
   if(/ايراد|إيراد/.test(name))return'revenue';
-  return'expense'; // يغطي المصروفات والتكاليف/تكلفة البضاعة المباعة (لا يوجد نوع "تكلفة" مستقل بنظامنا)
+  if(/مصروف|مصاريف|تكلفة|تكاليف/.test(name))return'expense';
+  // احتياط: لم يُعثر على حساب أب لهذا الرمز (مثال: سطر الجذر — "1 الاصول" — لم يُستورد ضمن هذا
+  // الملف، أو تعذّرت قراءته من PDF)، واسم هذا الحساب (غالباً حساب فرعي محدد كاسم بنك أو مورد)
+  // لا يحمل أي كلمة تصنيف بطبيعته. التخمين من اسمه وحده كان يُصنّفه "مصروف" دائماً خطأً — حتى
+  // لو كان أصلاً أو خصماً — لأن أياً من الكلمات أعلاه لا تظهر فيه. الرقم الأول من كود الحساب
+  // أدق بكثير اعتماداً على الترقيم المحاسبي المعياري لهذا الملف (تحقّقنا منه فعلياً على بيانات
+  // حقيقية: 1=أصول، 2=خصوم، 3=إيرادات، 4/5=مصروفات وتكلفة البضاعة المباعة)
+  // إزالة الأصفار البادئة أولاً (بعض الأنظمة — بما فيها بيانات هذا النظام التجريبية — ترقّم
+  // الجذور "01"،"02"... بدل "1"،"2") حتى يبقى الاحتياط صحيحاً بغض النظر عن اصطلاح الترقيم
+  const d=String(code||'').replace(/^0+/,'').charAt(0);
+  const byDigit={'1':'asset','2':'liability','3':'revenue','4':'expense','5':'expense'};
+  if(byDigit[d])return byDigit[d];
+  return'expense';
 }
 // يُنشئ الحسابات المفقودة فقط (لا يمس الموجود) محافظاً على التسلسل الهرمي عبر مطابقة بادئة الرمز،
 // بمعزل عن قاعدة "طول زوجي" الخاصة بإدخال الحسابات يدوياً في هذا النظام — لأن ترقيم النظام المصدر مختلف
@@ -8025,15 +8038,33 @@ function importCOARows(rows,opts){
   opts=opts||{};
   const replaceMode=!!opts.replaceMode,dryRun=!!opts.dryRun;
   const sorted=rows.slice().sort(function(a,b){return a.code.length-b.code.length||a.code.localeCompare(b.code);});
-  let created=0,skipped=0;
-  const createdList=[];
+  let created=0,skipped=0,typeFixed=0;
+  const createdList=[],typeFixedList=[];
   sorted.forEach(function(r){
-    if(accounts.find(function(a){return a.code===r.code;})){skipped++;return;}
     let parent=null,bestLen=0;
     accounts.forEach(function(a){
       if(r.code!==a.code&&r.code.indexOf(a.code)===0&&a.code.length>bestLen){parent=a;bestLen=a.code.length;}
     });
-    const type=parent?parent.type:inferCOARootType(r.name);
+    const existing=accounts.find(function(a){return a.code===r.code;});
+    if(existing){
+      skipped++;
+      // تصحيح تلقائي محافظ لنوع حساب موجود مسبقاً — فقط عندما نعثر فعلياً على حساب أب حقيقي
+      // ضمن هذا الاستيراد نفسه (تصنيف موروث مباشرة ومؤكد 100%، وليس تخميناً من الاسم أو أول
+      // رقم بالكود) وليس عليه أي حركات إطلاقاً. لا نستخدم أبداً القيمة الاحتياطية المبنية على
+      // التخمين (inferCOARootType) لتصحيح حساب موجود مسبقاً — لأن التخمين نفسه قد يكون خاطئاً
+      // (مثال: كود بترقيم يبدأ بصفر كما بالبيانات التجريبية لهذا النظام)، فيستبدل عن طريق
+      // الخطأ تصنيفاً صحيحاً بتخمين خاطئ. التخمين يُستخدم فقط عند إنشاء حساب جديد بالأسفل.
+      if(parent){
+        const prevType=existing.type;
+        if(parent.type!==prevType&&!entries.some(function(e){return e.lines.some(function(l){return l.accId===existing.id;});})){
+          if(!dryRun)existing.type=parent.type;
+          typeFixed++;
+          typeFixedList.push({code:r.code,name:r.name,from:prevType,to:parent.type});
+        }
+      }
+      return;
+    }
+    const type=parent?parent.type:inferCOARootType(r.code,r.name);
     if(!dryRun)accounts.push({id:nxtAccId++,code:r.code,name:r.name,type:type,open:0,par:parent?parent.id:null,cfActivity:null});
     created++;
     createdList.push({code:r.code,name:r.name});
@@ -8062,7 +8093,8 @@ function importCOARows(rows,opts){
     });
   }
   return {created:created,skipped:skipped,total:rows.length,createdList:createdList,
-    removed:removed,keptBlocked:keptBlocked,removedList:removedList,keptList:keptList};
+    removed:removed,keptBlocked:keptBlocked,removedList:removedList,keptList:keptList,
+    typeFixed:typeFixed,typeFixedList:typeFixedList};
 }
 
 // ── كشف حركة مركز التكلفة: استخراج {ccCode, ccName, entries:[{accCode,accName,date,doc,desc,debit,credit}]} ──
@@ -8417,12 +8449,18 @@ function renderCOAPreview(){
   let html='<div class="sg">'
     +'<div class="sc"><div class="sl">حسابات بالملف</div><div class="sv">'+res.total+'</div></div>'
     +'<div class="sc"><div class="sl">سيُنشأ (جديد)</div><div class="sv" style="color:var(--gn)">'+res.created+'</div></div>'
-    +'<div class="sc"><div class="sl">موجود مسبقاً (تخطي)</div><div class="sv">'+res.skipped+'</div></div>';
+    +'<div class="sc"><div class="sl">موجود مسبقاً (تخطي)</div><div class="sv">'+res.skipped+'</div></div>'
+    +'<div class="sc"><div class="sl">سيُصحَّح نوعه (بلا حركات)</div><div class="sv" style="color:var(--pu)">'+res.typeFixed+'</div></div>';
   if(replaceMode){
     html+='<div class="sc"><div class="sl">سيُحذف (غير موجود بالملف وبلا حركات)</div><div class="sv" style="color:var(--rd)">'+res.removed+'</div></div>'
       +'<div class="sc"><div class="sl">لن يُحذف (عليه حركات/فروع)</div><div class="sv" style="color:var(--am)">'+res.keptBlocked+'</div></div>';
   }
   html+='</div>';
+  if(res.typeFixed){
+    html+='<div class="empty" style="padding:10px;text-align:right;border:1px solid var(--pp);background:var(--pp);border-radius:var(--r);margin-bottom:10px">'
+      +'🔧 سيتم تصحيح نوع الحسابات التالية (لا حركات عليها) لتطابق موقعها الصحيح بدليل الحسابات المستورد:<br>'
+      +'<span style="font-size:11px">'+res.typeFixedList.map(function(r){return r.code+' — '+r.name+' ('+TN[r.from]+' → '+TN[r.to]+')';}).join('<br>')+'</span></div>';
+  }
   if(replaceMode&&res.removed){
     html+='<div class="empty" style="padding:10px;text-align:right;border:1px solid var(--rp);background:var(--rp);border-radius:var(--r);margin-bottom:10px">'
       +'⚠️ سيتم حذف الحسابات التالية نهائياً لعدم وجودها بالملف المستورد وعدم وجود أي حركات عليها:<br>'
@@ -8453,6 +8491,7 @@ function commitCOAImport(){
   document.getElementById('coa-file-input').value='';
   renderAccs();updateBadges();
   let msg='تم استيراد دليل الحسابات: '+res.created+' حساب جديد، '+res.skipped+' موجود مسبقاً';
+  if(res.typeFixed)msg+='، '+res.typeFixed+' تم تصحيح نوعه';
   if(replaceMode)msg+='، '+res.removed+' تم حذفه'+(res.keptBlocked?'، '+res.keptBlocked+' تعذّر حذفه (عليه حركات/فروع)':'');
   showAlert(msg+' ✓');
 }
