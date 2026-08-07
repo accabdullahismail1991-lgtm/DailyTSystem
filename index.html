@@ -56,6 +56,15 @@
   #login-card input{ width:100%; }
   #login-card .go{ width:100%; padding:11px; font-size:14.5px; margin-top:6px; }
   #login-error{ color:var(--danger); font-size:12.5px; text-align:center; margin-top:10px; min-height:1em; }
+  #company-bar{
+    display:flex; align-items:center; justify-content:center; gap:5px; width:100%;
+    appearance:none; border:1px solid var(--border); background:rgba(255,255,255,.03);
+    color:var(--muted); padding:8px 10px; border-radius:9px; cursor:pointer;
+    font-family:inherit; font-size:12px; margin-bottom:18px; transition:.15s;
+  }
+  #company-bar:hover{ border-color:var(--gold); color:var(--text); }
+  #company-bar .active-company-name{ color:var(--text); font-weight:700; }
+  #company-bar .switch-lbl{ color:var(--gold); }
 
   /* ===== App shell ===== */
   #app-shell{ display:none; flex:1; flex-direction:column; min-height:0; }
@@ -122,6 +131,9 @@
 
 <div id="login-screen">
   <div id="login-card">
+    <button type="button" id="company-bar" onclick="renderCompanySwitcher()" title="اختيار الشركة (قبل تسجيل الدخول)">
+      🏢 <span class="active-company-name">الشركة الرئيسية</span> <span class="switch-lbl">— تبديل</span>
+    </button>
     <h1>🔐 النظام الموحد</h1>
     <div class="sub">سجّل الدخول لاختيار النظام</div>
     <div class="fld">
@@ -137,12 +149,23 @@
   </div>
 </div>
 
+<div class="modal-bg" id="company-modal">
+  <div class="modal-box">
+    <h2>🏢 إدارة الشركات وتعدد قواعد البيانات</h2>
+    <div id="company-modal-body"></div>
+    <div style="margin-top:16px;text-align:left">
+      <button class="btn" onclick="closeCompanyModal()">إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <div id="app-shell">
   <div id="shell-nav">
     <span class="brand">النظام الموحد</span>
     <div id="sys-buttons" style="display:flex;gap:10px"></div>
     <div class="spacer"></div>
     <span class="user-chip" id="hdr-user-chip"></span>
+    <button class="btn" onclick="renderCompanySwitcher()" title="تبديل/إضافة شركة">🏢 <span class="active-company-name">الشركة الرئيسية</span></button>
     <button class="btn" id="btn-manage-users" style="display:none" onclick="openUsersModal()">👥 إدارة المستخدمين</button>
     <button class="btn btn-danger" onclick="doShellLogout()">🚪 خروج</button>
   </div>
@@ -235,6 +258,96 @@
 </div>
 
 <script>
+// ==================== Multi-company support ====================
+// اختيار الشركة يتم هنا، خارج/قبل تسجيل الدخول تماماً — لأن قائمة المستخدمين في كل نظام
+// (نظام الحوالات تحديداً) جزء من بيانات تلك الشركة المعزولة، فاختيار الشركة الخاطئة قبل
+// الدخول يعني عدم رؤية المستخدم الصحيح أصلاً. نفس السجل ونفس المؤشر المشتركين مع باقي
+// الأنظمة (accounting.html / transfers.html / tax-declaration.html) على هذا المتصفح.
+const COMPANIES_KEY='acct_companies_v1';
+const ACTIVE_COMPANY_KEY='acct_active_company_v1';
+const ACTIVE_COMPANY_ID=(function(){
+  try{
+    const qp=new URLSearchParams(location.search).get('company');
+    if(qp){ try{localStorage.setItem(ACTIVE_COMPANY_KEY,qp);}catch(e){} return qp; }
+  }catch(e){}
+  try{
+    const stored=localStorage.getItem(ACTIVE_COMPANY_KEY);
+    if(stored)return stored;
+  }catch(e){}
+  return 'default';
+})();
+let companies=[];
+function loadCompanies(){
+  try{
+    const raw=localStorage.getItem(COMPANIES_KEY);
+    companies=raw?JSON.parse(raw):[];
+  }catch(e){companies=[];}
+  let changed=false;
+  if(!companies.some(c=>c.id==='default')){
+    companies.unshift({id:'default',name:'الشركة الرئيسية',taxNumber:'',crNumber:''});
+    changed=true;
+  }
+  if(!companies.some(c=>c.id===ACTIVE_COMPANY_ID)){
+    companies.push({id:ACTIVE_COMPANY_ID,name:'شركة جديدة',taxNumber:'',crNumber:''});
+    changed=true;
+  }
+  if(changed)persistCompanies();
+  updateActiveCompanyBadge();
+}
+function persistCompanies(){
+  try{
+    localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));
+    try{window.CloudSync&&CloudSync.save('acct_companies',companies);}catch(e){}
+  }catch(e){console.error('persistCompanies:',e);}
+}
+function switchCompanyShell(id){
+  try{localStorage.setItem(ACTIVE_COMPANY_KEY,id);}catch(e){}
+  const url=new URL(location.href);
+  url.searchParams.set('company',id);
+  location.href=url.pathname+url.search;
+}
+function addCompanyPrompt(){
+  const nameEl=document.getElementById('nc-name');
+  const name=nameEl?nameEl.value.trim():'';
+  if(!name){alert('يرجى إدخال اسم الشركة');return;}
+  const id='c'+Date.now();
+  const taxEl=document.getElementById('nc-tax'),crEl=document.getElementById('nc-cr');
+  companies.push({id,name,taxNumber:taxEl?taxEl.value.trim():'',crNumber:crEl?crEl.value.trim():''});
+  persistCompanies();
+  switchCompanyShell(id);
+}
+function getActiveCompanyName(){
+  const c=companies.find(c=>c.id===ACTIVE_COMPANY_ID);
+  return c?c.name:'الشركة الرئيسية';
+}
+function updateActiveCompanyBadge(){
+  const els=document.querySelectorAll('.active-company-name');
+  els.forEach(el=>{el.textContent=getActiveCompanyName();});
+}
+function renderCompanySwitcher(){
+  const rows=companies.map(function(c){
+    const active=c.id===ACTIVE_COMPANY_ID;
+    return '<div class="u-row" style="border-color:'+(active?'var(--gold)':'var(--border)')+'">'
+      +'<div><div class="u-name">'+(active?'✅ ':'')+c.name+'</div>'
+      +(c.taxNumber?'<div class="u-meta">ر.ض: '+c.taxNumber+'</div>':'')+'</div>'
+      +(active?'':'<div class="u-actions"><button class="btn btn-gold" onclick="switchCompanyShell(\''+c.id+'\')">تبديل ↗️</button></div>')
+      +'</div>';
+  }).join('');
+  const body=document.getElementById('company-modal-body');
+  if(!body)return;
+  body.innerHTML='<div style="margin-bottom:14px">'+rows+'</div>'
+    +'<div class="u-form">'
+    +'<div style="font-weight:700;font-size:13px;margin-bottom:10px">➕ إضافة شركة جديدة</div>'
+    +'<div class="fld"><label>اسم الشركة *</label><input id="nc-name" type="text" placeholder="اسم المنشأة"></div>'
+    +'<div class="fld"><label>الرقم الضريبي</label><input id="nc-tax" type="text"></div>'
+    +'<div class="fld"><label>السجل التجاري</label><input id="nc-cr" type="text"></div>'
+    +'<p style="font-size:11.5px;color:var(--muted);margin-bottom:10px">ستبدأ الشركة الجديدة بقاعدة بيانات منفصلة تماماً وفارغة عن باقي الشركات في كل الأنظمة (المحاسبة، الحوالات، الإقرار الضريبي).</p>'
+    +'<button class="btn btn-gold" style="width:100%" onclick="addCompanyPrompt()">✓ إنشاء والتبديل إليها</button>'
+    +'</div>';
+  document.getElementById('company-modal').classList.add('open');
+}
+function closeCompanyModal(){document.getElementById('company-modal').classList.remove('open');}
+
 // ==================== Shell auth & user management ====================
 const SHELL_KEY='unified_shell_users_v1';
 const SYS_KEY='unified_active_system';
@@ -435,14 +548,15 @@ function enterShell(){
 }
 
 function buildFrameSrc(name){
+  const params=[];
+  if(ACTIVE_COMPANY_ID&&ACTIVE_COMPANY_ID!=='default')params.push('company='+encodeURIComponent(ACTIVE_COMPANY_ID));
   if(name==='accounting'&&currentShellUser){
-    const params=[];
     const ap=currentShellUser.acctPages;
     if(Array.isArray(ap))params.push('pages='+encodeURIComponent(ap.join(',')));
     const g=getPermGroup(currentShellUser.permGroupId||'full');
     params.push('canEdit='+(g.canEdit?1:0),'canDelete='+(g.canDelete?1:0),'canPost='+(g.canPost?1:0));
-    if(params.length)return SRC[name]+'?'+params.join('&');
   }
+  if(params.length)return SRC[name]+'?'+params.join('&');
   return SRC[name];
 }
 function switchSystem(name){
@@ -568,8 +682,26 @@ function deleteShellUser(id){
 
 // ==================== Boot ====================
 window.addEventListener('beforeunload',()=>{try{window.CloudSync&&CloudSync.flushAll&&CloudSync.flushAll();}catch(e){}});
+loadCompanies();
 loadPermGroups();
 loadShellUsers();
+if(window.CloudSync){
+  CloudSync.load('acct_companies').then(remote=>{
+    if(Array.isArray(remote)&&remote.length){
+      const localOnly=companies.filter(c=>!remote.some(r=>r.id===c.id));
+      companies=remote.concat(localOnly);
+      try{localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));}catch(e){}
+      updateActiveCompanyBadge();
+    }
+    CloudSync.onChange('acct_companies',remote2=>{
+      if(Array.isArray(remote2)){
+        companies=remote2;
+        try{localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));}catch(e){}
+        updateActiveCompanyBadge();
+      }
+    });
+  });
+}
 if(window.CloudSync){
   CloudSync.load('perm_groups').then(remote=>{
     if(Array.isArray(remote)&&remote.length){permGroups=remote;try{localStorage.setItem(PERM_GROUPS_KEY,JSON.stringify(permGroups));}catch(e){}}
