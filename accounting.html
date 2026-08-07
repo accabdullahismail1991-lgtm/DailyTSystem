@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>النظام المحاسبي الشامل — v5.0</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&family=Cairo:wght@300;400;500;700;800;900&family=Almarai:wght@300;400;700;800&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
@@ -24,9 +24,10 @@
   --g4:#94a3b8;--g5:#64748b;--g6:#475569;--g7:#334155;--g8:#1e293b;--g9:#0f172a;
   --w:#fff;--sh0:0 1px 3px rgba(0,0,0,.07);--sh1:0 2px 8px rgba(0,0,0,.1);--sh2:0 8px 25px rgba(0,0,0,.14);
   --r:10px;--rs:7px;--rl:14px;
+  --font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;background:var(--g100);color:var(--g8);direction:rtl;min-height:100vh;font-size:13px}
+body{font-family:var(--font-family);background:var(--g100);color:var(--g8);direction:rtl;min-height:100vh;font-size:13px}
 /* ── Sidebar ── */
 .sb{position:fixed;top:0;right:0;width:252px;height:100vh;background:var(--sb-bg);display:flex;flex-direction:column;z-index:100;overflow-y:auto;overflow-x:hidden;transition:background .25s}
 .sb::-webkit-scrollbar{width:4px}.sb::-webkit-scrollbar-track{background:transparent}.sb::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
@@ -114,9 +115,8 @@ input[type=number]{text-align:left;direction:ltr}
 .tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--g200)}
 table{width:100%;border-collapse:collapse;font-size:11.5px}
 thead tr{background:var(--g50)}
-th{padding:7px 11px;text-align:right;font-size:9.5px;font-weight:800;color:var(--g5);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--g200);white-space:nowrap}
-td{padding:7px 11px;color:var(--g7);border-bottom:1px solid var(--g100);vertical-align:middle}
-tr:last-child td{border-bottom:none}
+th{padding:7px 11px;text-align:right;font-size:9.5px;font-weight:800;color:var(--g5);text-transform:uppercase;letter-spacing:.5px;border:1px solid var(--g300);white-space:nowrap}
+td{padding:7px 11px;color:var(--g7);border:1px solid var(--g200);vertical-align:middle}
 tbody tr:hover{background:var(--g50)}
 .tr-tot td{background:var(--g100);font-weight:800;color:var(--g9);border-top:2px solid var(--g300);border-bottom:none}
 .tr-op td{background:#f0f9ff}.tr-cl td{background:#fef9c3;font-weight:700}
@@ -621,6 +621,11 @@ tbody tr:hover{background:var(--g50)}
 <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,.06)">
  <div style="color:rgba(255,255,255,.35);font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:6px">🎨 لون النظام</div>
  <div id="theme-swatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+</div>
+<div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,.06)">
+ <div style="color:rgba(255,255,255,.35);font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:6px">🔤 خط النظام</div>
+ <select id="font-select" onchange="applyFont(this.value)"
+   style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;font-size:11px;font-family:inherit"></select>
 </div>
 <div class="sb-ft">
  <div>النظام المحاسبي الشامل</div>
@@ -2446,6 +2451,31 @@ function renderThemeSwatches(activeId){
   let saved='indigo';
   try{saved=localStorage.getItem(THEME_KEY)||'indigo';}catch(e){}
   applyTheme(saved,false);
+})();
+
+// ═══ FONT SWITCHER (خط النظام) ═══
+const FONTS=[
+  {id:'tajawal', name:'Tajawal (افتراضي)', stack:"'Tajawal','Segoe UI',Tahoma,Arial,sans-serif"},
+  {id:'cairo',   name:'Cairo',             stack:"'Cairo','Segoe UI',Tahoma,Arial,sans-serif"},
+  {id:'almarai', name:'Almarai',           stack:"'Almarai','Segoe UI',Tahoma,Arial,sans-serif"},
+  {id:'ibmplex', name:'IBM Plex Sans Arabic', stack:"'IBM Plex Sans Arabic','Segoe UI',Tahoma,Arial,sans-serif"},
+  {id:'system',  name:'خط النظام (Segoe UI/Tahoma)', stack:"'Segoe UI',Tahoma,Arial,sans-serif"},
+];
+const FONT_KEY='acct_font_v1';
+function applyFont(id,persist){
+  const f=FONTS.find(function(x){return x.id===id;})||FONTS[0];
+  document.documentElement.style.setProperty('--font-family',f.stack);
+  if(persist!==false){try{localStorage.setItem(FONT_KEY,id);}catch(e){}}
+  renderFontSelect(f.id);
+}
+function renderFontSelect(activeId){
+  const sel=document.getElementById('font-select');if(!sel)return;
+  sel.innerHTML=FONTS.map(function(f){return '<option value="'+f.id+'"'+(f.id===activeId?' selected':'')+'>'+f.name+'</option>';}).join('');
+}
+(function(){
+  let savedFont='tajawal';
+  try{savedFont=localStorage.getItem(FONT_KEY)||'tajawal';}catch(e){}
+  applyFont(savedFont,false);
 })();
 
 let costCenters=[], nxtCCId=1;
