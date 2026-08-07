@@ -2197,9 +2197,10 @@ const FONT_B64 = "AAEAAAAPAIAAAwBwR0RFRoA3oIQABS0gAAADQEdQT1OuDBunAAUwYAAA1yhHU1
 // ═══════════════════════════════════════════════════════
 // CONFIG / SETTINGS
 // ═══════════════════════════════════════════════════════
+const __defaultFYYear=new Date().getFullYear();
 let CFG = {
   name:"شركة النموذج", addr:"المدينة، الدولة", cr:"",
-  year:2024, fyStart:"2024-01-01", fyEnd:"2024-12-31",
+  year:__defaultFYYear, fyStart:__defaultFYYear+"-01-01", fyEnd:__defaultFYYear+"-12-31",
   cur:"SAR", curSym:"ر.س", dec:2,
   hdr:"النظام المحاسبي الشامل", subPfx:"", subStart:100,
   logo:null, rptColor:"#0f4c75", rptFontSize:9,
@@ -2353,7 +2354,12 @@ function validateEntryDate(dateStr){
     return {ok:false,msg:'⛔ التاريخ ('+dateStr+') قبل بداية السنة المالية الحالية ('+CFG.fyStart+')'};
   }
   if(CFG.fyEnd&&dateStr>CFG.fyEnd){
-    return {ok:false,msg:'⛔ التاريخ ('+dateStr+') بعد نهاية السنة المالية الحالية ('+CFG.fyEnd+')'};
+    // نهاية السنة المالية المُعرَّفة في الإعدادات لم تُقفل فعلياً بعد (السنة غير موجودة في
+    // yearHist)، أي أن حقل "نهاية السنة المالية" أصبح قديماً ولم يُحدَّث فقط — نُمدّده تلقائياً
+    // ليغطي التاريخ الجديد بدل حظر المستخدم من تسجيل حركات حقيقية بتاريخ اليوم لمجرد
+    // تأخر تحديث هذا الحقل (الحماية الفعلية من التلاعب بالسنوات المُقفلة تبقى قائمة أعلاه)
+    CFG.fyEnd=yr+'-12-31';
+    try{persist();}catch(e){}
   }
   return {ok:true};
 }
@@ -3508,7 +3514,13 @@ let PERMS={canEdit:true,canDelete:true,canPost:true};
     if(params.has('canPost'))PERMS.canPost=params.get('canPost')==='1';
   }catch(e){}
 })();
-function can(action){return !!PERMS[action];}
+// يُستدعى في كل مكان بالاختصار can('edit')/can('delete')/can('post') بينما مفاتيح PERMS
+// الفعلية هي canEdit/canDelete/canPost — التطويع هنا يمنع فشل كل نداءات can() بصمت (وبالتالي
+// حظر كل عمليات الإضافة/التعديل/الحذف/الترحيل في التطبيق بأكمله بلا استثناء)
+function can(action){
+  const key='can'+action.charAt(0).toUpperCase()+action.slice(1);
+  return !!PERMS[key];
+}
 function hasPagePerm(id){return !ALLOWED_PAGES||ALLOWED_PAGES.includes(id);}
 function applyPagePermissions(){
   if(!ALLOWED_PAGES)return;
