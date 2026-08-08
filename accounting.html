@@ -4076,23 +4076,33 @@ function getKpiData(fromD,toD){
 
   const salesInv=salesInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&inRange(i.date);});
   const salesRet=salesInvoices.filter(function(i){return i.status==='posted'&&i.isReturn&&inRange(i.date);});
-  const salesTotal=salesInv.reduce(function(s,i){return s+i.total;},0)-salesRet.reduce(function(s,i){return s+i.total;},0);
+  const salesInvTotal=salesInv.reduce(function(s,i){return s+i.total;},0)-salesRet.reduce(function(s,i){return s+i.total;},0);
   const salesCount=salesInv.length;
-  const avgSaleInv=salesCount?salesTotal/salesCount:0;
+  const avgSaleInv=salesCount?salesInvTotal/salesCount:0;
 
   const purInv=purchaseInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&inRange(i.date);});
   const purRet=purchaseInvoices.filter(function(i){return i.status==='posted'&&i.isReturn&&inRange(i.date);});
-  const purTotal=purInv.reduce(function(s,i){return s+i.total;},0)-purRet.reduce(function(s,i){return s+i.total;},0);
+  const purInvTotal=purInv.reduce(function(s,i){return s+i.total;},0)-purRet.reduce(function(s,i){return s+i.total;},0);
   const purCount=purInv.length;
 
-  let revenue=0,expense=0;
+  // مبيعات/مشتريات مُسجَّلة كقيود يومية مباشرة (بدون المرور بشاشة الفواتير) — كانت تقارير المبيعات
+  // تتجاهلها كلياً وتقتصر على الفواتير فقط. هنا نضيفها لإجمالي المبيعات/المشتريات (وليس للعدد أو
+  // متوسط الفاتورة — هذان مفهوم خاص بالفواتير تحديداً ولا معنى لحسابه من قيد يدوي). القيود
+  // المرتبطة أصلاً بفاتورة (inv.entryId) تُستثنى لتفادي الاحتساب المزدوج، فهي محسوبة أعلاه فعلاً
+  const invoiceEntryIds=new Set();
+  salesInvoices.forEach(function(i){if(i.entryId)invoiceEntryIds.add(i.entryId);});
+  purchaseInvoices.forEach(function(i){if(i.entryId)invoiceEntryIds.add(i.entryId);});
+  let revenue=0,expense=0,manualSales=0,manualPur=0;
   postedEntries().filter(function(e){return inRange(e.date);}).forEach(function(e){
+    const isManual=!invoiceEntryIds.has(e.id);
     e.lines.forEach(function(l){
       const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
-      if(acc.type==='revenue')revenue+=(l.credit||0)-(l.debit||0);
-      if(acc.type==='expense')expense+=(l.debit||0)-(l.credit||0);
+      if(acc.type==='revenue'){const amt=(l.credit||0)-(l.debit||0);revenue+=amt;if(isManual)manualSales+=amt;}
+      if(acc.type==='expense'){const amt=(l.debit||0)-(l.credit||0);expense+=amt;if(isManual)manualPur+=amt;}
     });
   });
+  const salesTotal=salesInvTotal+manualSales;
+  const purTotal=purInvTotal+manualPur;
   const netProfit=revenue-expense;
   const profitMargin=revenue?(netProfit/revenue*100):0;
 
@@ -4215,6 +4225,19 @@ function renderKpi(){
   purchaseInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn;}).forEach(function(i){
     const mk=(i.date||'').slice(0,7);if(mk in purByMonth)purByMonth[mk]+=i.total;
   });
+  // مبيعات/مشتريات مُسجَّلة كقيود يومية مباشرة (بدون فاتورة) — تُضاف لنفس الرسم البياني الشهري
+  // بنفس منطق getKpiData أعلاه، باستثناء القيود المرتبطة أصلاً بفاتورة لتفادي الاحتساب المزدوج
+  const kpiInvEntryIds=new Set();
+  salesInvoices.forEach(function(i){if(i.entryId)kpiInvEntryIds.add(i.entryId);});
+  purchaseInvoices.forEach(function(i){if(i.entryId)kpiInvEntryIds.add(i.entryId);});
+  postedEntries().filter(function(e){return !kpiInvEntryIds.has(e.id);}).forEach(function(e){
+    const mk=(e.date||'').slice(0,7);if(!(mk in salesByMonth))return;
+    e.lines.forEach(function(l){
+      const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
+      if(acc.type==='revenue')salesByMonth[mk]+=(l.credit||0)-(l.debit||0);
+      if(acc.type==='expense')purByMonth[mk]+=(l.debit||0)-(l.credit||0);
+    });
+  });
   const monthLabels=['ينا','فبر','مار','أبر','ماي','يون','يول','أغس','سبت','أكت','نوف','ديس'];
   drawBarChart('kpi-bar-chart',monthLabels,[
     {label:'المبيعات',color:'#22c55e',values:months.map(function(m){return salesByMonth[m];})},
@@ -4331,7 +4354,12 @@ function saveEditAcc(){
   const cfActivity=cfActEl?(cfActEl.value||null):null;
   if(!code||!name){showAlert("يرجى إدخال البيانات المطلوبة","err");return;}
   if(accounts.find(a=>a.code===code&&a.id!==id)){showAlert("الرمز موجود","err");return;}
-  Object.assign(accounts.find(a=>a.id===id),{code,name,type,open,par,cfActivity});
+  const acc=accounts.find(a=>a.id===id);
+  // تعديل يدوي فعلي لنوع الحساب (وليس مجرد إعادة حفظ نفس القيمة) يُثبَّت (typeLocked) حتى لا
+  // يُعيد تحديث/استيراد دليل الحسابات لاحقاً تصنيفه تلقائياً حسب الحساب الأب — راجع importCOARows
+  const typeChanged=acc.type!==type;
+  Object.assign(acc,{code,name,type,open,par,cfActivity});
+  if(typeChanged)acc.typeLocked=true;
   accounts.sort((a,b)=>a.code.localeCompare(b.code));
   CM("m-ea");renderAccs();showAlert("تم التعديل");
 }
@@ -4357,7 +4385,7 @@ function renderAccs(){
     return `<tr class="lv${Math.min(lvl,3)}">
       <td><strong style="letter-spacing:1px;font-family:monospace">${fmtCode(a.code)}</strong></td>
       <td class="nm-col" style="padding-right:${11+lvl*14}px">${a.name}</td>
-      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span>${isLeaf(a.id)?`<div style="font-size:8.5px;color:var(--g4);margin-top:2px;white-space:nowrap">${CF_ACTIVITY_LABELS[getEffectiveCFActivity(a)]||""}${a.cfActivity?" (يدوي)":""}</div>`:""}</td>
+      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span>${a.typeLocked?` <span title="نوع الحساب عُدِّل يدوياً — لن يُغيَّر تلقائياً عند تحديث/استيراد دليل الحسابات" style="font-size:9px">🔒</span>`:""}${isLeaf(a.id)?`<div style="font-size:8.5px;color:var(--g4);margin-top:2px;white-space:nowrap">${CF_ACTIVITY_LABELS[getEffectiveCFActivity(a)]||""}${a.cfActivity?" (يدوي)":""}</div>`:""}</td>
       <td style="font-size:10px;color:var(--g4)">${lvl===0?"جذر":lvl===1?"م.1":lvl===2?"م.2":"م.3+"}</td>
       <td>${sc?`<span class="bdg b6" style="cursor:pointer" onclick="SS('sub',null);filterSubByAcc(${a.id})">${sc} سجل</span>`:"—"}</td>
       <td style="direction:ltr;text-align:left">${fmtNum(a.open)} ${cur()}</td>
@@ -7039,6 +7067,37 @@ function renderTaxReport(){
       '<td style="direction:ltr;text-align:left">'+fmtDisp(inv.subtotal)+'</td>'+
       '<td style="color:var(--gn);font-weight:700;direction:ltr;text-align:left">'+fmtDisp(inv.tax)+'</td></tr>';
   });
+  // ضريبة مسجَّلة ضمن قيود يومية مباشرة (بدون المرور بشاشة الفواتير) — كان تقرير الضريبة يتجاهلها
+  // كلياً ويقتصر على الفواتير فقط. نجمع أي حركة على حسابات الضريبة المعرَّفة بإعدادات الضرائب
+  // (taxRates)، مع استثناء القيود المرتبطة أصلاً بفاتورة (inv.entryId) والمحتسبة أعلاه فعلاً —
+  // تفادياً للاحتساب المزدوج لنفس المبلغ
+  const taxInvoiceEntryIds=new Set();
+  salesInvoices.forEach(function(i){if(i.entryId)taxInvoiceEntryIds.add(i.entryId);});
+  purchaseInvoices.forEach(function(i){if(i.entryId)taxInvoiceEntryIds.add(i.entryId);});
+  const outVatAccIds=new Set(taxRates.map(function(t){return t.salesAccId||t.accId;}).filter(Boolean));
+  const inVatAccIds=new Set(taxRates.map(function(t){return t.purchAccId||t.inputAccId;}).filter(Boolean));
+  postedEntries().filter(function(e){return !taxInvoiceEntryIds.has(e.id)&&(!fromD||e.date>=fromD)&&(!toD||e.date<=toD);}).forEach(function(e){
+    e.lines.forEach(function(l){
+      if(outVatAccIds.has(l.accId)){
+        const amt=(l.credit||0)-(l.debit||0);
+        if(Math.abs(amt)>0.001){
+          outputTax+=amt;
+          outputRows+='<tr><td>'+fmtDate(e.date)+'</td><td>'+(e.ref||'قيد #'+e.id)+'</td><td>'+(l.desc||e.desc||'—')+' <small style="color:var(--g4)">(قيد يومية)</small></td>'+
+            '<td style="direction:ltr;text-align:left">—</td>'+
+            '<td style="color:var(--rd);font-weight:700;direction:ltr;text-align:left">'+fmtDisp(amt)+'</td></tr>';
+        }
+      }
+      if(inVatAccIds.has(l.accId)){
+        const amt=(l.debit||0)-(l.credit||0);
+        if(Math.abs(amt)>0.001){
+          inputTax+=amt;
+          inputRows+='<tr><td>'+fmtDate(e.date)+'</td><td>'+(e.ref||'قيد #'+e.id)+'</td><td>'+(l.desc||e.desc||'—')+' <small style="color:var(--g4)">(قيد يومية)</small></td>'+
+            '<td style="direction:ltr;text-align:left">—</td>'+
+            '<td style="color:var(--gn);font-weight:700;direction:ltr;text-align:left">'+fmtDisp(amt)+'</td></tr>';
+        }
+      }
+    });
+  });
   const netTax=outputTax-inputTax;
   el.innerHTML=
     '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px">'+
@@ -8286,7 +8345,9 @@ function importCOARows(rows,opts){
       // التخمين (inferCOARootType) لتصحيح حساب موجود مسبقاً — لأن التخمين نفسه قد يكون خاطئاً
       // (مثال: كود بترقيم يبدأ بصفر كما بالبيانات التجريبية لهذا النظام)، فيستبدل عن طريق
       // الخطأ تصنيفاً صحيحاً بتخمين خاطئ. التخمين يُستخدم فقط عند إنشاء حساب جديد بالأسفل.
-      if(parent){
+      // كذلك لا يُصحَّح أبداً حساب عُدِّل نوعه يدوياً من قبل المستخدم (existing.typeLocked) —
+      // حتى لو لم تكن عليه أي حركات بعد — احتراماً لتصنيف اختاره المستخدم عمداً بنفسه
+      if(parent&&!existing.typeLocked){
         const prevType=existing.type;
         if(parent.type!==prevType&&!entries.some(function(e){return e.lines.some(function(l){return l.accId===existing.id;});})){
           if(!dryRun)existing.type=parent.type;
