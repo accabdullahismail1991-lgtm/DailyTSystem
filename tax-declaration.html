@@ -1358,19 +1358,41 @@ function fetchFromAccountingSystem(){
   const salesInRange = sales.filter(i=> i.status==='posted' && !i.isReturn && i.date>=fromD && i.date<=toD);
   const purchasesInRange = purchases.filter(i=> i.status==='posted' && !i.isReturn && i.date>=fromD && i.date<=toD);
 
-  if(!salesInRange.length && !purchasesInRange.length){
-    setLinkStatus('⚠️ لم يتم العثور على أي فواتير مرحّلة ضمن الفترة المحددة (' + fromD + ' إلى ' + toD + ') في النظام المحاسبي.', false);
+  // المصدر الأول (الأدق): فواتير المبيعات/المشتريات المرحّلة. عند عدم توفر فواتير لأحد
+  // الجانبين ضمن الفترة (نظام يُدخل قيوده مباشرة بدلاً من شاشة الفواتير، أو فواتير مستوردة
+  // كقيود يومية فقط) يُراجَع بدلاً منها حساب ضريبة المخرجات/المدخلات نفسه من دليل الحسابات
+  // (المُعرَّف بإعدادات الضريبة بالنظام المحاسبي) وتُجمَع حركاته الفعلية بالقيود ضمن نفس
+  // الفترة كبديل — تماماً كما تُقرأ من كشف حساب "ضريبة القيمة المضافة على المدخلات والمشتريات"
+  // ونحوه من الحسابات المستوردة. الوعاء الضريبي عند الاعتماد على الحساب يُشتق من نسبة الضريبة
+  // المُعرَّفة (وعاء = ضريبة ÷ النسبة) لعدم توفر تفصيل فاتورة بفاتورة بهذا المصدر.
+  let salesBase, salesVat, salesSrc, purchBase, purchVat, purchSrc;
+  if(salesInRange.length){
+    salesBase = salesInRange.reduce((s,i)=> s + (i.subtotal||0), 0);
+    salesVat = salesInRange.reduce((s,i)=> s + (i.tax||0), 0);
+    salesSrc = `${salesInRange.length} فاتورة مبيعات مرحّلة`;
+  } else {
+    const fb = computeVatFromTaxAccount(data, 'sales', fromD, toD);
+    salesBase = fb.base; salesVat = fb.vat;
+    salesSrc = fb.found ? `حركة حساب ضريبة المبيعات "${fb.accLabel}" (لا توجد فواتير مرحّلة بالفترة)` : null;
+  }
+  if(purchasesInRange.length){
+    purchBase = purchasesInRange.reduce((s,i)=> s + (i.subtotal||0), 0);
+    purchVat = purchasesInRange.reduce((s,i)=> s + (i.tax||0), 0);
+    purchSrc = `${purchasesInRange.length} فاتورة مشتريات مرحّلة`;
+  } else {
+    const fb = computeVatFromTaxAccount(data, 'purchases', fromD, toD);
+    purchBase = fb.base; purchVat = fb.vat;
+    purchSrc = fb.found ? `حركة حساب ضريبة المشتريات "${fb.accLabel}" (لا توجد فواتير مرحّلة بالفترة)` : null;
+  }
+
+  if(!salesSrc && !purchSrc){
+    setLinkStatus('⚠️ لم يتم العثور على فواتير مرحّلة ولا على حركة بحسابات ضريبة المبيعات/المشتريات (تحقّق من ربط الحسابات بإعدادات الضريبة بالنظام المحاسبي) ضمن الفترة المحددة (' + fromD + ' إلى ' + toD + ').', false);
     return;
   }
 
-  const salesBase = salesInRange.reduce((s,i)=> s + (i.subtotal||0), 0);
-  const salesVat = salesInRange.reduce((s,i)=> s + (i.tax||0), 0);
-  const purchasesBase = purchasesInRange.reduce((s,i)=> s + (i.subtotal||0), 0);
-  const purchasesVat = purchasesInRange.reduce((s,i)=> s + (i.tax||0), 0);
-
   const summary = `الفترة ${fromD} → ${toD}:\n`
-    + `• المبيعات: ${salesInRange.length} فاتورة — الوعاء ${fmt(salesBase)} ريال — الضريبة ${fmt(salesVat)} ريال\n`
-    + `• المشتريات: ${purchasesInRange.length} فاتورة — الوعاء ${fmt(purchasesBase)} ريال — الضريبة ${fmt(purchasesVat)} ريال\n\n`
+    + `• المبيعات: ${salesSrc || 'لا توجد بيانات'} — الوعاء ${fmt(salesBase)} ريال — الضريبة ${fmt(salesVat)} ريال\n`
+    + `• المشتريات: ${purchSrc || 'لا توجد بيانات'} — الوعاء ${fmt(purchBase)} ريال — الضريبة ${fmt(purchVat)} ريال\n\n`
     + `سيتم تعبئة البند 1 (المبيعات الخاضعة للنسبة الأساسية) والبند 7 (المشتريات الخاضعة للنسبة الأساسية) بهذه القيم. متابعة؟`;
   if(!confirm(summary)) return;
 
@@ -1384,11 +1406,41 @@ function fetchFromAccountingSystem(){
     vatInput.value = vat.toFixed(2);
     vatInput.dispatchEvent(new Event('input'));
   };
-  applyRow('s1', salesBase, salesVat);
-  applyRow('p7', purchasesBase, purchasesVat);
+  applyRow('s1', salesBase||0, salesVat||0);
+  applyRow('p7', purchBase||0, purchVat||0);
   recalcAll();
 
-  setLinkStatus(`✅ تم الجلب من النظام المحاسبي: ${salesInRange.length} فاتورة مبيعات و${purchasesInRange.length} فاتورة مشتريات — تم تعبئة البندين 1 و7.`, true);
+  setLinkStatus(`✅ تم الجلب من النظام المحاسبي — المبيعات: ${salesSrc || 'لا توجد بيانات'} | المشتريات: ${purchSrc || 'لا توجد بيانات'} — تم تعبئة البندين 1 و7.`, true);
+}
+// يبحث عن حساب ضريبة المبيعات (المخرجات) أو المشتريات (المدخلات) كما هو معرَّف بإعدادات
+// الضريبة بالنظام المحاسبي (نفس الحساب المُختار بقائمة "حساب ضريبة المبيعات/المشتريات" هناك)،
+// ثم يجمع صافي حركته (دائن-مدين للمبيعات، مدين-دائن للمشتريات لأنه حساب أصل قابل للاسترداد)
+// من كل القيود المرحّلة ضمن الفترة المحددة — بديل عن الفواتير عند غيابها
+function computeVatFromTaxAccount(data, side, fromD, toD){
+  const taxRates = Array.isArray(data.taxRates) ? data.taxRates : [];
+  const cfg = data.CFG || {};
+  const preferredId = side==='sales' ? cfg.defaultSalesTaxId : cfg.defaultPurchTaxId;
+  let rate = preferredId ? taxRates.find(t=> t.id===preferredId) : null;
+  if(!rate){
+    rate = taxRates.find(t=> t.active && (side==='sales' ? (t.salesAccId||t.accId) : (t.purchAccId||t.inputAccId)));
+  }
+  if(!rate) return {found:false, base:0, vat:0};
+  const accId = side==='sales' ? (rate.salesAccId||rate.accId) : (rate.purchAccId||rate.inputAccId);
+  if(!accId) return {found:false, base:0, vat:0};
+  const accounts = Array.isArray(data.accounts) ? data.accounts : [];
+  const acc = accounts.find(a=> a.id===accId);
+  const entries = Array.isArray(data.entries) ? data.entries : [];
+  let vat = 0;
+  entries.forEach(e=>{
+    if(!e.date || e.date<fromD || e.date>toD || e.isDraft) return;
+    (e.lines||[]).forEach(l=>{
+      if(l.accId!==accId) return;
+      vat += side==='sales' ? ((l.credit||0)-(l.debit||0)) : ((l.debit||0)-(l.credit||0));
+    });
+  });
+  if(Math.abs(vat)<0.005) return {found:false, base:0, vat:0};
+  const base = rate.rate ? vat/(rate.rate/100) : 0;
+  return {found:true, base:base, vat:vat, accLabel: acc ? (acc.code+' — '+acc.name) : ('#'+accId)};
 }
 
 async function handleImport(side){
