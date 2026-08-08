@@ -3196,20 +3196,25 @@ function showAlert(msg,tp="ok"){
 }
 
 // Account helpers
+// المستوى دائماً بتتبّع سلسلة الأب (par) فعلياً — وليس بتخمين من طول الرمز. كان المستوى يُخمَّن
+// سابقاً بافتراض رمز مبطّن بأصفار بمقاطع من خانتين (01، 0101، ...)، وهو تحديداً اصطلاح الترقيم
+// اليدوي بهذا النظام فقط — ودليل الحسابات المستورَد من أنظمة خارجية (مثال حقيقي تحقّقنا منه
+// فعلياً: أكواد بـ9 خانات كـ"101001002") لا يتبع هذا الاصطلاح إطلاقاً، فكان طول الرمز يُنتج
+// مستوى خاطئاً له (يُستخدم فقط بعرض المسافة البادئة، تجميلي بحت — لا يؤثر على isLeaf أدناه)
 function getLevel(a){
-  // With zero-padded codes: 01=0, 0101=1, 010101=2, 01010101=3
-  if(a.code && /^\d+$/.test(a.code)) return (a.code.length/2)-1;
-  // Fallback: parent traversal
-  let l=0,cur=a;while(cur.par){const p=accounts.find(x=>x.id===cur.par);if(!p)break;l++;cur=p;}return l;
+  let l=0,cur=a;while(cur&&cur.par){const p=accounts.find(x=>x.id===cur.par);if(!p)break;l++;cur=p;}return l;
 }
 function getDescendants(id){const kids=accounts.filter(a=>a.par===id).map(a=>a.id);return kids.flatMap(k=>[k,...getDescendants(k)]);}
+// حساب "طرفي" (قابل لترحيل قيود عليه) = لا يوجد أي حساب آخر يشير إليه كأب — تعريف بنيوي عام
+// يعمل بشكل صحيح بغض النظر عن اصطلاح ترقيم الأكواد. كان يُحدَّد سابقاً فقط بطول الرمز (=10
+// خانات بالضبط)، وهو خاص باصطلاح الإدخال اليدوي بهذا النظام (٢،٤،٦،٨،١٠ خانات لأول خمس
+// مستويات) — لكن ذلك يكسر تماماً مع أي دليل حسابات مستورَد من نظام خارجي بأطوال أكواد مختلفة
+// (تحقّقنا فعلياً: كل حساب مستورَد فشل بشرط الطول=10 فاعتُبر "غير طرفي" بلا استثناء، فاختفت كل
+// حساباته من كشف الحساب، البحث عن حساب، وكل تقرير/قائمة تعتمد isLeaf — وهي غالبية شاشات النظام)
 function isLeaf(id){
   const a=accounts.find(function(x){return x.id===id;});
   if(!a) return false;
-  // Level 5 = code length 10 (e.g., "0101010101")
-  if(a.code && /^\d+$/.test(a.code)) return a.code.length===10;
-  // Fallback: level 4 by parent traversal
-  return getLevel(a)===4;
+  return !accounts.some(function(x){return x.par===id;});
 }
 function isL5Entry(id){return isLeaf(id);}
 function resolveLeafAccount(accId){
@@ -5227,15 +5232,19 @@ function getCCProjReportData(){
   return items.map(function(item){
     let debit=0,credit=0,moveCount=0;
     const accMap={};
-    entries.filter(function(e){return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);}).forEach(function(e){
+    // مسودات القيود (isDraft) لا تُحسب — بنفس معيار كشف الحساب (postedEntries) — حتى لا تُدرَج
+    // حركة لم تُرحَّل بعد ضمن إجمالي/تفاصيل مركز التكلفة أو المشروع
+    postedEntries().filter(function(e){return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);}).forEach(function(e){
       e.lines.filter(function(l){return dim==="cc"?l.costCenterId===item.id:l.projectId===item.id;}).forEach(function(l){
         debit+=l.debit||0; credit+=l.credit||0; moveCount++;
         const acc=accounts.find(function(a){return a.id===l.accId;});
         if(!acc) return;
-        if(!accMap[acc.id]) accMap[acc.id]={code:acc.code,name:acc.name,type:acc.type,debit:0,credit:0};
+        if(!accMap[acc.id]) accMap[acc.id]={code:acc.code,name:acc.name,type:acc.type,debit:0,credit:0,lines:[]};
         accMap[acc.id].debit+=l.debit||0; accMap[acc.id].credit+=l.credit||0;
+        accMap[acc.id].lines.push({date:e.date,ref:e.ref||"",desc:l.desc||e.desc||"",entId:e.id,debit:l.debit||0,credit:l.credit||0});
       });
     });
+    Object.values(accMap).forEach(function(a){a.lines.sort(function(x,y){return x.date.localeCompare(y.date);});});
     return {id:item.id,name:item.name,code:item.code||"",debit,credit,net:debit-credit,moveCount,
       accounts:Object.values(accMap).sort(function(a,b){return a.code.localeCompare(b.code);})};
   });
@@ -5247,6 +5256,7 @@ function toggleCCProjDetail(id){
 function renderCCProjReport(){
   const el=document.getElementById("ccrpt-body");if(!el) return;
   const dim=(document.getElementById("ccrpt-active-dim")||{}).value||"cc";
+  const hcRef=CFG.rptColor||"#0f4c75";
   const rows=getCCProjReportData();
   const sumEl=document.getElementById("ccrpt-summary");
   const totalDebit=rows.reduce(function(s,r){return s+r.debit;},0);
@@ -5281,9 +5291,27 @@ function renderCCProjReport(){
           ?'<table style="width:100%;font-size:11px;border-collapse:collapse">'
             +'<thead><tr style="background:#f1f5f9"><th style="text-align:right;padding:5px">الحساب</th><th style="text-align:left;padding:5px">مدين</th><th style="text-align:left;padding:5px">دائن</th></tr></thead>'
             +'<tbody>'+r.accounts.map(function(a){
-              return '<tr><td style="padding:5px">'+a.code+' — '+a.name+'</td>'
+              const accDetailId=detailId+"-acc"+a.code.replace(/\W/g,"");
+              return '<tr style="cursor:pointer" onclick="toggleCCProjDetail(\''+accDetailId+'\')" title="اضغط لعرض تفاصيل الحركات">'
+                +'<td style="padding:5px">'+a.code+' — '+a.name+' <span style="color:var(--g4);font-size:9.5px">▾ '+a.lines.length+' حركة</span></td>'
                 +'<td style="direction:ltr;text-align:left;padding:5px;color:#1d4ed8">'+(a.debit?fmtNum(a.debit):'')+'</td>'
-                +'<td style="direction:ltr;text-align:left;padding:5px;color:#16a34a">'+(a.credit?fmtNum(a.credit):'')+'</td></tr>';
+                +'<td style="direction:ltr;text-align:left;padding:5px;color:#16a34a">'+(a.credit?fmtNum(a.credit):'')+'</td></tr>'
+                +'<tr id="'+accDetailId+'" style="display:none"><td colspan="3" style="padding:0 0 8px">'
+                  +'<table style="width:100%;font-size:10.5px;border-collapse:collapse;background:#fbfcfe" onclick="event.stopPropagation()">'
+                    +'<thead><tr style="background:#eef2f7;color:var(--g5)">'
+                      +'<th style="text-align:right;padding:4px 8px">التاريخ</th><th style="text-align:right;padding:4px 8px">المرجع</th>'
+                      +'<th style="text-align:right;padding:4px 8px">البيان</th><th style="text-align:center;padding:4px 8px">القيد#</th>'
+                      +'<th style="text-align:left;padding:4px 8px">مدين</th><th style="text-align:left;padding:4px 8px">دائن</th></tr></thead>'
+                    +'<tbody>'+a.lines.map(function(ln){
+                      return '<tr><td style="padding:4px 8px;white-space:nowrap">'+fmtDate(ln.date)+'</td>'
+                        +'<td style="padding:4px 8px;font-family:monospace;color:var(--g6)">'+(ln.ref||'—')+'</td>'
+                        +'<td style="padding:4px 8px">'+(ln.desc||'—')+'</td>'
+                        +'<td style="padding:4px 8px;text-align:center"><a onclick="openEditEntry('+ln.entId+')" style="cursor:pointer;color:'+hcRef+';font-weight:700">👁 #'+ln.entId+'</a></td>'
+                        +'<td style="direction:ltr;text-align:left;padding:4px 8px;color:#1d4ed8">'+(ln.debit?fmtNum(ln.debit):'')+'</td>'
+                        +'<td style="direction:ltr;text-align:left;padding:4px 8px;color:#16a34a">'+(ln.credit?fmtNum(ln.credit):'')+'</td></tr>';
+                    }).join('')
+                    +'</tbody></table>'
+                +'</td></tr>';
             }).join('')
             +'</tbody></table>'
           :'<div style="color:var(--g4);font-size:11px">لا توجد حركات</div>')
@@ -5300,6 +5328,17 @@ function expCCProjXL(){
     [dim==="cc"?"مركز التكلفة":"المشروع","عدد الحركات","إجمالي مدين","إجمالي دائن","الصافي"]];
   rows.forEach(function(r){data.push([r.name,r.moveCount,r.debit,r.credit,r.net]);});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),dim==="cc"?"مراكز التكلفة":"المشاريع");
+  // ورقة ثانية بتفاصيل الحركات الفردية (وليس فقط إجمالي كل حساب) لكل مركز تكلفة/مشروع
+  const detailData=[[dim==="cc"?"تفاصيل حركات مراكز التكلفة":"تفاصيل حركات المشاريع"],[],
+    [dim==="cc"?"مركز التكلفة":"المشروع","الحساب","التاريخ","المرجع","البيان","القيد#","مدين","دائن"]];
+  rows.forEach(function(r){
+    r.accounts.forEach(function(a){
+      a.lines.forEach(function(ln){
+        detailData.push([r.name,a.code+" — "+a.name,ln.date,ln.ref,ln.desc,ln.entId,ln.debit,ln.credit]);
+      });
+    });
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detailData),"تفاصيل الحركات");
   XLSX.writeFile(wb,(dim==="cc"?"cost_centers_":"projects_")+today()+".xlsx");
   showAlert("تم التصدير Excel ✓");
 }
