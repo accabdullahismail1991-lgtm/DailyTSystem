@@ -908,6 +908,7 @@ tbody tr:hover{background:var(--g50)}
  <div class="chd">
   <div class="ct"><div class="ti">🔍</div>اختيار الحساب والفترة</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bp bsm" onclick="renderLg()">🔄 عرض</button>
    <button class="btn bg bsm" onclick="const id=parseInt(document.getElementById('lg-id').value)||0;if(!id){showAlert('يرجى اختيار حساب أولاً','err');return;}expSingleLgXL(id);">📊 Excel</button>
    <button class="btn bo bsm" onclick="const id=parseInt(document.getElementById('lg-id').value)||0;if(!id){showAlert('يرجى اختيار حساب أولاً','err');return;}expSingleLgPDF(id);">📄 PDF</button>
    <button class="btn ba bsm no-print" onclick="const id=parseInt(document.getElementById('lg-id').value)||0;if(!id){showAlert('يرجى اختيار حساب أولاً','err');return;}printLedgerVch(id);">🖨️ طباعة كشف الحساب</button>
@@ -1025,6 +1026,7 @@ tbody tr:hover{background:var(--g50)}
  <div class="chd">
   <div class="ct"><div class="ti">📊</div>القوائم المالية</div>
   <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+   <button class="btn bp bsm" onclick="renderFS(fsTab)">🔄 عرض</button>
    <button class="btn bg bsm" onclick="expFSXL()">📊 Excel</button>
    <button class="btn bo bsm" onclick="expFSPDF()">📄 PDF</button>
   </div>
@@ -1747,6 +1749,7 @@ tbody tr:hover{background:var(--g50)}
   <div style="display:flex;gap:6px;align-items:center">
    <input id="tax-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderTaxReport()">
    <input id="tax-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderTaxReport()">
+   <button class="btn bp bsm" onclick="renderTaxReport()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('tax-from').value='';document.getElementById('tax-to').value='';renderTaxReport()">↺</button>
   </div>
  </div>
@@ -1767,6 +1770,7 @@ tbody tr:hover{background:var(--g50)}
     <option value="declining">الرصيد المتناقص</option>
     <option value="sum">مجموع الأرقام</option>
    </select>
+   <button class="btn bp bsm" onclick="renderDepSchedule()">🔄 عرض</button>
    <button class="btn bg bsm" onclick="expDepSchedXL()">📊 Excel</button>
    <button class="btn bo bsm" onclick="printDepSchedule()">🖨️ طباعة</button>
   </div>
@@ -1784,6 +1788,7 @@ tbody tr:hover{background:var(--g50)}
   <div style="display:flex;gap:6px;align-items:center">
    <input id="cf-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
    <input id="cf-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
+   <button class="btn bp bsm" onclick="renderCashFlow()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';renderCashFlow()">↺</button>
    <button class="btn bo bsm" onclick="printCashFlow()">🖨️ طباعة</button>
   </div>
@@ -1803,6 +1808,7 @@ tbody tr:hover{background:var(--g50)}
   <div style="display:flex;gap:6px;align-items:center">
    <input id="ccrpt-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCCProjReport()">
    <input id="ccrpt-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCCProjReport()">
+   <button class="btn bp bsm" onclick="renderCCProjReport()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('ccrpt-from').value='';document.getElementById('ccrpt-to').value='';renderCCProjReport()">↺</button>
    <button class="btn bg bsm" onclick="expCCProjXL()">📊 Excel</button>
    <button class="btn bo bsm" onclick="printCCProjReport()">🖨️ طباعة</button>
@@ -1993,6 +1999,7 @@ tbody tr:hover{background:var(--g50)}
    <input id="stk-bal-search" type="text" placeholder="🔍 بحث..." style="width:130px;font-size:12px;padding:5px 8px" oninput="renderStockBalance()">
    <select id="stk-bal-cat" style="font-size:12px;padding:5px 8px" onchange="renderStockBalance()"><option value="">كل التصنيفات</option></select>
    <select id="stk-bal-wh" style="font-size:12px;padding:5px 8px" onchange="renderStockBalance()"><option value="">كل المستودعات</option></select>
+   <button class="btn bp bsm" onclick="renderStockBalance()">🔄 عرض</button>
    <button class="btn bg bsm" onclick="exportStockBalXL()">📊 Excel</button>
    <button class="btn bo bsm" onclick="printStockBal()">🖨️</button>
   </div>
@@ -2010,6 +2017,7 @@ tbody tr:hover{background:var(--g50)}
    <input id="whrpt-s" type="text" placeholder="🔍 بحث..." style="width:130px;font-size:12px;padding:5px 8px" oninput="renderWarehouseReports()">
    <select id="whrpt-wh" style="font-size:12px;padding:5px 8px" onchange="renderWarehouseReports()"><option value="">كل المستودعات</option></select>
    <label style="display:flex;align-items:center;gap:4px;font-size:11.5px;cursor:pointer;white-space:nowrap"><input type="checkbox" id="whrpt-lowonly" onchange="renderWarehouseReports()" style="width:14px;height:14px"> تحت الحد الأدنى فقط</label>
+   <button class="btn bp bsm" onclick="renderWarehouseReports()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="printWarehouseReport()">🖨️ طباعة</button>
   </div>
  </div>
@@ -8411,6 +8419,24 @@ function groupAuxLedgerRows(rows){
       balanced:Math.abs(totalDr-totalCr)<0.01,date:date};
   });
 }
+// يبني "بصمة" مستقرة لمحتوى مستند (مجموعة أطراف) لمقارنته بين استيراد وآخر لنفس رقم المستند —
+// بصرف النظر عن ترتيب الأسطر (قد يختلف بين استخراجين لنفس الملف). تُستخدم لاكتشاف تحديث فعلي
+// بوصف/مبلغ/تاريخ حركة مستوردة مسبقاً بنسخة أحدث من الملف المصدر، فيُحدَّث القيد الموجود فعلياً
+// بدل تجاهله (استيراد مسبق) أو تكراره (قيد جديد بنفس رقم المستند)
+function fingerprintGroup(g,ccAware){
+  return g.date+'::'+g.rows.map(function(r){
+    return r.accCode+'|'+((parseFloat(r.debit)||0).toFixed(2))+'|'+((parseFloat(r.credit)||0).toFixed(2))+'|'+(r.desc||'').trim()
+      +(ccAware?'|'+(r.ccCode||''):'');
+  }).sort().join('~');
+}
+function fingerprintEntry(ent,ccAware){
+  return ent.date+'::'+ent.lines.map(function(l){
+    const acc=accounts.find(function(a){return a.id===l.accId;});
+    const cc=ccAware&&l.costCenterId?(costCenters||[]).find(function(c){return c.id===l.costCenterId;}):null;
+    return (acc?acc.code:'')+'|'+((parseFloat(l.debit)||0).toFixed(2))+'|'+((parseFloat(l.credit)||0).toFixed(2))+'|'+(l.desc||'').trim()
+      +(ccAware?'|'+(cc?cc.code:''):'');
+  }).sort().join('~');
+}
 function importAuxLedgerGroups(groups,sourceLabel,dryRun){
   sourceLabel=sourceLabel||'استيراد خارجي';
   const results=[];
@@ -8421,8 +8447,12 @@ function importAuxLedgerGroups(groups,sourceLabel,dryRun){
     const ref=(g.docType||'')+'-'+(g.docNo||'');
     const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
     const already=auxImportLog.find(function(l){return l.key===g.key&&l.status==='created';});
-    if(already){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'skipped',note:'تم استيراده مسبقاً',lineCount:g.rows.length});
+    const existingEnt=already?entries.find(function(e){return e.id===already.entryId;}):null;
+    // مستند مستورَد مسبقاً ولم تتغيّر بياناته إطلاقاً بالملف الحالي عن آخر استيراد له — يُتجاهل
+    // فوراً كالسابق تماماً. أما إن تغيّر شيء (وصف/مبلغ/تاريخ) أو كان القيد قد حُذف يدوياً، يُكمَل
+    // بالأسفل لتحديث القيد الموجود فعلياً في مكانه (أو إعادة إنشائه إن حُذف) — بلا أي تكرار
+    if(already&&existingEnt&&fingerprintEntry(existingEnt,false)===fingerprintGroup(g,false)){
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'skipped',note:'تم استيراده مسبقاً ولم يتغيّر',lineCount:g.rows.length});
       return;
     }
     if(g.rows.length<2){
@@ -8447,22 +8477,30 @@ function importAuxLedgerGroups(groups,sourceLabel,dryRun){
     }
     let entId=null;
     if(!dryRun){
-      const ent={
-        id:nxtEntId++,date:g.date,desc:desc,ref:ref,year:CY,isDraft:false,
-        attachment:null,attachDesc:'',
-        lines:g.rows.map(function(r){
-          const acc=accounts.find(function(a){return a.code===r.accCode;});
-          return {accId:acc.id,desc:r.desc||'',debit:r.debit,credit:r.credit,subId:null,costCenterId:null,projectId:null,
-            extRef:ref,extSrc:sourceLabel};
-        })
-      };
-      entries.push(ent);
-      entId=ent.id;
-      const rec={id:already?already.id:nxtAuxLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,
-        lineCount:g.rows.length,status:'created',srcLabel:sourceLabel,importedAt:new Date().toISOString()};
-      auxImportLog.push(rec);
+      const newLines=g.rows.map(function(r){
+        const acc=accounts.find(function(a){return a.code===r.accCode;});
+        return {accId:acc.id,desc:r.desc||'',debit:r.debit,credit:r.credit,subId:null,costCenterId:null,projectId:null,
+          extRef:ref,extSrc:sourceLabel};
+      });
+      if(existingEnt){
+        // تحديث القيد الموجود فعلياً في مكانه بنفس رقمه — لا يُنشأ قيد جديد فيتكرر المستند
+        existingEnt.date=g.date;existingEnt.desc=desc;existingEnt.ref=ref;existingEnt.lines=newLines;
+        entId=existingEnt.id;
+      }else{
+        const ent={id:nxtEntId++,date:g.date,desc:desc,ref:ref,year:CY,isDraft:false,attachment:null,attachDesc:'',lines:newLines};
+        entries.push(ent);
+        entId=ent.id;
+      }
+      if(already){
+        // تحديث سجل الاستيراد في مكانه (سواء لتحديث فعلي أو لإعادة إنشاء قيد حُذف يدوياً) — لا يُكرَّر بالسجل
+        already.entryId=entId;already.docType=g.docType;already.docNo=g.docNo;already.date=g.date;already.ref=ref;already.desc=desc;
+        already.lineCount=g.rows.length;already.status='created';already.srcLabel=sourceLabel;already.importedAt=new Date().toISOString();
+      }else{
+        auxImportLog.push({id:nxtAuxLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,
+          lineCount:g.rows.length,status:'created',srcLabel:sourceLabel,importedAt:new Date().toISOString()});
+      }
     }
-    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'created',entryId:entId,lineCount:g.rows.length});
+    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:(existingEnt?'updated':'created'),entryId:entId,lineCount:g.rows.length});
   });
   return {results:results};
 }
@@ -8596,8 +8634,12 @@ function importJournalCCGroups(groups,sourceLabel,dryRun){
     const ref=(g.docType||'')+'-'+(g.docNo||'');
     const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
     const already=journalCCImportLog.find(function(l){return l.key===g.key&&l.status==='created';});
-    if(already){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'skipped',note:'تم استيراده مسبقاً',lineCount:g.rows.length});
+    const existingEnt=already?entries.find(function(e){return e.id===already.entryId;}):null;
+    // مستند مستورَد مسبقاً ولم تتغيّر بياناته (ولا مركز التكلفة على أي طرف منها) إطلاقاً عن آخر
+    // استيراد له — يُتجاهل فوراً كالسابق. أي تغيّر (وصف/مبلغ/تاريخ/مركز تكلفة) أو حذف القيد يدوياً
+    // يُكمَل بالأسفل لتحديث القيد في مكانه (أو إعادة إنشائه) بلا أي تكرار
+    if(already&&existingEnt&&fingerprintEntry(existingEnt,true)===fingerprintGroup(g,true)){
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'skipped',note:'تم استيراده مسبقاً ولم يتغيّر',lineCount:g.rows.length});
       return;
     }
     if(g.rows.length<2){
@@ -8624,23 +8666,30 @@ function importJournalCCGroups(groups,sourceLabel,dryRun){
     g.rows.forEach(function(r){if(r.ccCode)resolveCC(r.ccCode);});
     let entId=null;
     if(!dryRun){
-      const ent={
-        id:nxtEntId++,date:g.date,desc:desc,ref:ref,year:CY,isDraft:false,
-        attachment:null,attachDesc:'',
-        lines:g.rows.map(function(r){
-          const acc=accounts.find(function(a){return a.code===r.accCode;});
-          const cc=r.ccCode?resolveCC(r.ccCode):null;
-          return {accId:acc.id,desc:r.desc||'',debit:r.debit,credit:r.credit,subId:null,costCenterId:cc?cc.id:null,projectId:null,
-            extRef:ref,extSrc:sourceLabel};
-        })
-      };
-      entries.push(ent);
-      entId=ent.id;
-      const rec={id:already?already.id:nxtJournalCCLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,
-        lineCount:g.rows.length,ccTagged:ccTagged,status:'created',srcLabel:sourceLabel,importedAt:new Date().toISOString()};
-      journalCCImportLog.push(rec);
+      const newLines=g.rows.map(function(r){
+        const acc=accounts.find(function(a){return a.code===r.accCode;});
+        const cc=r.ccCode?resolveCC(r.ccCode):null;
+        return {accId:acc.id,desc:r.desc||'',debit:r.debit,credit:r.credit,subId:null,costCenterId:cc?cc.id:null,projectId:null,
+          extRef:ref,extSrc:sourceLabel};
+      });
+      if(existingEnt){
+        // تحديث القيد الموجود فعلياً في مكانه بنفس رقمه — لا يُنشأ قيد جديد فيتكرر المستند
+        existingEnt.date=g.date;existingEnt.desc=desc;existingEnt.ref=ref;existingEnt.lines=newLines;
+        entId=existingEnt.id;
+      }else{
+        const ent={id:nxtEntId++,date:g.date,desc:desc,ref:ref,year:CY,isDraft:false,attachment:null,attachDesc:'',lines:newLines};
+        entries.push(ent);
+        entId=ent.id;
+      }
+      if(already){
+        already.entryId=entId;already.docType=g.docType;already.docNo=g.docNo;already.date=g.date;already.ref=ref;already.desc=desc;
+        already.lineCount=g.rows.length;already.ccTagged=ccTagged;already.status='created';already.srcLabel=sourceLabel;already.importedAt=new Date().toISOString();
+      }else{
+        journalCCImportLog.push({id:nxtJournalCCLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,
+          lineCount:g.rows.length,ccTagged:ccTagged,status:'created',srcLabel:sourceLabel,importedAt:new Date().toISOString()});
+      }
     }
-    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'created',entryId:entId,lineCount:g.rows.length,ccTagged:ccTagged});
+    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:(existingEnt?'updated':'created'),entryId:entId,lineCount:g.rows.length,ccTagged:ccTagged});
   });
   return {results:results,newCostCenters:newCCCodes};
 }
@@ -8807,6 +8856,7 @@ function commitCOAImport(){
 let __auxPendingGroups=null, __auxPendingSource='';
 const AUX_STATUS_LBL={
   created:'<span class="bdg b4">✅ سيُنشأ قيد</span>',
+  updated:'<span class="bdg b3">🔄 سيُحدَّث القيد</span>',
   skipped:'<span class="bdg" style="background:var(--g100);color:var(--g5)">↩️ مستورد مسبقاً</span>',
   unbalanced:'<span class="bdg b2">⚠ غير متوازن</span>',
   'single-leg':'<span class="bdg b2">⏳ طرف واحد فقط</span>',
@@ -8850,13 +8900,14 @@ function renderAuxPreview(res){
     +'<div class="sg">'
     +'<div class="sc"><div class="sl">مستندات بالملف</div><div class="sv">'+res.results.length+'</div></div>'
     +'<div class="sc"><div class="sl">سيُنشأ الآن</div><div class="sv" style="color:var(--gn)">'+(counts.created||0)+'</div></div>'
-    +'<div class="sc"><div class="sl">مستورد مسبقاً</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">سيُحدَّث (تغيّر عن آخر استيراد)</div><div class="sv" style="color:#7c3aed">'+(counts.updated||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">مستورد مسبقاً ولم يتغيّر</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
     +'<div class="sc"><div class="sl">غير متوازن / طرف واحد</div><div class="sv" style="color:var(--am)">'+((counts.unbalanced||0)+(counts['single-leg']||0))+'</div></div>'
     +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
     +'</div>'
     +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>المستند</th><th>الرقم المرجعي</th><th>الوصف</th><th>عدد الأطراف</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<div class="actions" style="margin-top:10px">'
-    +'<button class="btn bp" onclick="commitAuxImport()">✅ تأكيد وترحيل القيود ('+(counts.created||0)+')</button>'
+    +'<button class="btn bp" onclick="commitAuxImport()">✅ تأكيد وترحيل ('+(counts.created||0)+' جديد، '+(counts.updated||0)+' تحديث)</button>'
     +'</div>';
 }
 function commitAuxImport(){
@@ -8867,8 +8918,9 @@ function commitAuxImport(){
   document.getElementById('aux-import-preview').innerHTML='';
   document.getElementById('aux-file-input').value='';
   const created=res.results.filter(function(r){return r.status==='created';}).length;
+  const updated=res.results.filter(function(r){return r.status==='updated';}).length;
   renderEnts();updateBadges();renderDash();persist();
-  showAlert('تم إنشاء '+created+' قيد يومية من الأستاذ المساعد ✓ — يمكنك الآن رفع كشوفات مراكز التكلفة (الخطوة التالية) لإلحاقها بهذه القيود');
+  showAlert('تم إنشاء '+created+' قيد جديد'+(updated?' وتحديث '+updated+' قيد كان مستورَداً مسبقاً':'')+' من الأستاذ المساعد ✓ — يمكنك الآن رفع كشوفات مراكز التكلفة (الخطوة التالية) لإلحاقها بهذه القيود');
 }
 
 // ── واجهة الاستخدام: رفع "حركة القيود اليومية مع مراكز التكلفة" (الخطوة ④) ──
@@ -8912,15 +8964,16 @@ function renderJournalCCPreview(res){
     +'<div class="sg">'
     +'<div class="sc"><div class="sl">مستندات بالملف</div><div class="sv">'+res.results.length+'</div></div>'
     +'<div class="sc"><div class="sl">سيُنشأ الآن</div><div class="sv" style="color:var(--gn)">'+(counts.created||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">سيُحدَّث (تغيّر عن آخر استيراد)</div><div class="sv" style="color:#7c3aed">'+(counts.updated||0)+'</div></div>'
     +'<div class="sc"><div class="sl">أطراف بمركز تكلفة</div><div class="sv">'+ccTaggedTotal+'</div></div>'
     +'<div class="sc"><div class="sl">مراكز تكلفة جديدة</div><div class="sv">'+(res.newCostCenters?res.newCostCenters.length:0)+'</div></div>'
-    +'<div class="sc"><div class="sl">مستورد مسبقاً</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">مستورد مسبقاً ولم يتغيّر</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
     +'<div class="sc"><div class="sl">غير متوازن / طرف واحد</div><div class="sv" style="color:var(--am)">'+((counts.unbalanced||0)+(counts['single-leg']||0))+'</div></div>'
     +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
     +'</div>'
     +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>المستند</th><th>الرقم المرجعي</th><th>الوصف</th><th>عدد الأطراف</th><th>أطراف بمركز تكلفة</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<div class="actions" style="margin-top:10px">'
-    +'<button class="btn bp" onclick="commitJournalCCImport()">✅ تأكيد وترحيل القيود مع مراكز التكلفة ('+(counts.created||0)+')</button>'
+    +'<button class="btn bp" onclick="commitJournalCCImport()">✅ تأكيد وترحيل ('+(counts.created||0)+' جديد، '+(counts.updated||0)+' تحديث)</button>'
     +'</div>';
 }
 function commitJournalCCImport(){
@@ -8931,9 +8984,10 @@ function commitJournalCCImport(){
   document.getElementById('journalcc-import-preview').innerHTML='';
   document.getElementById('journalcc-file-input').value='';
   const created=res.results.filter(function(r){return r.status==='created';}).length;
+  const updated=res.results.filter(function(r){return r.status==='updated';}).length;
   const ccTaggedTotal=res.results.reduce(function(s,r){return s+(r.ccTagged||0);},0);
   renderEnts();updateBadges();renderDash();persist();
-  showAlert('تم إنشاء '+created+' قيد يومية مع إلحاق مركز التكلفة بـ '+ccTaggedTotal+' طرفاً منها مباشرةً ✓');
+  showAlert('تم إنشاء '+created+' قيد جديد'+(updated?' وتحديث '+updated+' قيد كان مستورَداً مسبقاً':'')+' مع إلحاق مركز التكلفة بـ '+ccTaggedTotal+' طرفاً منها مباشرةً ✓');
 }
 
 // ── واجهة الاستخدام: رفع ومطابقة كشف حركة مركز تكلفة ──
