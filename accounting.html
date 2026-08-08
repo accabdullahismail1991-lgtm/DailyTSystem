@@ -648,6 +648,7 @@ tbody tr:hover{background:var(--g50)}
  </div>
  <div class="tb-r">
   <button class="btn bo bxs no-print" onclick="SSNew(currentSection||'dash')" title="فتح القسم الحالي في تبويب جديد" style="font-size:11px">↗️ تبويب</button>
+  <button class="btn bp bxs no-print" onclick="forceSyncNow()" title="حفظ ومزامنة كل البيانات فوراً مع قاعدة البيانات السحابية بدون انتظار" style="font-size:11px">🔄 حفظ الآن</button>
   <button class="btn bg bxs no-print" onclick="syncAllToGSheets()" title="مزامنة مع Google Sheets" style="font-size:11px">🟢 GS</button>
   <button class="btn bo bxs no-print" onclick="openGSSettings()" title="إعداد Google Sheets" style="font-size:11px">⚙️</button>
   <span id="gs-last-sync" style="font-size:9.5px;color:var(--g4)"></span>
@@ -1487,7 +1488,8 @@ tbody tr:hover{background:var(--g50)}
 <div class="card">
  <div class="chd"><div class="ct"><div class="ti">3️⃣</div>استيراد ومطابقة كشف حركة مركز تكلفة</div></div>
  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-  <input type="file" id="cc-file-input" accept=".xlsx,.xls,.pdf" onchange="handleCCStatementFile(this)" style="font-size:11px">
+  <input type="file" id="cc-file-input" accept=".xlsx,.xls,.pdf" onchange="handleCCStatementFile(this)" style="font-size:11px" multiple>
+  <span style="font-size:10.5px;color:var(--g5)">يمكن اختيار أكثر من ملف لأكثر من مركز تكلفة دفعة واحدة</span>
  </div>
  <div id="cc-import-preview"></div>
 </div>
@@ -8288,13 +8290,17 @@ function extractAuxLedgerFromPdfLines(lines){
   });
   return rows;
 }
-// يجمع الأسطر المسطّحة حسب نوع/رقم المستند لإعادة بناء كل قيد كاملاً (كل أطرافه معاً)
+// يجمع الأسطر المسطّحة حسب رقم المستند وحده — المعيار الوحيد لتوازن القيد هو رقم القيد نفسه
+// مع كل أطراف كل حساب (وليس نوع المستند، الذي قد يُستخرج بشكل غير متسق من سطر لآخر بنفس
+// المستند بسبب التفاف النص في PDF، فيُقسّم القيد الواحد خطأً إلى مجموعتين منفصلتين لا تتوازن
+// أي منهما بمفردها رغم أن مجموعهما الفعلي متوازن)
 function groupAuxLedgerRows(rows){
   const groups={};
   rows.forEach(function(r){
-    const key=(r.docType||'?')+'-'+(r.docNo||'?');
+    const key=r.docNo||'?';
     if(!groups[key])groups[key]={docType:r.docType,docNo:r.docNo,rows:[]};
     groups[key].rows.push(r);
+    if(!groups[key].docType&&r.docType)groups[key].docType=r.docType; // أول نوع مستند غير فارغ، لغرض العرض فقط
   });
   return Object.keys(groups).map(function(k){
     const g=groups[k];
@@ -8366,6 +8372,13 @@ function ccImportKey(row){
   const amt=(row.debit>0?row.debit:row.credit).toFixed(2);
   return [row.accCode,row.date,side,amt,row.doc||''].join('|');
 }
+// يستخرج الرقم الأخير من مرجع القيد (مثال: "JV-16" → "16") لمطابقته برقم مستند كشف مركز
+// التكلفة — نفس معيار توازن القيد بالضبط (رقم القيد وحده)، بغض النظر عن أي بادئة نوع مستند
+function extractDocNoFromRef(ref){
+  if(!ref)return'';
+  const m=String(ref).match(/(\d+)\s*$/);
+  return m?m[1]:'';
+}
 function reconcileCCStatement(parsed, sourceLabel, dryRun){
   sourceLabel=sourceLabel||'استيراد خارجي';
   if(!parsed.ccCode)return{error:'تعذّر التعرّف على رمز مركز التكلفة في الملف'};
@@ -8388,17 +8401,30 @@ function reconcileCCStatement(parsed, sourceLabel, dryRun){
     }
     const side=row.debit>0?'debit':'credit';
     const amt=side==='debit'?row.debit:row.credit;
-    const candidates=[];
-    entries.forEach(function(e){
-      if(e.date!==row.date)return;
-      e.lines.forEach(function(l,li){
-        if(l.accId!==acc.id)return;
-        const lAmt=side==='debit'?l.debit:l.credit;
-        if(Math.abs((lAmt||0)-amt)>0.01)return;
-        if(l.costCenterId&&l.costCenterId!==cc.id)return;
-        candidates.push({entry:e,line:l,lineIdx:li});
+    function findCandidates(matchesEntry){
+      const found=[];
+      entries.forEach(function(e){
+        if(!matchesEntry(e))return;
+        e.lines.forEach(function(l,li){
+          if(l.accId!==acc.id)return;
+          const lAmt=side==='debit'?l.debit:l.credit;
+          if(Math.abs((lAmt||0)-amt)>0.01)return;
+          if(l.costCenterId&&l.costCenterId!==cc.id)return;
+          found.push({entry:e,line:l,lineIdx:li});
+        });
       });
-    });
+      return found;
+    }
+    // المعيار الأساسي للربط: رقم المستند نفسه (كما أوضح المستخدم) — يطابق القيود المُنشأة من
+    // استيراد الأستاذ المساعد (خطوة ②) والتي تحمل رقم المستند بحقل ref. إن لم يُعثر على أي
+    // تطابق مرجعي (قيد أُدخل يدوياً بلا رقم مستند مطابق)، نرجع لمطابقة التاريخ كما كان سابقاً
+    let candidates=[];
+    if(row.doc){
+      candidates=findCandidates(function(e){return extractDocNoFromRef(e.ref)===row.doc;});
+    }
+    if(!candidates.length){
+      candidates=findCandidates(function(e){return e.date===row.date;});
+    }
     let status,entryId=null,lineIdx=null;
     if(candidates.length===1){status='matched';entryId=candidates[0].entry.id;lineIdx=candidates[0].lineIdx;}
     else if(candidates.length===0)status='unmatched';
@@ -8489,7 +8515,7 @@ function commitCOAImport(){
   __coaPendingRows=null;
   document.getElementById('coa-import-preview').innerHTML='';
   document.getElementById('coa-file-input').value='';
-  renderAccs();updateBadges();
+  renderAccs();updateBadges();persist();
   let msg='تم استيراد دليل الحسابات: '+res.created+' حساب جديد، '+res.skipped+' موجود مسبقاً';
   if(res.typeFixed)msg+='، '+res.typeFixed+' تم تصحيح نوعه';
   if(replaceMode)msg+='، '+res.removed+' تم حذفه'+(res.keptBlocked?'، '+res.keptBlocked+' تعذّر حذفه (عليه حركات/فروع)':'');
@@ -8557,30 +8583,34 @@ function commitAuxImport(){
   document.getElementById('aux-import-preview').innerHTML='';
   document.getElementById('aux-file-input').value='';
   const created=res.results.filter(function(r){return r.status==='created';}).length;
-  renderEnts();updateBadges();renderDash();
+  renderEnts();updateBadges();renderDash();persist();
   showAlert('تم إنشاء '+created+' قيد يومية من الأستاذ المساعد ✓ — يمكنك الآن رفع كشوفات مراكز التكلفة (الخطوة التالية) لإلحاقها بهذه القيود');
 }
 
 // ── واجهة الاستخدام: رفع ومطابقة كشف حركة مركز تكلفة ──
-let __ccPendingParsed=null, __ccPendingSource='';
+let __ccPendingParsedList=null;
 async function handleCCStatementFile(input){
-  const file=input.files&&input.files[0];if(!file)return;
+  const files=input.files;if(!files||!files.length)return;
   try{
-    let parsed;
-    if(/\.pdf$/i.test(file.name)){
-      const lines=await pdfExtractRows(file);
-      parsed=parseCCStatementFromPdfLines(lines);
-    }else{
-      const buf=await file.arrayBuffer();
-      const wb=XLSX.read(buf,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
-      parsed=extractCCStatementFromExcelAOA(aoa);
+    const parsedList=[];
+    for(let i=0;i<files.length;i++){
+      const file=files[i];
+      let parsed;
+      if(/\.pdf$/i.test(file.name)){
+        const lines=await pdfExtractRows(file);
+        parsed=parseCCStatementFromPdfLines(lines);
+      }else{
+        const buf=await file.arrayBuffer();
+        const wb=XLSX.read(buf,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+        parsed=extractCCStatementFromExcelAOA(aoa);
+      }
+      if(parsed.entries.length)parsedList.push({parsed:parsed,fileName:file.name});
     }
-    if(!parsed.entries.length){showAlert('لم يتم العثور على أي حركات قابلة للقراءة في الملف','err');return;}
-    __ccPendingParsed=parsed;
-    __ccPendingSource=file.name;
-    renderCCPreview(reconcileCCStatement(parsed,file.name,true));
+    if(!parsedList.length){showAlert('لم يتم العثور على أي حركات قابلة للقراءة في الملفات المختارة','err');return;}
+    __ccPendingParsedList=parsedList;
+    renderCCPreview();
   }catch(e){console.error(e);showAlert('تعذّرت قراءة الملف: '+e.message,'err');}
 }
 const CC_STATUS_LBL={
@@ -8590,42 +8620,78 @@ const CC_STATUS_LBL={
   'no-account':'<span class="bdg b1">❌ حساب غير موجود</span>',
   skipped:'<span class="bdg" style="background:var(--g100);color:var(--g5)">↩️ مطابَق مسبقاً</span>'
 };
-function renderCCPreview(res){
+// عرض تعريفات مراكز التكلفة المكتشفة بكل الملفات المختارة "مسبقاً" (قبل جدول الحركات
+// التفصيلي)، مع تمييز الجديد منها عن الموجود أصلاً بدليل مراكز التكلفة
+function renderCCDefsSummary(parsedList){
+  const seen={};
+  const defs=[];
+  parsedList.forEach(function(p){
+    const code=p.parsed.ccCode;
+    if(!code||seen[code])return;
+    seen[code]=true;
+    const existing=costCenters.find(function(c){return c.code===code;});
+    defs.push({code:code,name:p.parsed.ccName||(existing?existing.name:('مركز '+code)),isNew:!existing});
+  });
+  if(!defs.length)return'';
+  return '<div class="card" style="margin:0 0 12px;background:var(--g50)">'
+    +'<div style="font-size:11.5px;font-weight:700;margin-bottom:8px">🏷️ مراكز التكلفة المكتشفة بالملفات المختارة ('+defs.length+')</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +defs.map(function(d){return '<span class="bdg '+(d.isNew?'b3':'b4')+'">'+d.code+' — '+d.name+(d.isNew?' (جديد)':'')+'</span>';}).join('')
+    +'</div></div>';
+}
+function renderCCPreview(){
   const box=document.getElementById('cc-import-preview');
-  if(!box)return;
-  if(res.error){box.innerHTML='<div class="empty"><span class="ei">⚠️</span><p>'+res.error+'</p></div>';return;}
-  const counts={};
-  res.results.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
-  const rows=res.results.map(function(r){
-    return '<tr><td>'+fmtDate(r.date)+'</td><td><strong>'+r.accCode+'</strong><br><span style="font-size:10px;color:var(--g5)">'+(r.accName||'')+'</span></td>'
-      +'<td>'+(r.doc||'—')+'</td><td style="max-width:280px;font-size:11px">'+(r.desc||'')+'</td>'
-      +'<td style="direction:ltr;text-align:left">'+fmtDisp(r.debit||0)+'</td><td style="direction:ltr;text-align:left">'+fmtDisp(r.credit||0)+'</td>'
-      +'<td>'+(CC_STATUS_LBL[r.status]||r.status)+(r.note?'<div style="font-size:9.5px;color:var(--g5);margin-top:2px">'+r.note+'</div>':'')+'</td></tr>';
+  if(!box||!__ccPendingParsedList)return;
+  const perFile=__ccPendingParsedList.map(function(p){
+    return {fileName:p.fileName,res:reconcileCCStatement(p.parsed,p.fileName,true)};
+  });
+  let totalMatched=0;
+  const sections=perFile.map(function(pf){
+    const res=pf.res;
+    if(res.error){
+      return '<div class="empty" style="padding:10px"><span class="ei">⚠️</span><p>'+pf.fileName+': '+res.error+'</p></div>';
+    }
+    const counts={};
+    res.results.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
+    totalMatched+=counts.matched||0;
+    const rows=res.results.map(function(r){
+      return '<tr><td>'+fmtDate(r.date)+'</td><td><strong>'+r.accCode+'</strong><br><span style="font-size:10px;color:var(--g5)">'+(r.accName||'')+'</span></td>'
+        +'<td>'+(r.doc||'—')+'</td><td style="max-width:280px;font-size:11px">'+(r.desc||'')+'</td>'
+        +'<td style="direction:ltr;text-align:left">'+fmtDisp(r.debit||0)+'</td><td style="direction:ltr;text-align:left">'+fmtDisp(r.credit||0)+'</td>'
+        +'<td>'+(CC_STATUS_LBL[r.status]||r.status)+(r.note?'<div style="font-size:9.5px;color:var(--g5);margin-top:2px">'+r.note+'</div>':'')+'</td></tr>';
+    }).join('');
+    return '<div class="card" style="margin:0 0 12px">'
+      +'<div class="sg">'
+      +'<div class="sc"><div class="sl">الملف / مركز التكلفة</div><div class="sv" style="font-size:12px">'+pf.fileName+'<br>'+res.cc.code+' — '+res.cc.name+(res.ccIsNew?' <span class="bdg b3">جديد</span>':'')+'</div></div>'
+      +'<div class="sc"><div class="sl">سيُطابَق الآن</div><div class="sv" style="color:var(--gn)">'+(counts.matched||0)+'</div></div>'
+      +'<div class="sc"><div class="sl">غير مطابق</div><div class="sv" style="color:var(--am)">'+(counts.unmatched||0)+'</div></div>'
+      +'<div class="sc"><div class="sl">متعدد الاحتمالات</div><div class="sv" style="color:var(--rd)">'+(counts.ambiguous||0)+'</div></div>'
+      +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
+      +'<div class="sc"><div class="sl">مطابَق مسبقاً</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
+      +'</div>'
+      +'<div class="tw" style="max-height:320px"><table><thead><tr><th>التاريخ</th><th>الحساب</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +'</div>';
   }).join('');
-  box.innerHTML=''
-    +'<div class="sg">'
-    +'<div class="sc"><div class="sl">مركز التكلفة</div><div class="sv" style="font-size:13px">'+res.cc.code+' — '+res.cc.name+(res.ccIsNew?' <span class="bdg b3">جديد</span>':'')+'</div></div>'
-    +'<div class="sc"><div class="sl">سيُطابَق الآن</div><div class="sv" style="color:var(--gn)">'+(counts.matched||0)+'</div></div>'
-    +'<div class="sc"><div class="sl">غير مطابق (سيُعاد لاحقاً)</div><div class="sv" style="color:var(--am)">'+(counts.unmatched||0)+'</div></div>'
-    +'<div class="sc"><div class="sl">متعدد الاحتمالات</div><div class="sv" style="color:var(--rd)">'+(counts.ambiguous||0)+'</div></div>'
-    +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
-    +'<div class="sc"><div class="sl">مطابَق مسبقاً (تخطي)</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
-    +'</div>'
-    +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>الحساب</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
-    +'<div class="actions" style="margin-top:10px">'
-    +'<button class="btn bp" onclick="commitCCImport()">✅ تأكيد وترحيل المطابقات ('+(counts.matched||0)+')</button>'
+  box.innerHTML=renderCCDefsSummary(__ccPendingParsedList)+sections
+    +'<div class="actions" style="margin-top:6px">'
+    +'<button class="btn bp" onclick="commitCCImport()">✅ تأكيد وترحيل كل المطابقات ('+totalMatched+')</button>'
     +'</div>';
 }
 function commitCCImport(){
   if(!can('edit')){showAlert('⛔ لا تملك صلاحية الإضافة','err');return;}
-  if(!__ccPendingParsed){showAlert('لا يوجد ملف مُحمَّل للمعاينة','err');return;}
-  const res=reconcileCCStatement(__ccPendingParsed,__ccPendingSource,false);
-  __ccPendingParsed=null;
+  if(!__ccPendingParsedList||!__ccPendingParsedList.length){showAlert('لا يوجد ملف مُحمَّل للمعاينة','err');return;}
+  let totalMatched=0;
+  // تُعالَج الملفات بالتسلسل حتى يُسجَّل تعريف كل مركز تكلفة مرة واحدة فقط عند أول ظهور له،
+  // وتُستخدَم نفس السجلة للملفات التالية التي قد تشير لنفس المركز (بلا أي تكرار لإنشائه)
+  __ccPendingParsedList.forEach(function(p){
+    const res=reconcileCCStatement(p.parsed,p.fileName,false);
+    if(!res.error)totalMatched+=res.results.filter(function(r){return r.status==='matched';}).length;
+  });
+  __ccPendingParsedList=null;
   document.getElementById('cc-import-preview').innerHTML='';
   document.getElementById('cc-file-input').value='';
-  const matched=res.results.filter(function(r){return r.status==='matched';}).length;
-  renderEnts();updateBadges();renderCCImportLog();
-  showAlert('تم الترحيل: تمت مطابقة وإلحاق مركز التكلفة بـ '+matched+' حركة ✓');
+  renderEnts();updateBadges();renderCCImportLog();persist();
+  showAlert('تم الترحيل: تمت مطابقة وإلحاق مركز التكلفة بـ '+totalMatched+' حركة ✓');
 }
 function renderCCImportLog(){
   const el=document.getElementById('cc-import-log');
@@ -12181,6 +12247,25 @@ function loadPersisted(){
     const d=JSON.parse(raw);
     applyPersistedData(d);
   }catch(e){console.error('loadPersisted:',e);}
+}
+// حفظ ومزامنة فوريان بدون انتظار — بخلاف persist() لا يتخطى الإرسال حتى لو لم تتغيّر
+// البيانات منذ آخر مزامنة، لأن الغرض هنا هو التأكيد الصريح للمستخدم أن كل شيء مُزامَن الآن
+function forceSyncNow(){
+  try{
+    const data=buildPersistData();
+    const json=JSON.stringify(data);
+    localStorage.setItem(PERSIST_KEY,json);
+    __lastCloudSyncJson=json;
+    if(window.CloudSync&&CloudSync.saveNow){
+      CloudSync.saveNow(CLOUD_DOC_NAME,data).then(function(){
+        showAlert('✅ تم حفظ ومزامنة كل البيانات فوراً مع قاعدة البيانات السحابية');
+      }).catch(function(){
+        showAlert('⚠ تم الحفظ محلياً، لكن تعذّرت المزامنة السحابية (تحقق من الاتصال بالإنترنت)','warn');
+      });
+    }else{
+      showAlert('✅ تم الحفظ محلياً (المزامنة السحابية غير مُفعَّلة على هذا الجهاز)');
+    }
+  }catch(e){console.error('forceSyncNow:',e);showAlert('⚠ حدث خطأ أثناء الحفظ','err');}
 }
 function applyPersistedData(d){
   try{
