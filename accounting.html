@@ -7963,6 +7963,10 @@ function excelDateToISO(v){
   const s=String(v).trim();
   const m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(m)return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  // بعض التقارير (الأستاذ المساعد الكامل تحديداً) تعرض السنة بخانتين فقط (DD/MM/YY) بخلاف باقي
+  // التقارير — نفترض القرن 2000 لأي تاريخ محاسبي حديث
+  const m3=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if(m3)return '20'+m3[3]+'-'+m3[2].padStart(2,'0')+'-'+m3[1].padStart(2,'0');
   const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if(m2)return m2[0].slice(0,10);
   return s;
@@ -7998,13 +8002,9 @@ function extractCOARowsFromPdfLines(lines){
   lines.forEach(function(line){
     if(/Page \d+ of|صفحة|Chart Of Account|دليل الحسابات|Acc\.?\s*Code|رقم الحساب|Account\s*Name|اسم الحساب|أسم الحساب/i.test(line))return;
     const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
-    let code=null,nameParts=[];
-    parts.forEach(function(p){
-      if(!code&&/^\d{1,9}$/.test(p))code=p;
-      else nameParts.push(p);
-    });
+    const code=pickAccountCodeCandidate(parts);
     if(!code)return;
-    let name=nameParts.join(' ').trim().replace(new RegExp('^'+code+'\\s+'),'').trim();
+    let name=parts.filter(function(p){return p!==code;}).join(' ').trim().replace(new RegExp('^'+code+'\\s+'),'').trim();
     if(!name)return;
     rows.push({code:code,name:name});
   });
@@ -8099,6 +8099,23 @@ function importCOARows(rows,opts){
     typeFixed:typeFixed,typeFixedList:typeFixedList};
 }
 
+// يختار رمز الحساب الصحيح من بين عدة أرقام محتملة بنفس السطر (مشكلة حقيقية تحقّقنا منها فعلياً
+// على بيانات حقيقية: سطر ترويسة حساب قد يحوي رقم حساب بنكي مضمّن باسم الحساب — مثال
+// "2308700139 | البنك السعودي الفرنسي رقم | 101001002" — 2308700139 رقم الحساب البنكي نفسه،
+// و101001002 رمز الحساب الحقيقي بدليلنا. أخذ أول رقم بالسطر ببساطة كان يختار العشوائي منهما
+// حسب ترتيب استخراج النص من PDF، فيتعذّر إيجاد الحساب لاحقاً لكل حركاته). معيار الاختيار:
+// 1) رمز مطابق فعلياً لحساب موجود بدليل حساباتنا (الأدق، يعتمد على استيراد الدليل أولاً)
+// 2) وإلا: أقصر رقم مرشّح (أكواد الحسابات في هذا النوع من الملفات لا تتجاوز 9 خانات، بخلاف
+//    الأرقام المرجعية المضمّنة بالاسم كرقم حساب بنكي أو هاتف والتي غالباً أطول)
+function pickAccountCodeCandidate(parts){
+  const nums=parts.filter(function(p){return /^\d+$/.test(p);});
+  if(!nums.length)return null;
+  const known=nums.find(function(p){return accounts.some(function(a){return a.code===p;});});
+  if(known)return known;
+  const short=nums.filter(function(p){return p.length<=9;});
+  const pool=short.length?short:nums;
+  return pool.slice().sort(function(a,b){return a.length-b.length;})[0];
+}
 // ── كشف حركة مركز التكلفة: استخراج {ccCode, ccName, entries:[{accCode,accName,date,doc,desc,debit,credit}]} ──
 function extractCCStatementFromExcelAOA(aoa){
   let ccCode=null,ccName=null;
@@ -8132,10 +8149,11 @@ function extractCCStatementFromExcelAOA(aoa){
     const row=aoa[r]||[];
     const dateVal=row[col.date];
     if(!dateVal){
-      const codeCell=row.find(function(c){return /^\d{4,12}$/.test(String(c||'').trim());});
+      const rowStrs=row.map(function(c){return String(c||'').trim();});
+      const codeCell=pickAccountCodeCandidate(rowStrs);
       if(codeCell){
-        curAccCode=String(codeCell).trim();
-        curAccName=row.map(function(c){return String(c||'').trim();}).filter(function(s){return s&&s!==curAccCode&&!/%$/.test(s);}).join(' ');
+        curAccCode=codeCell;
+        curAccName=rowStrs.filter(function(s){return s&&s!==curAccCode&&!/%$/.test(s);}).join(' ');
       }
       continue;
     }
@@ -8176,7 +8194,7 @@ function parseCCStatementFromPdfLines(lines){
     const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
     if(!dateMatch){
       if(/رصيد العام السابق|Balance|Descreption|Document|البيان|مستند|مﺴتﻨد|التاريخ|^Date/i.test(line))return;
-      const codePart=parts.find(function(p){return /^\d{4,12}$/.test(p);});
+      const codePart=pickAccountCodeCandidate(parts);
       if(codePart){
         curAccCode=codePart;
         curAccName=parts.filter(function(p){return p!==codePart&&!/%$/.test(p)&&!numTestRe.test(p);}).join(' ').trim();
@@ -8227,10 +8245,11 @@ function extractAuxLedgerFromExcelAOA(aoa){
     const row=aoa[r]||[];
     const dateVal=row[col.date];
     if(!dateVal){
-      const codeCell=row.find(function(c){return /^\d{4,12}$/.test(String(c||'').trim());});
+      const rowStrs=row.map(function(c){return String(c||'').trim();});
+      const codeCell=pickAccountCodeCandidate(rowStrs);
       if(codeCell){
-        curAccCode=String(codeCell).trim();
-        curAccName=row.map(function(c){return String(c||'').trim();}).filter(function(s){return s&&s!==curAccCode;}).join(' ');
+        curAccCode=codeCell;
+        curAccName=rowStrs.filter(function(s){return s&&s!==curAccCode;}).join(' ');
       }
       continue;
     }
@@ -8261,16 +8280,28 @@ function extractAuxLedgerFromExcelAOA(aoa){
 function extractAuxLedgerFromPdfLines(lines){
   const rows=[];
   let curAccCode=null,curAccName=null;
-  const dateRe=/(\d{2}\/\d{2}\/\d{4})/;
+  // عمود التاريخ الفعلي بهذا التقرير تحديداً يعرض السنة بخانتين (DD/MM/YY، مثال: 25/04/26)
+  // بخلاف باقي التقارير — والمطابقة على جزء كامل من السطر (وليس أي جزء من نص أطول) لتفادي
+  // التقاط تاريخ قد يُذكر عرضاً ضمن نص البيان نفسه
+  const dateTokenRe=/^\d{1,2}\/\d{1,2}\/\d{2,4}$/;
   const numRe=/-?\(?[\d,]+\.\d{2}\)?/g;
   const numTestRe=/^-?\(?[\d,]+\.\d{2}\)?$/;
   lines.forEach(function(line){
     if(/Page \d+ of|^\d{1,2}\/\d{1,2}\/\d{2,4}\s*\d{1,2}:\d{2}|استاذ مساعد|الترتيب حسب الحساب/.test(line))return;
-    const dateMatch=line.match(dateRe);
     const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
-    if(!dateMatch){
+    const dateTokens=parts.filter(function(p){return dateTokenRe.test(p);});
+    // عمود التاريخ الفعلي هو آخر عنصر مطابق بالسطر (يظهر آخر الأعمدة بترويسة التقرير)؛ أي
+    // تاريخ آخر مذكور ضمن نص البيان نفسه يسبقه عادة، فاختيار الأخير يتجنّبه
+    const dateToken=dateTokens.length?dateTokens[dateTokens.length-1]:null;
+    if(!dateToken){
       if(/البيان|Descreption|نوع مستند|التاريخ|^Date/i.test(line))return;
-      const codePart=parts.find(function(p){return /^\d{4,12}$/.test(p);});
+      // سطر معاملة تعطّل استخراج التاريخ منه (غالباً بسبب التفاف السطر بالـPDF ووقوع عمود
+      // التاريخ بسطر منفصل) يحتوي مع ذلك على مبالغ بصيغة عشرية (دائن/مدين) — إن عاملناه كسطر
+      // ترويسة حساب جديد فسيُلتقط رقم المستند فيه خطأً كرمز حساب ويُفسد كل الحركات التالية
+      // (مثال حقيقي بالملف: تحوّل رمز الحساب الحالي 101005001 إلى "18" وهو رقم مستند JV مذكور
+      // بنص البيان). الأصوب تجاهل هذا السطر تماماً دون تغيير رمز الحساب الحالي
+      if(parts.some(function(p){return numTestRe.test(p);}))return;
+      const codePart=pickAccountCodeCandidate(parts);
       if(codePart){
         curAccCode=codePart;
         curAccName=parts.filter(function(p){return p!==codePart;}).join(' ').trim();
@@ -8282,9 +8313,8 @@ function extractAuxLedgerFromPdfLines(lines){
     if(nums.length<2)return;
     const credit=nums[nums.length-2];
     const debit=nums[nums.length-1];
-    const dateToken=dateMatch[1];
     const docType=parts.find(function(p){return /^[A-Za-z]{1,4}$/.test(p);})||'';
-    const docNo=parts.find(function(p){return /^\d{1,6}$/.test(p);})||'';
+    const docNo=parts.find(function(p){return /^\d{1,6}$/.test(p)&&p!==docType;})||'';
     const desc=parts.filter(function(p){return p!==dateToken&&p!==docType&&p!==docNo&&!numTestRe.test(p);}).join(' ').trim();
     rows.push({accCode:curAccCode,accName:curAccName,date:excelDateToISO(dateToken),docType:docType,docNo:docNo,desc:desc,debit:debit,credit:credit});
   });
