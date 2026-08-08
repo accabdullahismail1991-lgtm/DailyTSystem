@@ -222,6 +222,7 @@ tbody tr:hover{background:var(--g50)}
 .fs-lh-cur{font-size:9.5px;color:var(--g4);margin-top:2px}
 .fs-sec{margin-bottom:20px}
 .fs-hdr{font-size:12px;font-weight:800;color:var(--g8);letter-spacing:.3px;padding:8px 12px;background:var(--g100);border-right:3px solid var(--tl2);border-radius:0 5px 5px 0;margin-bottom:5px;text-transform:uppercase}
+.fs-subhdr{font-size:10.5px;font-weight:700;color:var(--g5);padding:5px 12px;border-right:2px solid var(--g300);margin:6px 0 3px}
 .fs-r{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;font-size:12px;border-bottom:1px solid var(--g100);font-variant-numeric:tabular-nums}
 .fs-r:hover{background:var(--g50)}
 .fs-r.s1{padding-right:24px;color:var(--g6);font-size:11.5px}
@@ -420,9 +421,9 @@ tbody tr:hover{background:var(--g50)}
 <input type="hidden" id="ea-id">
 <div class="fg" style="grid-template-columns:repeat(3,1fr)">
  <div class="fgrp"><label>رمز الحساب (مثال: 010101)</label><input id="ea-code" type="text" placeholder="010101"></div>
- <div class="fgrp s2"><label>اسم الحساب *</label><input id="ea-name" type="text" oninput="updateEaCfActHint({name:this.value,type:document.getElementById('ea-type').value})"></div>
+ <div class="fgrp s2"><label>اسم الحساب *</label><input id="ea-name" type="text" oninput="updateEaCfActHint({name:this.value,type:document.getElementById('ea-type').value});updateEaBsClsHint({name:this.value,type:document.getElementById('ea-type').value})"></div>
  <div class="fgrp"><label>نوع الحساب *</label>
-  <select id="ea-type" onchange="updateEaCfActHint({name:document.getElementById('ea-name').value,type:this.value})"><option value="asset">أصول</option><option value="liability">خصوم</option><option value="equity">حقوق الملكية</option><option value="revenue">إيرادات</option><option value="expense">مصروفات</option></select>
+  <select id="ea-type" onchange="updateEaCfActHint({name:document.getElementById('ea-name').value,type:this.value});updateEaBsClsHint({name:document.getElementById('ea-name').value,type:this.value})"><option value="asset">أصول</option><option value="liability">خصوم</option><option value="equity">حقوق الملكية</option><option value="revenue">إيرادات</option><option value="cost">تكاليف</option><option value="expense">مصروفات</option></select>
  </div>
  <div class="fgrp"><label>الرصيد الافتتاحي</label><input id="ea-open" type="number" step="0.01" min="0"></div>
  <div class="fgrp"><label>الحساب الأب</label><select id="ea-par"><option value="">— مستوى أول —</option></select></div>
@@ -430,7 +431,7 @@ tbody tr:hover{background:var(--g50)}
   <select id="ea-sub"><option value="">— رئيسي —</option><option value="customer">عميل</option><option value="vendor">مورّد</option><option value="employee">موظف</option><option value="advance">عهدة / سلفة</option></select>
  </div>
  <div class="fgrp s3"><label>رمز تحليلي مستقل (للحسابات التحليلية - مثال: C-001)</label><input id="ea-acode" type="text" placeholder="اتركه فارغاً لاستخدام رمز الدليل"></div>
- <div class="fgrp s3"><label>تصنيف التدفقات النقدية</label>
+ <div class="fgrp s2"><label>تصنيف التدفقات النقدية</label>
   <select id="ea-cfact">
    <option value="">تلقائي (حسب نوع الحساب)</option>
    <option value="operating">🔵 أنشطة تشغيلية</option>
@@ -438,6 +439,14 @@ tbody tr:hover{background:var(--g50)}
    <option value="financing">🟢 أنشطة تمويلية</option>
   </select>
   <div id="ea-cfact-hint" style="font-size:10px;color:var(--g4);margin-top:3px"></div>
+ </div>
+ <div class="fgrp"><label>تصنيف الميزانية (متداول/غير متداول)</label>
+  <select id="ea-bscls">
+   <option value="">تلقائي (حسب الاسم/النوع)</option>
+   <option value="current">متداول</option>
+   <option value="noncurrent">غير متداول (ثابت/طويل الأجل)</option>
+  </select>
+  <div id="ea-bscls-hint" style="font-size:10px;color:var(--g4);margin-top:3px"></div>
  </div>
 </div>
 <div class="mact"><button class="btn bo" onclick="CM('m-ea')">إلغاء</button><button class="btn bp" onclick="saveEditAcc()">💾 حفظ</button></div>
@@ -838,7 +847,7 @@ tbody tr:hover{background:var(--g50)}
   <div class="fgrp"><label>الرمز (يُولَّد تلقائياً)</label><input id="ac-code" type="text" placeholder="اتركه فارغاً للتوليد التلقائي"></div>
   <div class="fgrp s2"><label>الاسم *</label><input id="ac-name" type="text" placeholder="اسم الحساب"></div>
   <div class="fgrp"><label>النوع *</label>
-   <select id="ac-type"><option value="asset">أصول</option><option value="liability">خصوم</option><option value="equity">حقوق الملكية</option><option value="revenue">إيرادات</option><option value="expense">مصروفات</option></select>
+   <select id="ac-type"><option value="asset">أصول</option><option value="liability">خصوم</option><option value="equity">حقوق الملكية</option><option value="revenue">إيرادات</option><option value="cost">تكاليف</option><option value="expense">مصروفات</option></select>
   </div>
   <div class="fgrp"><label>رصيد افتتاحي</label><input id="ac-open" type="number" value="0" step="0.01" min="0"></div>
   <div class="fgrp s2"><label>الحساب الأب (المستوى)</label><select id="ac-par" onchange="onAcParChange()"><option value="">— جذر —</option></select></div>
@@ -848,6 +857,13 @@ tbody tr:hover{background:var(--g50)}
     <option value="operating">🔵 أنشطة تشغيلية</option>
     <option value="investing">🟣 أنشطة استثمارية</option>
     <option value="financing">🟢 أنشطة تمويلية</option>
+   </select>
+  </div>
+  <div class="fgrp s2"><label>تصنيف الميزانية (متداول/غير متداول)</label>
+   <select id="ac-bscls">
+    <option value="">تلقائي (حسب الاسم/النوع)</option>
+    <option value="current">متداول</option>
+    <option value="noncurrent">غير متداول (ثابت/طويل الأجل)</option>
    </select>
   </div>
  </div>
@@ -1011,6 +1027,7 @@ tbody tr:hover{background:var(--g50)}
     <option value="liability">خصوم</option>
     <option value="equity">حقوق الملكية</option>
     <option value="revenue">إيرادات</option>
+    <option value="cost">تكاليف</option>
     <option value="expense">مصروفات</option>
    </select>
   </div>
@@ -2765,13 +2782,18 @@ let invAdjustments = [], nxtInvAdjId = 1;
 let invAdjLines = [];
 let itemUomAlts = [];
 const CF_ACTIVITY_LABELS={operating:"🔵 تشغيلية",investing:"🟣 استثمارية",financing:"🟢 تمويلية",cash:"💵 نقدية"};
+const BS_CLASS_LABELS={current:"متداول",noncurrent:"غير متداول"};
+// "ال" أداة التعريف قد تفصل الكلمة الدالة عن سابقتها مباشرة (مثال حقيقي: "الأصول غير المتداولة"
+// وليس "غير متداولة") — لذا (ال)?\s* اختيارية قبل كل كلمة دالة، لا تُفترض ملاصقة كاملة بلا أداة تعريف
+const BS_RX_NONCURRENT=/غير\s*(ال)?متداول|ثابت|طويل(ة)?\s*الأجل|non-?current|fixed/i;
+const BS_RX_CURRENT=/(ال)?متداول|قصير(ة)?\s*الأجل|current|short-?term/i;
 
 let trMode = "full", fsTab = "is", subType = "customer", subQ = "";
 let accQ = "", entQ = "";
 let subNextNum = {};  // {customer:101, vendor:101, ...}
 
-const TN = {asset:"أصول",liability:"خصوم",equity:"حقوق الملكية",revenue:"إيرادات",expense:"مصروفات"};
-const NORM = {asset:"dr",liability:"cr",equity:"cr",revenue:"cr",expense:"dr"};
+const TN = {asset:"أصول",liability:"خصوم",equity:"حقوق الملكية",revenue:"إيرادات",cost:"تكاليف",expense:"مصروفات"};
+const NORM = {asset:"dr",liability:"cr",equity:"cr",revenue:"cr",cost:"dr",expense:"dr"};
 const SN = {customer:"عميل",vendor:"مورّد",employee:"موظف",advance:"عهدة/سلفة","":"—"};const SUB_LBL = {customer:["👤","العملاء"],vendor:["🏭","الموردون"],employee:["👷","الموظفون"],advance:["💰","العهد والسلف"]};
 const SUB_TYPES = ["customer","vendor","employee","advance"];
 
@@ -2976,7 +2998,7 @@ function selEntLineSub(lid,subId,lbl,mainAccId){
     l.accId=mainAccId;l.subId=subId;l.lbl=lbl;
     const acc=accounts.find(function(a){return a.id===mainAccId;});
     if(acc){
-      if(acc.type==="expense"||acc.type==="asset") l._suggestTax="in";
+      if(acc.type==="expense"||acc.type==="cost"||acc.type==="asset") l._suggestTax="in";
       else if(acc.type==="revenue") l._suggestTax="out";
       else l._suggestTax=null;
     }
@@ -2993,7 +3015,7 @@ function selEntLine(lid,aid,lbl){
     // Auto-suggest based on account type
     const acc=accounts.find(function(a){return a.id===aid;});
     if(acc){
-      if(acc.type==="expense"||acc.type==="asset") l._suggestTax="in"; // مدخلات
+      if(acc.type==="expense"||acc.type==="cost"||acc.type==="asset") l._suggestTax="in"; // مدخلات
       else if(acc.type==="revenue") l._suggestTax="out";               // مخرجات
       else l._suggestTax=null;
     }
@@ -4025,7 +4047,7 @@ function renderDashCharts(tA,tL,tE){
     (e.lines||[]).forEach(l=>{
       const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
       if(acc.type==='revenue')revByMonth[mKey]+=(l.credit||0)-(l.debit||0);
-      if(acc.type==='expense')expByMonth[mKey]+=(l.debit||0)-(l.credit||0);
+      if(acc.type==='expense'||acc.type==='cost')expByMonth[mKey]+=(l.debit||0)-(l.credit||0);
     });
   });
   const monthLabels=['ينا','فبر','مار','أبر','ماي','يون','يول','أغس','سبت','أكت','نوف','ديس'];
@@ -4042,7 +4064,7 @@ function renderDash(){
   const rL=accounts.filter(a=>a.type==="liability"&&!a.par);
   const rE=accounts.filter(a=>a.type==="equity"&&!a.par);
   const rR=accounts.filter(a=>a.type==="revenue"&&!a.par);
-  const rX=accounts.filter(a=>a.type==="expense"&&!a.par);
+  const rX=accounts.filter(a=>(a.type==="expense"||a.type==="cost")&&!a.par);
   const tA=rA.reduce((s,a)=>s+getBalance(a.id,true),0);
   const tL=rL.reduce((s,a)=>s+Math.abs(getBalance(a.id,true)),0);
   const tE=rE.reduce((s,a)=>s+Math.abs(getBalance(a.id,true)),0);
@@ -4098,7 +4120,7 @@ function getKpiData(fromD,toD){
     e.lines.forEach(function(l){
       const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
       if(acc.type==='revenue'){const amt=(l.credit||0)-(l.debit||0);revenue+=amt;if(isManual)manualSales+=amt;}
-      if(acc.type==='expense'){const amt=(l.debit||0)-(l.credit||0);expense+=amt;if(isManual)manualPur+=amt;}
+      if(acc.type==='expense'||acc.type==='cost'){const amt=(l.debit||0)-(l.credit||0);expense+=amt;if(isManual)manualPur+=amt;}
     });
   });
   const salesTotal=salesInvTotal+manualSales;
@@ -4235,7 +4257,7 @@ function renderKpi(){
     e.lines.forEach(function(l){
       const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
       if(acc.type==='revenue')salesByMonth[mk]+=(l.credit||0)-(l.debit||0);
-      if(acc.type==='expense')purByMonth[mk]+=(l.debit||0)-(l.credit||0);
+      if(acc.type==='expense'||acc.type==='cost')purByMonth[mk]+=(l.debit||0)-(l.credit||0);
     });
   });
   const monthLabels=['ينا','فبر','مار','أبر','ماي','يون','يول','أغس','سبت','أكت','نوف','ديس'];
@@ -4320,11 +4342,13 @@ function addAcc(){
   let finalType=type;
   if(par){const p=accounts.find(a=>a.id===par);if(p)finalType=p.type;}
   const cfAct=(document.getElementById("ac-cfact")||{}).value||null;
-  accounts.push({id:nxtAccId++,code,name,type:finalType,open,par,cfActivity:cfAct||null});
+  const bsCls=(document.getElementById("ac-bscls")||{}).value||null;
+  accounts.push({id:nxtAccId++,code,name,type:finalType,open,par,cfActivity:cfAct||null,bsClass:bsCls||null});
   accounts.sort((a,b)=>a.code.localeCompare(b.code));
   ["ac-code","ac-name"].forEach(id=>document.getElementById(id).value="");
   document.getElementById("ac-open").value="0";document.getElementById("ac-par").value="";
   const cfActEl=document.getElementById("ac-cfact");if(cfActEl)cfActEl.value="";
+  const bsClsEl=document.getElementById("ac-bscls");if(bsClsEl)bsClsEl.value="";
   showAlert("تمت إضافة الحساب ✓");renderAccs();updateBadges();
 }
 function openEditAcc(id){
@@ -4336,11 +4360,17 @@ function openEditAcc(id){
   document.getElementById("ea-par").value=a.par||"";
   const cfSel=document.getElementById("ea-cfact");
   if(cfSel){cfSel.value=a.cfActivity||"";updateEaCfActHint(a);}
+  const bsSel=document.getElementById("ea-bscls");
+  if(bsSel){bsSel.value=a.bsClass||"";updateEaBsClsHint(a);}
   document.getElementById("m-ea").style.display="flex";
 }
 function updateEaCfActHint(a){
   const hint=document.getElementById("ea-cfact-hint");if(!hint)return;
   hint.textContent="التصنيف التلقائي الحالي: "+(CF_ACTIVITY_LABELS[getDefaultCFActivity(a)]||"—");
+}
+function updateEaBsClsHint(a){
+  const hint=document.getElementById("ea-bscls-hint");if(!hint)return;
+  hint.textContent="التصنيف التلقائي الحالي: "+(BS_CLASS_LABELS[getDefaultBSClass(a)]||"—");
 }
 function saveEditAcc(){
   if(!can('edit')){showAlert('⛔ لا تملك صلاحية تعديل الحسابات','err');return;}
@@ -4352,13 +4382,15 @@ function saveEditAcc(){
   const par=parseInt(document.getElementById("ea-par").value)||null;
   const cfActEl=document.getElementById("ea-cfact");
   const cfActivity=cfActEl?(cfActEl.value||null):null;
+  const bsClsEl=document.getElementById("ea-bscls");
+  const bsClass=bsClsEl?(bsClsEl.value||null):null;
   if(!code||!name){showAlert("يرجى إدخال البيانات المطلوبة","err");return;}
   if(accounts.find(a=>a.code===code&&a.id!==id)){showAlert("الرمز موجود","err");return;}
   const acc=accounts.find(a=>a.id===id);
   // تعديل يدوي فعلي لنوع الحساب (وليس مجرد إعادة حفظ نفس القيمة) يُثبَّت (typeLocked) حتى لا
   // يُعيد تحديث/استيراد دليل الحسابات لاحقاً تصنيفه تلقائياً حسب الحساب الأب — راجع importCOARows
   const typeChanged=acc.type!==type;
-  Object.assign(acc,{code,name,type,open,par,cfActivity});
+  Object.assign(acc,{code,name,type,open,par,cfActivity,bsClass});
   if(typeChanged)acc.typeLocked=true;
   accounts.sort((a,b)=>a.code.localeCompare(b.code));
   CM("m-ea");renderAccs();showAlert("تم التعديل");
@@ -4378,14 +4410,14 @@ function renderAccs(){
   const tb=document.getElementById("acc-tb");
   const list=accounts.filter(a=>!accQ||a.code.toLowerCase().includes(accQ)||a.name.toLowerCase().includes(accQ));
   if(!list.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><span class="ei">🔍</span><p>لا توجد نتائج</p></div></td></tr>';return;}
-  const tC={asset:"b1",liability:"b2",equity:"b3",revenue:"b4",expense:"b5"};
+  const tC={asset:"b1",liability:"b2",equity:"b3",revenue:"b4",cost:"b7",expense:"b5"};
   const subCount=accId=>subLedger.filter(s=>s.mainAccId===accId).length;
   tb.innerHTML=list.map(a=>{
     const lvl=getLevel(a);const bal=getBalance(a.id,true);const sc=subCount(a.id);
     return `<tr class="lv${Math.min(lvl,3)}">
       <td><strong style="letter-spacing:1px;font-family:monospace">${fmtCode(a.code)}</strong></td>
       <td class="nm-col" style="padding-right:${11+lvl*14}px">${a.name}</td>
-      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span>${a.typeLocked?` <span title="نوع الحساب عُدِّل يدوياً — لن يُغيَّر تلقائياً عند تحديث/استيراد دليل الحسابات" style="font-size:9px">🔒</span>`:""}${isLeaf(a.id)?`<div style="font-size:8.5px;color:var(--g4);margin-top:2px;white-space:nowrap">${CF_ACTIVITY_LABELS[getEffectiveCFActivity(a)]||""}${a.cfActivity?" (يدوي)":""}</div>`:""}</td>
+      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span>${a.typeLocked?` <span title="نوع الحساب عُدِّل يدوياً — لن يُغيَّر تلقائياً عند تحديث/استيراد دليل الحسابات" style="font-size:9px">🔒</span>`:""}${isLeaf(a.id)?`<div style="font-size:8.5px;color:var(--g4);margin-top:2px;white-space:nowrap">${CF_ACTIVITY_LABELS[getEffectiveCFActivity(a)]||""}${a.cfActivity?" (يدوي)":""}${(a.type==="asset"||a.type==="liability")?` · ${BS_CLASS_LABELS[getEffectiveBSClass(a)]}${a.bsClass?" (يدوي)":""}`:""}</div>`:""}</td>
       <td style="font-size:10px;color:var(--g4)">${lvl===0?"جذر":lvl===1?"م.1":lvl===2?"م.2":"م.3+"}</td>
       <td>${sc?`<span class="bdg b6" style="cursor:pointer" onclick="SS('sub',null);filterSubByAcc(${a.id})">${sc} سجل</span>`:"—"}</td>
       <td style="direction:ltr;text-align:left">${fmtNum(a.open)} ${cur()}</td>
@@ -4480,6 +4512,28 @@ function fsRowsHTML(nodes,depth=0){
 function fsFilterZero(nodes){
   return nodes.map(n=>({...n,children:fsFilterZero(n.children)})).filter(n=>Math.abs(n.bal)>0.005||n.children.length);
 }
+function fsHasOwnBSSignal(a){
+  return !!(a.bsClass)||BS_RX_NONCURRENT.test(a.name)||BS_RX_CURRENT.test(a.name);
+}
+// يُقسِّم شجرة حسابات (أصول أو خصوم) إلى متداول/غير متداول. أغلب أدلة الحسابات تضع "متداول/غير
+// متداول" كمستوى وسيط تحت جذر واحد عام باسم "الأصول" (وليس كجذرين منفصلين) — فالتقسيم على مستوى
+// الجذر الأول فقط (parId=null) كان يفشل تماماً ويضع كل شيء بمجموعة واحدة. هنا نتنازل عن الحسم
+// بمستوى أي عقدة ليس لها اسم دالّ صراحة (كـ"الأصول" نفسها) ونُفوِّض القرار لأبنائها بدل ذلك،
+// حتى نصل لعقدة لها إشارة واضحة (يدوية أو من اسمها) أو نصل لورقة أخيرة — عندها تُؤخَذ تلك العقدة
+// بكامل ما تحتها كوحدة واحدة ضمن مجموعتها (العرض المتداخل الطبيعي أصلاً يحافظ على ترتيبها الهرمي)
+function fsSplitTreeByClass(nodes){
+  const current=[],noncurrent=[];
+  nodes.forEach(function(n){
+    if(fsHasOwnBSSignal(n.a)||!n.children.length){
+      (getEffectiveBSClass(n.a)==="noncurrent"?noncurrent:current).push(n);
+    } else {
+      const childSplit=fsSplitTreeByClass(n.children);
+      current.push(...childSplit.current);
+      noncurrent.push(...childSplit.noncurrent);
+    }
+  });
+  return {current,noncurrent};
+}
 function fsLetterhead(title,fromD,toD){
   const periodTxt=fromD||toD?`عن الفترة من ${fromD?fmtDate(fromD):"بداية النشاط"} إلى ${toD?fmtDate(toD):"اليوم"}`:`للسنة المالية المنتهية في ${CY}`;
   return `<div class="fs-letterhead">
@@ -4495,16 +4549,18 @@ function renderFS(tab){
   const fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
   const toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
   const hideZero=document.getElementById("fs-hide-zero")?document.getElementById("fs-hide-zero").checked:false;
-  let revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD);
+  let revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD),costN=getTree("cost",null,fromD,toD);
   let asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
   const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0);
+  const tC=costN.reduce((s,n)=>s+n.bal,0);
   const tX=expN.reduce((s,n)=>s+n.bal,0);
-  const np=tR-tX;
+  const gp=tR-tC;
+  const np=gp-tX;
   const tA=asN.reduce((s,n)=>s+n.bal,0);
   const tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const openEq=eqN.reduce((s,n)=>s+(parseFloat(n.a.open)||0),0);
-  if(hideZero){revN=fsFilterZero(revN);expN=fsFilterZero(expN);asN=fsFilterZero(asN);laN=fsFilterZero(laN);eqN=fsFilterZero(eqN);}
+  if(hideZero){revN=fsFilterZero(revN);expN=fsFilterZero(expN);costN=fsFilterZero(costN);asN=fsFilterZero(asN);laN=fsFilterZero(laN);eqN=fsFilterZero(eqN);}
   let html="";
   if(tab==="is"){
     html+=fsLetterhead("قائمة الدخل",fromD,toD);
@@ -4512,6 +4568,10 @@ function renderFS(tab){
       <div class="fs-hdr">الإيرادات</div>
       ${fsRowsHTML(revN,1)}
       <div class="fs-r tot"><span>إجمالي الإيرادات</span><span style="direction:ltr;color:var(--gn)">${fmtDisp(tR)} ${cur()}</span></div>
+      ${costN.length?`<div class="fs-hdr" style="margin-top:10px">التكاليف</div>
+      ${fsRowsHTML(costN,1)}
+      <div class="fs-r tot"><span>إجمالي التكاليف</span><span style="direction:ltr;color:var(--rd)">${fmtDisp(tC)} ${cur()}</span></div>
+      <div class="fs-r grand" style="font-size:12px"><span>إجمالي الربح (قبل المصروفات)</span><span style="direction:ltr">${fmtDisp(gp)} ${cur()}</span></div>`:''}
       <div class="fs-hdr" style="margin-top:10px">المصروفات</div>
       ${fsRowsHTML(expN,1)}
       <div class="fs-r tot"><span>إجمالي المصروفات</span><span style="direction:ltr;color:var(--rd)">${fmtDisp(tX)} ${cur()}</span></div>
@@ -4519,16 +4579,23 @@ function renderFS(tab){
     </div>`;
   } else if(tab==="bs"){
     const balDiff=Math.round((tA-(tL+tE+(np>=0?np:0)))*100)/100;
+    const asSplit=fsSplitTreeByClass(asN),laSplit=fsSplitTreeByClass(laN);
+    const asCur=asSplit.current.reduce((s,n)=>s+n.bal,0),asNon=asSplit.noncurrent.reduce((s,n)=>s+n.bal,0);
+    const laCur=laSplit.current.reduce((s,n)=>s+Math.abs(n.bal),0),laNon=laSplit.noncurrent.reduce((s,n)=>s+Math.abs(n.bal),0);
+    const bsGroup=(nodes,total,label)=>nodes.length?`<div class="fs-subhdr">${label}</div>${fsRowsHTML(nodes,1)}
+      <div class="fs-r s1" style="font-weight:700"><span>إجمالي ${label}</span><span style="direction:ltr">${fmtDisp(total)} ${cur()}</span></div>`:'';
     html+=fsLetterhead("الميزانية العمومية",fromD,toD);
     html+=`<div class="fs-2col">
       <div class="fs-sec">
         <div class="fs-hdr">الأصول</div>
-        ${fsRowsHTML(asN,1)}
+        ${bsGroup(asSplit.current,asCur,"الأصول المتداولة")}
+        ${bsGroup(asSplit.noncurrent,asNon,"الأصول غير المتداولة (الثابتة)")}
         <div class="fs-r grand"><span>إجمالي الأصول</span><span style="direction:ltr">${fmtDisp(tA)} ${cur()}</span></div>
       </div>
       <div class="fs-sec">
         <div class="fs-hdr">الخصوم</div>
-        ${fsRowsHTML(laN,1)}
+        ${bsGroup(laSplit.current,laCur,"الخصوم المتداولة")}
+        ${bsGroup(laSplit.noncurrent,laNon,"الخصوم طويلة الأجل")}
         <div class="fs-r tot"><span>إجمالي الخصوم</span><span style="direction:ltr">${fmtDisp(tL)} ${cur()}</span></div>
         <div class="fs-hdr" style="margin-top:10px">حقوق الملكية</div>
         ${fsRowsHTML(eqN,1)}
@@ -4654,8 +4721,8 @@ function expTrXL(){
      "إجمالي مدين","إجمالي دائن",
      "ختامي مدين","ختامي دائن"]
   ];
-  const ifrsOrder=["asset","liability","equity","revenue","expense"];
-  const tLbl={asset:"أصول",liability:"خصوم",equity:"حقوق الملكية",revenue:"إيرادات",expense:"مصروفات"};
+  const ifrsOrder=["asset","liability","equity","revenue","cost","expense"];
+  const tLbl={asset:"أصول",liability:"خصوم",equity:"حقوق الملكية",revenue:"إيرادات",cost:"تكاليف",expense:"مصروفات"};
   ifrsOrder.forEach(function(type){
     const typeRows=rows.filter(function(r){return r.type===type;});
     if(!typeRows.length) return;
@@ -4757,12 +4824,13 @@ function expFSXL(fromD,toD){
   if(fromD===undefined) fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
   if(toD===undefined) toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
   function flatN(nodes,d=0){let r=[];nodes.forEach(n=>{r.push(["  ".repeat(d)+n.a.name,fmtNum(Math.abs(n.bal))]);if(n.children.length)r=r.concat(flatN(n.children,d+1));});return r;}
-  const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD);
+  const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD),costN=getTree("cost",null,fromD,toD);
   const asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
-  const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0),tX=expN.reduce((s,n)=>s+n.bal,0),np=tR-tX;
+  const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0),tC=costN.reduce((s,n)=>s+n.bal,0),tX=expN.reduce((s,n)=>s+n.bal,0),gp=tR-tC,np=gp-tX;
   const tA=asN.reduce((s,n)=>s+n.bal,0),tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0),tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const hdr=[`${CFG.name} | التاريخ: ${fmtDateISO(new Date())} | العملة: ${cur()}${fromD||toD?" | الفترة: "+fmtDate(fromD)+"—"+fmtDate(toD):""}`];
-  const is=[[`قائمة الدخل — السنة ${CY}`],hdr,[],["البند","المبلغ"],["الإيرادات",""],...flatN(revN,1),["إجمالي الإيرادات",fmtNum(tR)],[],["المصروفات",""],...flatN(expN,1),["إجمالي المصروفات",fmtNum(tX)],[],[np>=0?"صافي الربح":"صافي الخسارة",fmtNum(Math.abs(np))]];
+  const costRows=costN.length?[["التكاليف",""],...flatN(costN,1),["إجمالي التكاليف",fmtNum(tC)],["إجمالي الربح (قبل المصروفات)",fmtNum(gp)],[]]:[];
+  const is=[[`قائمة الدخل — السنة ${CY}`],hdr,[],["البند","المبلغ"],["الإيرادات",""],...flatN(revN,1),["إجمالي الإيرادات",fmtNum(tR)],[],...costRows,["المصروفات",""],...flatN(expN,1),["إجمالي المصروفات",fmtNum(tX)],[],[np>=0?"صافي الربح":"صافي الخسارة",fmtNum(Math.abs(np))]];
   const wb=XLSX.utils.book_new();
   const ws1=XLSX.utils.aoa_to_sheet(is);ws1["!cols"]=[{wch:36},{wch:16}];XLSX.utils.book_append_sheet(wb,ws1,"قائمة الدخل");
   const bs=[[`الميزانية العمومية — السنة ${CY}`],hdr,[],["الأصول","المبلغ","الخصوم وحقوق الملكية","المبلغ"]];
@@ -4776,13 +4844,14 @@ function expFSPDF(fromD,toD){
   if(fromD===undefined) fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
   if(toD===undefined) toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
   function flatR(nodes,d=0){let r=[];nodes.forEach(n=>{r.push(["  ".repeat(d)+n.a.name,fmtNum(Math.abs(n.bal))]);if(n.children.length)r=r.concat(flatR(n.children,d+1));});return r;}
-  const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD);
+  const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD),costN=getTree("cost",null,fromD,toD);
   const asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
-  const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0),tX=expN.reduce((s,n)=>s+n.bal,0),np=tR-tX;
+  const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0),tC=costN.reduce((s,n)=>s+n.bal,0),tX=expN.reduce((s,n)=>s+n.bal,0),gp=tR-tC,np=gp-tX;
   const tA=asN.reduce((s,n)=>s+n.bal,0),tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0),tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const subs=fromD||toD?[`الفترة: ${fmtDate(fromD)||"البداية"} — ${fmtDate(toD)||"اليوم"}`]:[];
+  const costRowsPdf=costN.length?[["التكاليف",""],...flatR(costN,1),["إجمالي التكاليف",fmtNum(tC)],["إجمالي الربح (قبل المصروفات)",fmtNum(gp)],[]]:[];
   const doc=mkPDF(false);let sy=pdfHdr(doc,"قائمة الدخل",[`السنة: ${CY}`,...subs]);
-  arTbl(doc,{startY:sy,head:[["البند","المبلغ"]],body:[["الإيرادات",""],...flatR(revN,1),["إجمالي الإيرادات",fmtNum(tR)],[],["المصروفات",""],...flatR(expN,1),["إجمالي المصروفات",fmtNum(tX)],[],[np>=0?"صافي الربح":"صافي الخسارة",fmtNum(Math.abs(np))]],columnStyles:{1:{halign:"left",cellWidth:45}}});
+  arTbl(doc,{startY:sy,head:[["البند","المبلغ"]],body:[["الإيرادات",""],...flatR(revN,1),["إجمالي الإيرادات",fmtNum(tR)],[],...costRowsPdf,["المصروفات",""],...flatR(expN,1),["إجمالي المصروفات",fmtNum(tX)],[],[np>=0?"صافي الربح":"صافي الخسارة",fmtNum(Math.abs(np))]],columnStyles:{1:{halign:"left",cellWidth:45}}});
   doc.addPage();ensureFont(doc);
   sy=pdfHdr(doc,"الميزانية العمومية",[`السنة: ${CY}`,...subs]);
   const aR=flatR(asN,0);aR.push(["إجمالي الأصول",fmtNum(tA)]);
@@ -4806,7 +4875,7 @@ updateBadges();renderDash();renderAccs();initLines();renderEnts();
 // ═══ YEAR CLOSE ═══
 function renderYr(){
   const tR=getTree("revenue",null).reduce((s,n)=>s+Math.abs(n.bal),0);
-  const tX=getTree("expense",null).reduce((s,n)=>s+n.bal,0);
+  const tX=getTree("expense",null).reduce((s,n)=>s+n.bal,0)+getTree("cost",null).reduce((s,n)=>s+n.bal,0);
   const np=tR-tX;
   document.getElementById("yr-sum").innerHTML=[
     ["📈","إجمالي الإيرادات",tR,"gn"],["📉","إجمالي المصروفات",tX,"rd"],
@@ -4844,20 +4913,21 @@ function doYC(){
   const retId=parseInt(document.getElementById("yc-ret").value);
   if(!dt||!retId){showAlert("يرجى إكمال البيانات","err");return;}
   const revAccs=accounts.filter(a=>a.type==="revenue"&&isLeaf(a.id));
-  const expAccs=accounts.filter(a=>a.type==="expense"&&isLeaf(a.id));
+  // حسابات "التكاليف" مدينة الطبيعة تماماً كالمصروفات (تُقفَل بنفس الطريقة) — راجع NORM
+  const expAccs=accounts.filter(a=>(a.type==="expense"||a.type==="cost")&&isLeaf(a.id));
   const tR=revAccs.reduce((s,a)=>s+Math.abs(getBalance(a.id)),0);
   const tX=expAccs.reduce((s,a)=>s+getBalance(a.id),0);
   const np=tR-tX;
   const lines=[];
   revAccs.forEach(a=>{const b=Math.abs(getBalance(a.id));if(b>0.001)lines.push({accId:a.id,desc:"إقفال الإيرادات",debit:b,credit:0});});
-  expAccs.forEach(a=>{const b=getBalance(a.id);if(b>0.001)lines.push({accId:a.id,desc:"إقفال المصروفات",debit:0,credit:b});});
+  expAccs.forEach(a=>{const b=getBalance(a.id);if(b>0.001)lines.push({accId:a.id,desc:a.type==="cost"?"إقفال التكاليف":"إقفال المصروفات",debit:0,credit:b});});
   if(Math.abs(np)>0.001)lines.push({accId:retId,desc:np>=0?"ترحيل صافي الربح":"ترحيل صافي الخسارة",debit:np<0?Math.abs(np):0,credit:np>=0?np:0});
   const ref="YC-"+yr;
   let closingEntId=null;
   if(lines.length){entries.push({id:nxtEntId++,date:dt,desc:"إقفال السنة المالية "+yr,ref,year:yr,closing:true,lines});closingEntId=nxtEntId-1;}
   const snapshot=accounts.map(a=>({id:a.id,open:a.open}));
   accounts.filter(a=>["asset","liability","equity"].includes(a.type)).forEach(a=>{a.open=parseFloat(fmtNum(Math.abs(getBalance(a.id,true))));});
-  accounts.filter(a=>["revenue","expense"].includes(a.type)).forEach(a=>{a.open=0;});
+  accounts.filter(a=>["revenue","cost","expense"].includes(a.type)).forEach(a=>{a.open=0;});
   yearHist.push({yr,dt,net:np,ref,closingEntId,snapshot,newYear:yr+1});
   CY=yr+1;CFG.year=CY;
   document.getElementById("tb-yr").textContent=CY;
@@ -5286,7 +5356,7 @@ function getCashAccounts(){
 // يُستخدم عندما لا يكون هناك تصنيف يدوي محفوظ على الحساب نفسه (a.cfActivity)
 function getDefaultCFActivity(a){
   if(!a) return "operating";
-  if(a.type==="revenue"||a.type==="expense") return "operating";
+  if(a.type==="revenue"||a.type==="expense"||a.type==="cost") return "operating";
   if(a.type==="equity") return "financing";
   if(a.type==="asset"){
     if(/نقد|صندوق|بنك|cash|bank/i.test(a.name)) return "cash";
@@ -5302,21 +5372,53 @@ function getDefaultCFActivity(a){
 function getEffectiveCFActivity(a){
   return (a&&a.cfActivity)||getDefaultCFActivity(a);
 }
+// التصنيف الافتراضي للحساب كمتداول أو غير متداول (ثابت/طويل الأجل) — للأصول والخصوم فقط،
+// يُستخدم عندما لا يكون هناك تصنيف يدوي محفوظ على الحساب نفسه (a.bsClass). يُفحص اسم الحساب أولاً
+// (أقوى إشارة: "غير متداول/ثابت/طويل الأجل" أو "متداول/قصير الأجل" صراحةً باسمه)، ثم يُستدل
+// للأصول من سجل الأصول الثابتة (assets[]) أو كلمات دالة، وللخصوم من كلمات القروض/التمويل طويل
+// الأجل — بنفس أسلوب getDefaultCFActivity لضمان اتساق التصنيفين
+function getDefaultBSClass(a){
+  if(!a) return "current";
+  if(BS_RX_NONCURRENT.test(a.name)) return "noncurrent";
+  if(BS_RX_CURRENT.test(a.name)) return "current";
+  if(a.type==="asset"){
+    const isFixedAsset=(typeof assets!=="undefined"&&assets.some(function(as){return as.accId===a.id;}))
+      ||/عقار|آلات|معدات|سيارات|أثاث|مبن[ىي]|مباني|أراضي|استثمارات طويلة|fixed asset/i.test(a.name);
+    return isFixedAsset?"noncurrent":"current";
+  }
+  if(a.type==="liability"){
+    return /قرض|تمويل|سند|loan|financing|bond/i.test(a.name)?"noncurrent":"current";
+  }
+  return "current";
+}
+function getEffectiveBSClass(a){
+  return (a&&a.bsClass)||getDefaultBSClass(a);
+}
+// حسابات المخصصات (كمخصص مكافأة نهاية الخدمة أو مخصص ديون مشكوك بتحصيلها) — بند غير نقدي
+// بطبيعته مثل الإهلاك تماماً: يُخفِّض صافي الربح عبر مصروف دون أي خروج نقدي فعلي بنفس الفترة،
+// فتجب إضافته مرة أخرى ضمن الأنشطة التشغيلية بقائمة التدفقات النقدية (كما يحدث بالإهلاك) بدل
+// تركه ضائعاً ضمن "الالتزامات التشغيلية الأخرى" العامة بلا أي بند مستقل يُظهره بوضوح للقارئ
+function isProvisionAcc(a){return a&&/مخصص/i.test(a.name);}
 function computeCashFlow(){
   const {from,to}=getCFPeriod();
   const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to);
   const depAccIds=new Set(assets.map(a=>a.depExpAccId).filter(Boolean));
   const cashAccIds=new Set(getCashAccounts().map(a=>a.id));
 
-  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,operatingLiabChange=0,actualCashChange=0;
+  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,operatingLiabChange=0,provisionChange=0,actualCashChange=0;
   periodEntries.forEach(e=>{
     e.lines.forEach(l=>{
       const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
       const dr=l.debit||0,cr=l.credit||0;
       if(acc.type==="revenue")revenue+=cr-dr;
-      if(acc.type==="expense"){expense+=dr-cr;if(depAccIds.has(acc.id))depExpense+=dr-cr;}
+      if(acc.type==="expense"||acc.type==="cost"){expense+=dr-cr;if(depAccIds.has(acc.id))depExpense+=dr-cr;}
       if(acc.type==="equity")equityChange+=cr-dr;
       if(cashAccIds.has(acc.id))actualCashChange+=dr-cr;
+      // المخصصات (مكافأة نهاية الخدمة، ديون مشكوك بتحصيلها...) بند غير نقدي كالإهلاك تماماً —
+      // تُستبعَد هنا من مسارَي الذمم الدائنة العامة/الأصول لتُضاف بندها الخاص أدناه بدل ضياعها
+      // ضمن "التزامات تشغيلية أخرى" عامة بلا أي بند مستقل يُظهرها بوضوح (سواء كانت مخصص التزام
+      // من نوع liability، أو مخصص مقابل أصل contra-asset من نوع asset — كلاهما يزيد بجهة الدائن)
+      if(isProvisionAcc(acc)){provisionChange+=cr-dr;return;}
       if(l.subId){
         const sub=subLedger.find(s=>s.id===l.subId);
         if(sub&&sub.type==="customer")arChange+=dr-cr;
@@ -5330,13 +5432,13 @@ function computeCashFlow(){
     });
   });
   const netIncome=revenue-expense;
-  const operating=netIncome+depExpense-arChange+apChange+operatingLiabChange;
+  const operating=netIncome+depExpense+provisionChange-arChange+apChange+operatingLiabChange;
   const investing=-assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to).reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
   const financing=equityChange+financingLiabChange;
   const netChange=operating+investing+financing;
   const cashAccountNames=getCashAccounts().map(a=>a.code+" — "+a.name);
   const reconciled=Math.abs(netChange-actualCashChange)<0.01;
-  return {from,to,netIncome,depExpense,arChange,apChange,operatingLiabChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
+  return {from,to,netIncome,depExpense,provisionChange,arChange,apChange,operatingLiabChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
 }
 function cfRow(label,val,indent,bold){
   return `<tr${bold?' style="font-weight:800;background:var(--g50)"':''}>
@@ -5357,6 +5459,7 @@ function renderCashFlow(){
       <div class="fs-hdr">الأنشطة التشغيلية</div>
       ${cfr("صافي الربح",cf.netIncome)}
       ${cfr("+ إهلاك الأصول (بند غير نقدي)",cf.depExpense)}
+      ${cf.provisionChange?cfr((cf.provisionChange>=0?"+ الزيادة":"- الانخفاض")+" في المخصصات (بند غير نقدي)",cf.provisionChange):''}
       ${cfr((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
       ${cfr((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
       ${cf.operatingLiabChange?cfr((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى (مستحقات، ضرائب...)",cf.operatingLiabChange):''}
@@ -5385,6 +5488,7 @@ function printCashFlow(){
     <table><tbody>
     ${cfRow("صافي الربح",cf.netIncome)}
     ${cfRow("+ إهلاك الأصول",cf.depExpense)}
+    ${cf.provisionChange?cfRow((cf.provisionChange>=0?"+ الزيادة":"- الانخفاض")+" في المخصصات",cf.provisionChange):''}
     ${cfRow((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
     ${cfRow((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
     ${cf.operatingLiabChange?cfRow((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى",cf.operatingLiabChange):''}
@@ -10560,9 +10664,9 @@ function renderTr(){
   const el = document.getElementById("tr-body"); if(!el) return;
   if(!rows.length){el.innerHTML='<div class="empty"><span class="ei">⚖️</span><p>لا توجد حسابات</p></div>';return;}
   // Type styling
-  const tClr={asset:"#1d4ed8",liability:"#dc2626",equity:"#7c3aed",revenue:"#16a34a",expense:"#92400e"};
-  const tLbl={asset:"الأصول",liability:"الخصوم",equity:"حقوق الملكية",revenue:"الإيرادات",expense:"المصروفات"};
-  const ifrsOrder=["asset","liability","equity","revenue","expense"];
+  const tClr={asset:"#1d4ed8",liability:"#dc2626",equity:"#7c3aed",revenue:"#16a34a",cost:"#0369a1",expense:"#92400e"};
+  const tLbl={asset:"الأصول",liability:"الخصوم",equity:"حقوق الملكية",revenue:"الإيرادات",cost:"التكاليف",expense:"المصروفات"};
+  const ifrsOrder=["asset","liability","equity","revenue","cost","expense"];
   function nc(v,col,bold){
     if(Math.abs(v||0)<0.001) return '<td style="padding:6px 8px;border:1px solid var(--g100);color:var(--g300);font-size:10px;text-align:center">—</td>';
     return '<td style="padding:6px 8px;border:1px solid var(--g100);direction:ltr;text-align:left;font-weight:'+(bold?700:400)+';color:'+col+';font-size:'+(bold?"12":"11.5")+'px">'+fmtNum(v)+'</td>';
@@ -10664,7 +10768,7 @@ function renderTr(){
     const assets=rows.filter(function(r){return r.type==="asset"&&r.isLeaf;}).reduce(function(s,r){return s+r.drBal-r.crBal;},0);
     const liabs=rows.filter(function(r){return r.type==="liability"&&r.isLeaf;}).reduce(function(s,r){return s+r.crBal-r.drBal;},0);
     const rev=rows.filter(function(r){return r.type==="revenue"&&r.isLeaf;}).reduce(function(s,r){return s+r.crBal-r.drBal;},0);
-    const exp=rows.filter(function(r){return r.type==="expense"&&r.isLeaf;}).reduce(function(s,r){return s+r.drBal-r.crBal;},0);
+    const exp=rows.filter(function(r){return (r.type==="expense"||r.type==="cost")&&r.isLeaf;}).reduce(function(s,r){return s+r.drBal-r.crBal;},0);
     sumEl.innerHTML=
       '<div class="sc bl"><div class="sl">إجمالي الأصول</div><div class="sv">'+fmtDisp(assets)+'</div><div class="ss">'+cur()+'</div></div>'+
       '<div class="sc rd"><div class="sl">إجمالي الخصوم</div><div class="sv">'+fmtDisp(liabs)+'</div><div class="ss">'+cur()+'</div></div>'+
@@ -10714,8 +10818,8 @@ function printTrReport(){
   const rows=getTrData();
   if(!rows.length){showAlert("لا توجد بيانات للطباعة","warn");return;}
   const hc=CFG.rptColor||"#0f4c75";
-  const tLbl={asset:"الأصول",liability:"الخصوم",equity:"حقوق الملكية",revenue:"الإيرادات",expense:"المصروفات"};
-  const ifrsOrder=["asset","liability","equity","revenue","expense"];
+  const tLbl={asset:"الأصول",liability:"الخصوم",equity:"حقوق الملكية",revenue:"الإيرادات",cost:"التكاليف",expense:"المصروفات"};
+  const ifrsOrder=["asset","liability","equity","revenue","cost","expense"];
   function nr(v,c){return v&&Math.abs(v)>0.001?'<td style="text-align:left;direction:ltr;color:'+c+'">'+fmtNum(v)+'</td>':'<td style="color:#ccc;text-align:center">—</td>';}
   let tbody="";
   ifrsOrder.forEach(function(type){
@@ -11228,7 +11332,7 @@ function getInvAcc(whId){
 }
 function getCogsAcc(){
   return accounts.find(function(a){
-    return isLeaf(a.id)&&a.type==="expense"&&(a.name.includes("تكلفة مواد")||a.name.includes("تكلفة البضاعة المباعة"));
+    return isLeaf(a.id)&&(a.type==="expense"||a.type==="cost")&&(a.name.includes("تكلفة مواد")||a.name.includes("تكلفة البضاعة المباعة"));
   });
 }
 function getApAcc(vendorSubId){
