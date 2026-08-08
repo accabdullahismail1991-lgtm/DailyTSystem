@@ -74,8 +74,12 @@ body{font-family:var(--font-family);background:var(--g100);color:var(--g8);direc
 .bell-panel-ft{padding:8px 10px;text-align:center;border-top:1px solid var(--g100)}
 .bell-panel-ft a{color:var(--tl2);font-size:11px;font-weight:700;cursor:pointer}
 /* ── Chart legend ── */
-.legend-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:var(--g7)}
+.legend-item{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;color:var(--g7);cursor:pointer;border-radius:4px;transition:background .1s}
+.legend-item:hover{background:var(--g50)}
 .legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+#chart-tooltip{position:fixed;z-index:9999;pointer-events:none;background:var(--g9);color:#fff;font-size:11px;padding:6px 10px;border-radius:6px;box-shadow:var(--sh1);display:none;white-space:nowrap;font-weight:600}
+#chart-tooltip .ctt-sub{font-weight:400;color:rgba(255,255,255,.6);font-size:9.5px;margin-top:1px}
+canvas.chart-cv{cursor:pointer}
 .content{padding:18px 22px;flex:1}
 .sec{display:none}.sec.active{display:block}
 /* ── Cards ── */
@@ -210,15 +214,38 @@ tbody tr:hover{background:var(--g50)}
 .vch-sig{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px}
 .vch-sb{border-top:1px solid #94a3b8;padding-top:7px;text-align:center;font-size:10.5px;color:#64748b}
 /* ── Financial statements ── */
-.fs-sec{margin-bottom:18px}
-.fs-hdr{font-size:12.5px;font-weight:800;color:var(--g7);padding:7px 11px;background:var(--g100);border-right:3px solid var(--tl2);border-radius:0 5px 5px 0;margin-bottom:7px}
-.fs-r{display:flex;justify-content:space-between;align-items:center;padding:4px 11px;font-size:12px;border-bottom:1px solid var(--g100)}
+.fs-letterhead{text-align:center;padding:6px 10px 18px;margin-bottom:14px;border-bottom:2px solid var(--g8)}
+.fs-lh-logo{height:44px;max-width:150px;object-fit:contain;margin:0 auto 8px;display:block}
+.fs-lh-co{font-size:15px;font-weight:800;color:var(--g9);letter-spacing:.2px}
+.fs-lh-title{font-size:13px;font-weight:700;color:var(--teal);margin-top:3px}
+.fs-lh-period{font-size:11px;color:var(--g5);margin-top:4px}
+.fs-lh-cur{font-size:9.5px;color:var(--g4);margin-top:2px}
+.fs-sec{margin-bottom:20px}
+.fs-hdr{font-size:12px;font-weight:800;color:var(--g8);letter-spacing:.3px;padding:8px 12px;background:var(--g100);border-right:3px solid var(--tl2);border-radius:0 5px 5px 0;margin-bottom:5px;text-transform:uppercase}
+.fs-r{display:flex;justify-content:space-between;align-items:center;padding:5px 12px;font-size:12px;border-bottom:1px solid var(--g100);font-variant-numeric:tabular-nums}
 .fs-r:hover{background:var(--g50)}
-.fs-r.s1{padding-right:22px;color:var(--g6);font-size:11.5px}
-.fs-r.s2{padding-right:36px;color:var(--g5);font-size:11px}
-.fs-r.tot{font-weight:800;background:var(--g50);border-top:2px solid var(--g300)}
-.fs-r.grand{font-weight:800;font-size:13px;background:var(--tp);color:var(--teal);border-top:3px solid var(--tl2)}
-.fs-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fs-r.s1{padding-right:24px;color:var(--g6);font-size:11.5px}
+.fs-r.s2{padding-right:38px;color:var(--g5);font-size:11px}
+.fs-r.tot{font-weight:800;background:var(--g50);border-top:1.5px solid var(--g300);margin-top:2px}
+.fs-r.grand{font-weight:800;font-size:13.5px;background:var(--tp);color:var(--teal);border-top:3px double var(--tl2);border-bottom:1px solid var(--tl2);margin-top:4px}
+.fs-2col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.fs-2col .fs-sec{padding:14px;background:var(--w);border:1px solid var(--g200);border-radius:var(--r)}
+.fs-balcheck{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;padding:7px;border-radius:var(--rs);margin-top:10px}
+.fs-balcheck.ok{background:var(--gp);color:var(--gn)}
+.fs-balcheck.bad{background:var(--rp);color:var(--rd)}
+.fs-zero-row{opacity:.5}
+/* ── Quick actions (vertical list) ── */
+.qa-list{display:flex;flex-direction:column;gap:4px}
+.qa-item{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;border-radius:var(--rs);border:1px solid transparent;background:transparent;cursor:pointer;font-family:inherit;text-align:right;font-size:12px;font-weight:600;color:var(--g7);transition:background .12s,border-color .12s}
+.qa-item:hover{background:var(--g50);border-color:var(--g200)}
+.qa-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.qa-item.c-blue .qa-ic{background:#dbeafe;color:#1d4ed8}
+.qa-item.c-green .qa-ic{background:#dcfce7;color:#15803d}
+.qa-item.c-red .qa-ic{background:#fee2e2;color:#b91c1c}
+.qa-item.c-purple .qa-ic{background:#ede9fe;color:#6d28d9}
+.qa-item.c-amber .qa-ic{background:#fef3c7;color:#b45309}
+.qa-item.c-teal .qa-ic{background:var(--tp);color:var(--tl2)}
+.qa-item .qa-chev{margin-right:auto;color:var(--g4);font-size:11px}
 /* ── Settings ── */
 .set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
 .set-card{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:16px}
@@ -231,7 +258,22 @@ tbody tr:hover{background:var(--g50)}
 /* ── Sub-account detail panel ── */
 .sub-detail-panel{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:14px;margin-top:10px}
 @media(max-width:768px){.sb{width:220px}.main{margin-right:220px}.content{padding:13px}.el-hd,.el{grid-template-columns:18px 2fr 1fr 1fr 1fr 24px}}
-@media print{.sb,.topbar,.al-c,.no-print{display:none!important}.main{margin-right:0!important}body{background:#fff}}
+@media(max-width:900px){#d-main-row{grid-template-columns:1fr!important}}
+@media print{
+  .sb,.topbar,.al-c,.no-print{display:none!important}
+  .main{margin-right:0!important}
+  body{background:#fff}
+  /* طباعة من داخل نافذة منبثقة (سند/فاتورة/قيد مفتوح) عبر window.print() المباشر — بدون هذا كانت
+     النافذة تحتفظ بتموضعها الشاشي (position:fixed وسط الصفحة + max-height:90vh مع overflow:auto)
+     فتُطبَع كصندوق صغير معلّق بمنتصف الورقة بهوامش فارغة كبيرة حوله، وأي محتوى تجاوز ارتفاع
+     الشاشة يُقصّ ولا يُطبَع إطلاقاً لأنه كان مموضعاً خارج نطاق التمرير المرئي وقت الطباعة */
+  .mb{position:static!important;background:none!important;padding:0!important}
+  .modal{position:static!important;width:auto!important;max-width:100%!important;max-height:none!important;overflow:visible!important;box-shadow:none!important;border-radius:0!important;margin:0!important;padding:0!important}
+  /* السندات وكشوف الحساب (.vch) محدودة الاتساع بـ680px ومُمركَزة على الشاشة لتبدو كبطاقة أنيقة —
+     نفس القيد يبقى أثناء الطباعة فتُطبَع الجداول بعرض أضيق من الورقة بهامشين فارغين متساويين
+     على الجانبين بدل استغلال عرض الورقة كاملاً */
+  .vch{max-width:100%!important;margin:0!important;padding:6px!important;border:none!important;border-radius:0!important}
+}
 .n-cell{direction:ltr;text-align:left;font-size:11.5px}
 .n-dr{color:#1d4ed8}
 .n-cr{color:#166534}
@@ -668,30 +710,32 @@ tbody tr:hover{background:var(--g50)}
 
 <!-- DASHBOARD -->
 <div id="sec-dash" class="sec active">
- <div class="card">
-  <div class="chd"><div class="ct"><div class="ti">⚡</div>عمليات سريعة</div></div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px">
-   <button class="btn bp bsm" onclick="openNewEntryModal()" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">📝<span>قيد يومية جديد</span></button>
-   <button class="btn bg bsm" onclick="openSaleInvForm()" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">🟢<span>فاتورة مبيعات</span></button>
-   <button class="btn bd bsm" onclick="openPurInvForm()" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">🔴<span>فاتورة مشتريات</span></button>
-   <button class="btn bo bsm" onclick="openVoucherForm('receipt')" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">🟢<span>سند قبض</span></button>
-   <button class="btn bo bsm" onclick="openVoucherForm('payment')" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">🔴<span>سند صرف</span></button>
-   <button class="btn bo bsm" onclick="openGoodsReceipt()" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">📥<span>أذن استلام</span></button>
-   <button class="btn bo bsm" onclick="SS('kpi',null)" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">📈<span>مؤشرات الأداء</span></button>
-   <button class="btn bo bsm" onclick="SS('audit',null)" style="padding:12px 8px;flex-direction:column;display:flex;gap:4px;align-items:center">🩺<span>فحص وتدقيق</span></button>
-  </div>
- </div>
  <div class="sg2" id="d-grid"></div>
- <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-bottom:14px" id="d-charts-row">
-  <div class="card">
-   <div class="chd"><div class="ct"><div class="ti">📊</div>الإيرادات والمصروفات الشهرية</div></div>
-   <canvas id="d-bar-chart" height="190" style="width:100%"></canvas>
+ <div style="display:grid;grid-template-columns:250px 1fr;gap:14px;margin-bottom:14px;align-items:start" id="d-main-row">
+  <div class="card" style="padding-bottom:8px">
+   <div class="chd"><div class="ct"><div class="ti">⚡</div>عمليات سريعة</div></div>
+   <div class="qa-list">
+    <button class="qa-item c-purple" onclick="openNewEntryModal()"><span class="qa-ic">📝</span><span>قيد يومية جديد</span><span class="qa-chev">‹</span></button>
+    <button class="qa-item c-green" onclick="openSaleInvForm()"><span class="qa-ic">🟢</span><span>فاتورة مبيعات</span><span class="qa-chev">‹</span></button>
+    <button class="qa-item c-red" onclick="openPurInvForm()"><span class="qa-ic">🔴</span><span>فاتورة مشتريات</span><span class="qa-chev">‹</span></button>
+    <button class="qa-item c-teal" onclick="openVoucherForm('receipt')"><span class="qa-ic">🟢</span><span>سند قبض</span><span class="qa-chev">‹</span></button>
+    <button class="qa-item c-amber" onclick="openVoucherForm('payment')"><span class="qa-ic">🔴</span><span>سند صرف</span><span class="qa-chev">‹</span></button>
+    <button class="qa-item c-blue" onclick="openGoodsReceipt()"><span class="qa-ic">📥</span><span>أذن استلام</span><span class="qa-chev">‹</span></button>
+    <button class="qa-item c-teal" onclick="SS('kpi',null)"><span class="qa-ic">📈</span><span>مؤشرات الأداء</span><span class="qa-chev">‹</span></button>
+    <button class="qa-item c-amber" onclick="SS('audit',null)"><span class="qa-ic">🩺</span><span>فحص وتدقيق</span><span class="qa-chev">‹</span></button>
+   </div>
   </div>
-  <div class="card">
-   <div class="chd"><div class="ct"><div class="ti">🥧</div>الأصول والخصوم وحقوق الملكية</div></div>
-   <div style="display:flex;align-items:center;gap:14px">
-    <canvas id="d-donut-chart" width="150" height="150" style="flex-shrink:0"></canvas>
-    <div id="d-donut-legend" style="flex:1;font-size:11px"></div>
+  <div style="display:flex;flex-direction:column;gap:14px">
+   <div class="card">
+    <div class="chd"><div class="ct"><div class="ti">📊</div>الإيرادات والمصروفات الشهرية</div></div>
+    <canvas id="d-bar-chart" height="190" style="width:100%"></canvas>
+   </div>
+   <div class="card">
+    <div class="chd"><div class="ct"><div class="ti">🥧</div>الأصول والخصوم وحقوق الملكية</div></div>
+    <div style="display:flex;align-items:center;gap:14px">
+     <canvas id="d-donut-chart" width="150" height="150" style="flex-shrink:0"></canvas>
+     <div id="d-donut-legend" style="flex:1;font-size:11px"></div>
+    </div>
    </div>
   </div>
  </div>
@@ -1036,6 +1080,9 @@ tbody tr:hover{background:var(--g50)}
   <div class="fgrp"><label>📅 من تاريخ</label><input id="fs-from" type="date" onchange="renderFS(fsTab)"></div>
   <div class="fgrp"><label>📅 إلى تاريخ</label><input id="fs-to" type="date" onchange="renderFS(fsTab)"></div>
   <button class="btn bo bsm" onclick="document.getElementById('fs-from').value='';document.getElementById('fs-to').value='';renderFS(fsTab)" style="align-self:flex-end">↺ كل الفترة</button>
+  <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--g6);cursor:pointer;align-self:flex-end;padding:7px 4px">
+   <input type="checkbox" id="fs-hide-zero" onchange="renderFS(fsTab)">إخفاء الأرصدة الصفرية
+  </label>
  </div>
  <div class="tabs">
   <button class="tab active" onclick="switchFS('is',this)">📈 قائمة الدخل</button>
@@ -3841,42 +3888,82 @@ function popParSel(selId,excId){
 
 // ═══ DASHBOARD ═══
 const CHART_COLORS=['#6366f1','#f59e0b','#8b5cf6','#22c55e','#ef4444','#06b6d4','#ec4899'];
-function drawDonutChart(canvasId,dataPairs,legendId){
+function chartTip(){return document.getElementById('chart-tooltip');}
+// onSliceClick(label) اختياري — يُستدعى عند الضغط على قطاع أو عنصر بالمفتاح لإتاحة الانتقال
+// لتقرير تفصيلي (drill-down)، وتُعرض تفاصيل الرقم/النسبة تلقائياً عند التمرير (hover) على أي منهما
+function drawDonutChart(canvasId,dataPairs,legendId,onSliceClick){
   const canvas=document.getElementById(canvasId);if(!canvas)return;
+  canvas.classList.toggle('chart-cv',!!onSliceClick);
   const ctx=canvas.getContext('2d');const w=canvas.width,h=canvas.height,cx=w/2,cy=h/2,r=Math.min(w,h)/2-4;
   const total=dataPairs.reduce((s,[,v])=>s+v,0);
   ctx.clearRect(0,0,w,h);
+  const slices=[];
   if(!total){
     ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle='#f1f5f9';ctx.fill();
   }else{
     let start=-Math.PI/2;
-    dataPairs.forEach(([,val],i)=>{
-      const slice=(val/total)*Math.PI*2;
-      ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,start+slice);ctx.closePath();
+    dataPairs.forEach(([label,val],i)=>{
+      const sweep=(val/total)*Math.PI*2;
+      ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,start+sweep);ctx.closePath();
       ctx.fillStyle=CHART_COLORS[i%CHART_COLORS.length];ctx.fill();
-      start+=slice;
+      slices.push({start,end:start+sweep,label,val,pct:val/total*100});
+      start+=sweep;
     });
   }
   ctx.beginPath();ctx.arc(cx,cy,r*0.6,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();
+  if(total){
+    ctx.fillStyle='#0f172a';ctx.font='bold 12px Tajawal,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(fmtDisp(total).split('.')[0],cx,cy-5);
+    ctx.fillStyle='#94a3b8';ctx.font='8px Tajawal,sans-serif';
+    ctx.fillText('الإجمالي',cx,cy+9);
+  }
+  function hitTest(evt){
+    const rect=canvas.getBoundingClientRect();
+    const sx=(evt.clientX-rect.left)*(w/rect.width),sy=(evt.clientY-rect.top)*(h/rect.height);
+    const dx=sx-cx,dy=sy-cy,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<r*0.6||dist>r)return null;
+    let ang=Math.atan2(dy,dx);
+    if(ang<-Math.PI/2)ang+=Math.PI*2;
+    return slices.find(s=>ang>=s.start&&ang<s.end)||null;
+  }
+  canvas.onmousemove=function(evt){
+    const s=hitTest(evt),tip=chartTip();
+    if(s){
+      tip.style.display='block';
+      tip.innerHTML=s.label+' — '+fmtDisp(s.val)+' '+cur()+'<div class="ctt-sub">'+s.pct.toFixed(1)+'% من الإجمالي</div>';
+      tip.style.left=(evt.clientX+14)+'px';tip.style.top=(evt.clientY+10)+'px';
+    }else tip.style.display='none';
+  };
+  canvas.onmouseleave=function(){chartTip().style.display='none';};
+  canvas.onclick=function(evt){const s=hitTest(evt);if(s&&onSliceClick)onSliceClick(s.label);};
   const legendEl=document.getElementById(legendId);if(!legendEl)return;
   legendEl.innerHTML=dataPairs.map(([label,val],i)=>
-    '<div class="legend-item"><div class="legend-dot" style="background:'+CHART_COLORS[i%CHART_COLORS.length]+'"></div>'
+    '<div class="legend-item" data-i="'+i+'"><div class="legend-dot" style="background:'+CHART_COLORS[i%CHART_COLORS.length]+'"></div>'
     +'<span>'+label+'</span>'
     +'<span style="margin-right:auto;font-weight:700;color:var(--g8)">'+fmtDisp(val)+'</span></div>'
   ).join('');
+  if(onSliceClick)Array.from(legendEl.children).forEach((el,i)=>{el.onclick=()=>onSliceClick(dataPairs[i][0]);});
 }
-function drawBarChart(canvasId,categories,seriesList){
+// onBarClick(catIndex) اختياري — للانتقال من عمود بالرسم لتقرير الفترة/الحساب المقابل له
+function drawBarChart(canvasId,categories,seriesList,onBarClick){
   const canvas=document.getElementById(canvasId);if(!canvas)return;
+  canvas.classList.toggle('chart-cv',!!onBarClick);
   const W=canvas.offsetWidth||500;canvas.width=W;const H=canvas.height;
   const ctx=canvas.getContext('2d');ctx.clearRect(0,0,W,H);
   const allVals=seriesList.flatMap(s=>s.values);
   const maxV=Math.max(...allVals,1);
-  const pad={t:10,b:22,l:6,r:6};
+  const pad={t:10,b:22,l:6,r:34};
   const gW=W-pad.l-pad.r,gH=H-pad.t-pad.b;
   const groupW=gW/categories.length;
   const barGap=3,barW=Math.max(2,(groupW-barGap*(seriesList.length+1))/seriesList.length);
   ctx.strokeStyle='#f1f5f9';ctx.lineWidth=1;
-  [0,.25,.5,.75,1].forEach(p=>{const y=pad.t+gH*(1-p);ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();});
+  ctx.fillStyle='#94a3b8';ctx.font='8.5px Tajawal,sans-serif';ctx.textAlign='left';
+  [0,.25,.5,.75,1].forEach(p=>{
+    const y=pad.t+gH*(1-p);
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+    ctx.fillText(fmtDisp(maxV*p).split('.')[0],W-pad.r+4,y+3);
+  });
+  const bars=[];
   categories.forEach((cat,ci)=>{
     const groupX=pad.l+ci*groupW;
     seriesList.forEach((s,si)=>{
@@ -3890,13 +3977,44 @@ function drawBarChart(canvasId,categories,seriesList){
       ctx.moveTo(bx,by+bh);ctx.lineTo(bx,by+rad);ctx.arcTo(bx,by,bx+rad,by,rad);
       ctx.lineTo(bx+barW-rad,by);ctx.arcTo(bx+barW,by,bx+barW,by+rad,rad);
       ctx.lineTo(bx+barW,by+bh);ctx.closePath();ctx.fill();
+      bars.push({x:bx,y:by,w:barW,h:Math.max(bh,3),val:v,label:cat,series:s.label,catIndex:ci});
     });
     ctx.fillStyle='#94a3b8';ctx.font='9px Tajawal,sans-serif';ctx.textAlign='center';
     ctx.fillText(cat,groupX+groupW/2,H-6);
   });
+  function hitTest(evt){
+    const rect=canvas.getBoundingClientRect();
+    const sx=(evt.clientX-rect.left)*(W/rect.width),sy=(evt.clientY-rect.top)*(H/rect.height);
+    return bars.find(b=>sx>=b.x&&sx<=b.x+b.w&&sy>=b.y&&sy<=b.y+b.h)||null;
+  }
+  canvas.onmousemove=function(evt){
+    const b=hitTest(evt),tip=chartTip();
+    if(b){
+      tip.style.display='block';
+      tip.innerHTML=b.series+' — '+b.label+'<div class="ctt-sub">'+fmtDisp(b.val)+' '+cur()+'</div>';
+      tip.style.left=(evt.clientX+14)+'px';tip.style.top=(evt.clientY+10)+'px';
+    }else tip.style.display='none';
+  };
+  canvas.onmouseleave=function(){chartTip().style.display='none';};
+  canvas.onclick=function(evt){const b=hitTest(evt);if(b&&onBarClick)onBarClick(b.catIndex);};
+}
+// الانتقال من قطاع/عمود بالرسم البياني بلوحة التحكم لتقرير القوائم المالية المطابق مباشرة
+function chartGoBS(){
+  SS('fs',null);
+  setTimeout(function(){switchFS('bs',document.querySelector('#sec-fs .tabs .tab'));},30);
+}
+function chartGoMonth(monthKey){
+  SS('fs',null);
+  setTimeout(function(){
+    const fromEl=document.getElementById('fs-from'),toEl=document.getElementById('fs-to');
+    const parts=monthKey.split('-').map(Number),lastDay=new Date(parts[0],parts[1],0).getDate();
+    if(fromEl)fromEl.value=monthKey+'-01';
+    if(toEl)toEl.value=monthKey+'-'+String(lastDay).padStart(2,'0');
+    switchFS('is',document.querySelector('#sec-fs .tabs .tab'));
+  },30);
 }
 function renderDashCharts(tA,tL,tE){
-  drawDonutChart('d-donut-chart',[['الأصول',Math.max(tA,0)],['الخصوم',Math.max(tL,0)],['حقوق الملكية',Math.max(tE,0)]],'d-donut-legend');
+  drawDonutChart('d-donut-chart',[['الأصول',Math.max(tA,0)],['الخصوم',Math.max(tL,0)],['حقوق الملكية',Math.max(tE,0)]],'d-donut-legend',chartGoBS);
   const months=[];
   for(let m=1;m<=12;m++)months.push(CY+'-'+String(m).padStart(2,'0'));
   const revByMonth={},expByMonth={};
@@ -3914,7 +4032,7 @@ function renderDashCharts(tA,tL,tE){
   drawBarChart('d-bar-chart',monthLabels,[
     {label:'الإيرادات',color:'#22c55e',values:months.map(m=>Math.max(revByMonth[m],0))},
     {label:'المصروفات',color:'#ef4444',values:months.map(m=>Math.max(expByMonth[m],0))},
-  ]);
+  ],function(catIndex){chartGoMonth(months[catIndex]);});
 }
 
 function renderDash(){
@@ -4329,38 +4447,56 @@ function fsRowsHTML(nodes,depth=0){
   });
   return h;
 }
+// تُبقي الحساب إن كان رصيده غير صفري أو كان لأحد أبنائه (بعد الفلترة) رصيد غير صفري — الفلترة
+// تُطبَّق على الفروع أولاً حتى لا يظهر أب "فارغ" (صافي أبنائه صفر) بينما أحد أبنائه فعلياً غير صفري
+function fsFilterZero(nodes){
+  return nodes.map(n=>({...n,children:fsFilterZero(n.children)})).filter(n=>Math.abs(n.bal)>0.005||n.children.length);
+}
+function fsLetterhead(title,fromD,toD){
+  const periodTxt=fromD||toD?`عن الفترة من ${fromD?fmtDate(fromD):"بداية النشاط"} إلى ${toD?fmtDate(toD):"اليوم"}`:`للسنة المالية المنتهية في ${CY}`;
+  return `<div class="fs-letterhead">
+    ${CFG.logo?`<img class="fs-lh-logo" src="${CFG.logo}">`:""}
+    <div class="fs-lh-co">${CFG.name||""}</div>
+    <div class="fs-lh-title">${title}</div>
+    <div class="fs-lh-period">${periodTxt}</div>
+    <div class="fs-lh-cur">جميع المبالغ بـ${cur()}</div>
+  </div>`;
+}
 function renderFS(tab){
   fsTab=tab;
   const fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
   const toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
-  const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD);
-  const asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
+  const hideZero=document.getElementById("fs-hide-zero")?document.getElementById("fs-hide-zero").checked:false;
+  let revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD);
+  let asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
   const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const tX=expN.reduce((s,n)=>s+n.bal,0);
   const np=tR-tX;
   const tA=asN.reduce((s,n)=>s+n.bal,0);
   const tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
-  const period=fromD||toD?`<div style="text-align:center;font-size:11px;color:var(--am);margin-bottom:10px;font-weight:600">📅 الفترة: ${fromD?fmtDate(fromD):"البداية"} — ${toD?fmtDate(toD):"اليوم"}</div>`:"";
-  let html=period;
+  const openEq=eqN.reduce((s,n)=>s+(parseFloat(n.a.open)||0),0);
+  if(hideZero){revN=fsFilterZero(revN);expN=fsFilterZero(expN);asN=fsFilterZero(asN);laN=fsFilterZero(laN);eqN=fsFilterZero(eqN);}
+  let html="";
   if(tab==="is"){
+    html+=fsLetterhead("قائمة الدخل",fromD,toD);
     html+=`<div class="fs-sec">
-      <div class="fs-hdr">قائمة الدخل — السنة المالية ${CY}</div>
-      <div class="fs-r tot"><span>الإيرادات</span><span></span></div>
+      <div class="fs-hdr">الإيرادات</div>
       ${fsRowsHTML(revN,1)}
       <div class="fs-r tot"><span>إجمالي الإيرادات</span><span style="direction:ltr;color:var(--gn)">${fmtDisp(tR)} ${cur()}</span></div>
-      <div class="fs-r tot" style="margin-top:7px"><span>المصروفات</span><span></span></div>
+      <div class="fs-hdr" style="margin-top:10px">المصروفات</div>
       ${fsRowsHTML(expN,1)}
       <div class="fs-r tot"><span>إجمالي المصروفات</span><span style="direction:ltr;color:var(--rd)">${fmtDisp(tX)} ${cur()}</span></div>
-      <hr style="border:none;border-top:1px solid var(--g200);margin:10px 0">
       <div class="fs-r grand"><span>صافي ${np>=0?"الربح":"الخسارة"}</span><span style="direction:ltr">${fmtDisp(Math.abs(np))} ${cur()}</span></div>
     </div>`;
   } else if(tab==="bs"){
+    const balDiff=Math.round((tA-(tL+tE+(np>=0?np:0)))*100)/100;
+    html+=fsLetterhead("الميزانية العمومية",fromD,toD);
     html+=`<div class="fs-2col">
       <div class="fs-sec">
         <div class="fs-hdr">الأصول</div>
         ${fsRowsHTML(asN,1)}
-        <div class="fs-r tot"><span>إجمالي الأصول</span><span style="direction:ltr">${fmtDisp(tA)} ${cur()}</span></div>
+        <div class="fs-r grand"><span>إجمالي الأصول</span><span style="direction:ltr">${fmtDisp(tA)} ${cur()}</span></div>
       </div>
       <div class="fs-sec">
         <div class="fs-hdr">الخصوم</div>
@@ -4370,14 +4506,13 @@ function renderFS(tab){
         ${fsRowsHTML(eqN,1)}
         <div class="fs-r s1"><span>صافي ${np>=0?"الربح":"الخسارة"}</span><span style="direction:ltr;color:${np>=0?"var(--gn)":"var(--rd)"}">${fmtDisp(Math.abs(np))} ${cur()}</span></div>
         <div class="fs-r tot"><span>إجمالي حقوق الملكية</span><span style="direction:ltr">${fmtDisp(tE+(np>=0?np:0))} ${cur()}</span></div>
-        <hr style="border:none;border-top:1px solid var(--g200);margin:8px 0">
         <div class="fs-r grand"><span>إجمالي الخصوم وحقوق الملكية</span><span style="direction:ltr">${fmtDisp(tL+tE+(np>=0?np:0))} ${cur()}</span></div>
       </div>
-    </div>`;
+    </div>
+    <div class="fs-balcheck ${balDiff===0?"ok":"bad"}">${balDiff===0?"✓ الميزانية متوازنة (الأصول = الخصوم + حقوق الملكية)":"⚠ الميزانية غير متوازنة — فرق "+fmtDisp(Math.abs(balDiff))+" "+cur()}</div>`;
   } else {
-    const openEq=eqN.reduce((s,n)=>s+(parseFloat(n.a.open)||0),0);
+    html+=fsLetterhead("قائمة حقوق الملكية",fromD,toD);
     html+=`<div class="fs-sec">
-      <div class="fs-hdr">قائمة حقوق الملكية — السنة المالية ${CY}</div>
       <div class="fs-r"><span>رصيد أول الفترة</span><span style="direction:ltr">${fmtDisp(openEq)} ${cur()}</span></div>
       ${fsRowsHTML(eqN,1)}
       <div class="fs-r s1"><span>صافي ${np>=0?"الربح":"الخسارة"}</span><span style="direction:ltr;color:${np>=0?"var(--gn)":"var(--rd)"}">${fmtDisp(Math.abs(np))} ${cur()}</span></div>
@@ -5187,35 +5322,31 @@ function cfHeader(label){
 function renderCashFlow(){
   const cf=computeCashFlow();
   const body=document.getElementById("cashflow-body");if(!body)return;
-  body.innerHTML=`<div class="tw"><table>
-    <thead><tr><th colspan="2">من ${fmtDate(cf.from)} إلى ${fmtDate(cf.to)}</th></tr></thead>
-    <tbody>
-    ${cfHeader("الأنشطة التشغيلية")}
-    ${cfRow("صافي الربح",cf.netIncome,true)}
-    ${cfRow("+ إهلاك الأصول (بند غير نقدي)",cf.depExpense,true)}
-    ${cfRow((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange,true)}
-    ${cfRow((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange,true)}
-    ${cf.operatingLiabChange?cfRow((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى (مستحقات، ضرائب...)",cf.operatingLiabChange,true):''}
-    ${cfRow("صافي النقد من الأنشطة التشغيلية",cf.operating,false,true)}
-    ${cfHeader("الأنشطة الاستثمارية")}
-    ${cfRow("شراء أصول ثابتة",cf.investing,true)}
-    ${cfRow("صافي النقد من الأنشطة الاستثمارية",cf.investing,false,true)}
-    ${cfHeader("الأنشطة التمويلية")}
-    ${cfRow("التغيّر في حقوق الملكية والقروض",cf.financing,true)}
-    ${cfRow("صافي النقد من الأنشطة التمويلية",cf.financing,false,true)}
-    <tr class="tr-tot"><td>صافي التغيّر في النقدية (محسوب)</td>
-      <td style="direction:ltr;text-align:left">${cf.netChange<0?'('+fmtDisp(Math.abs(cf.netChange))+')':fmtDisp(cf.netChange)} ${cur()}</td></tr>
-    </tbody></table></div>
-    <div style="margin-top:12px;padding:12px 14px;border-radius:var(--r);border:1px solid ${cf.reconciled?'#86efac':'#fca5a5'};background:${cf.reconciled?'var(--gp)':'var(--rp)'}">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <div style="font-size:11.5px;font-weight:700;color:${cf.reconciled?'var(--gn)':'var(--rd)'}">
-          ${cf.reconciled?'✓ يطابق التغيّر الفعلي في أرصدة النقدية والبنوك المرتبطة تلقائياً':'⚠ لا يطابق التغيّر الفعلي في أرصدة النقدية — راجع القيود خلال الفترة'}
-        </div>
-        <div style="direction:ltr;font-weight:800;color:${cf.reconciled?'var(--gn)':'var(--rd)'}">${fmtDisp(cf.actualCashChange)} ${cur()}</div>
-      </div>
-      <div style="font-size:10px;color:var(--g5);margin-top:6px">
-        الحسابات المرتبطة تلقائياً (نقد/صندوق/بنك): ${cf.cashAccountNames.length?cf.cashAccountNames.join('، '):'لا توجد حسابات نقدية — تأكد من تسمية حسابات النقد/الصندوق/البنك بشكل واضح في دليل الحسابات'}
-      </div>
+  const cfr=(label,val)=>`<div class="fs-r s1"><span>${label}</span><span style="direction:ltr;color:${val<0?'var(--rd)':'var(--g8)'}">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)} ${cur()}</span></div>`;
+  const cft=(label,val)=>`<div class="fs-r tot"><span>${label}</span><span style="direction:ltr;color:${val<0?'var(--rd)':'var(--gn)'}">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)} ${cur()}</span></div>`;
+  body.innerHTML=fsLetterhead("قائمة التدفقات النقدية",cf.from,cf.to)+`
+    <div class="fs-sec">
+      <div class="fs-hdr">الأنشطة التشغيلية</div>
+      ${cfr("صافي الربح",cf.netIncome)}
+      ${cfr("+ إهلاك الأصول (بند غير نقدي)",cf.depExpense)}
+      ${cfr((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
+      ${cfr((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
+      ${cf.operatingLiabChange?cfr((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى (مستحقات، ضرائب...)",cf.operatingLiabChange):''}
+      ${cft("صافي النقد من الأنشطة التشغيلية",cf.operating)}
+      <div class="fs-hdr" style="margin-top:10px">الأنشطة الاستثمارية</div>
+      ${cfr("شراء أصول ثابتة",cf.investing)}
+      ${cft("صافي النقد من الأنشطة الاستثمارية",cf.investing)}
+      <div class="fs-hdr" style="margin-top:10px">الأنشطة التمويلية</div>
+      ${cfr("التغيّر في حقوق الملكية والقروض",cf.financing)}
+      ${cft("صافي النقد من الأنشطة التمويلية",cf.financing)}
+      <div class="fs-r grand"><span>صافي التغيّر في النقدية (محسوب)</span><span style="direction:ltr">${cf.netChange<0?'('+fmtDisp(Math.abs(cf.netChange))+')':fmtDisp(cf.netChange)} ${cur()}</span></div>
+    </div>
+    <div class="fs-balcheck ${cf.reconciled?'ok':'bad'}">
+      <span>${cf.reconciled?'✓ يطابق التغيّر الفعلي في أرصدة النقدية والبنوك المرتبطة تلقائياً':'⚠ لا يطابق التغيّر الفعلي في أرصدة النقدية — راجع القيود خلال الفترة'}</span>
+      <span style="direction:ltr">(${fmtDisp(cf.actualCashChange)} ${cur()})</span>
+    </div>
+    <div style="font-size:10px;color:var(--g5);margin-top:8px;text-align:center">
+      الحسابات المرتبطة تلقائياً (نقد/صندوق/بنك): ${cf.cashAccountNames.length?cf.cashAccountNames.join('، '):'لا توجد حسابات نقدية — تأكد من تسمية حسابات النقد/الصندوق/البنك بشكل واضح في دليل الحسابات'}
     </div>`;
 }
 function printCashFlow(){
@@ -12896,6 +13027,8 @@ document.addEventListener("DOMContentLoaded",function(){
   initCloudSync();
 });
 </script>
+
+<div id="chart-tooltip"></div>
 
 <!-- Diagnostics Panel -->
 <div id="diag-panel" style="display:none;position:fixed;bottom:10px;left:10px;right:10px;max-height:200px;overflow-y:auto;background:#1e293b;color:#f1f5f9;font-family:monospace;font-size:11px;padding:10px;border-radius:8px;z-index:9999;direction:ltr">
