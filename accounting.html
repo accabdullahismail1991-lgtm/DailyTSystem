@@ -498,6 +498,7 @@ tbody tr:hover{background:var(--g50)}
    style="width:100%;font-size:10.5px;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:rgba(255,255,255,.75);cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px">
   <span>🏢</span><span>تبديل الشركة</span>
  </button>
+ <div id="cloud-status-badge" title="حالة المزامنة مع قاعدة البيانات السحابية — تظهر بيانات هذه الشركة على أي جهاز آخر فقط عندما تكون متصلة" style="display:none;margin-top:6px;font-size:9px;padding:4px 8px;border-radius:5px;text-align:center;cursor:default"></div>
 </div>
 <div style="padding:9px 10px 6px;border-bottom:1px solid rgba(255,255,255,.06)">
  <input type="text" id="sb-search-inp" placeholder="🔍 ابحث عن شاشة..." oninput="sbFilterNav(this.value)"
@@ -12823,8 +12824,29 @@ function renderAll(){
   try{restoreNavStates();}catch(e){console.error(e)}
 }
 
+// مؤشر حالة الاتصال بقاعدة البيانات السحابية بشريط التنقل الجانبي — إن لم يظهر "☁️ متصل" على
+// أي جهاز فبيانات هذه الشركة لن تظهر على أي جهاز آخر (تبقى محلية بهذا الجهاز فقط عبر
+// localStorage)، وهو بالضبط سبب شكوى "لا يقرأ النظام الشركات بشكل صحيح من أجهزة خارجية" — إما
+// لعدم تحميل مكتبة Firebase (حجب شبكي، أو الرابط CDN غير متاح) أو لعدم ضبط firebaseConfig
+// بـcloud-sync.js. هذا المؤشر يجعل حالة الاتصال الفعلية مرئية بدل فشل صامت غير قابل للتشخيص
+function updateCloudStatusBadge(state){
+  const el=document.getElementById('cloud-status-badge');if(!el)return;
+  el.style.display='block';
+  if(state==='unavailable'){
+    el.style.background='rgba(239,68,68,.18)';el.style.color='#fca5a5';
+    el.textContent='⚠ غير متصل بقاعدة البيانات السحابية — البيانات محلية بهذا الجهاز فقط';
+  }else if(state==='connecting'){
+    el.style.background='rgba(148,163,184,.15)';el.style.color='rgba(255,255,255,.55)';
+    el.textContent='⏳ جارٍ الاتصال بقاعدة البيانات السحابية...';
+  }else{
+    el.style.background='rgba(34,197,94,.15)';el.style.color='#86efac';
+    el.textContent='☁️ متصل بقاعدة البيانات السحابية';
+  }
+}
 function initCloudSync(){
-  if(!window.CloudSync)return;
+  if(!window.CloudSync){updateCloudStatusBadge('unavailable');return;}
+  updateCloudStatusBadge('connecting');
+  CloudSync.ready.then(()=>updateCloudStatusBadge('connected'));
   CloudSync.load(CLOUD_DOC_NAME).then(remote=>{
     if(localDirtySinceBoot){
       // بيانات محلية جديدة تغيّرت أثناء انتظار السحابة — لا تستبدلها، هي بالفعل قيد المزامنة عبر persist()
@@ -12841,11 +12863,21 @@ function initCloudSync(){
       CloudSync.showUpdateBanner(()=>location.reload());
     });
   });
+  const knownIdsBefore=companies.map(c=>c.id);
   CloudSync.load('acct_companies').then(remote=>{
     if(Array.isArray(remote)&&remote.length){
       const localOnly=companies.filter(c=>!remote.some(r=>r.id===c.id));
       companies=remote.concat(localOnly);
       try{localStorage.setItem(COMPANIES_KEY,JSON.stringify(companies));}catch(e){}
+      // جهاز جديد اكتشف للتو شركات مسجّلة سحابياً لم تكن معروفة له محلياً، وهو حالياً على شركة
+      // "افتراضية" لم يُسجَّل بها أي قيد فعلي بعد (تحتوي فقط على دليل حسابات نموذجي جاهز
+      // بالتثبيت — accounts.length لا يُفيد هنا للتفرقة، إذ يبدأ 91 حساباً دوماً حتى بجهاز جديد
+      // تماماً؛ entries.length هو المعيار الحقيقي لوجود عمل فعلي) — الأغلب أن المستخدم الحقيقي
+      // يعمل على شركة أخرى غير ظاهرة تلقائياً هنا، فيُنبَّه صراحة بدل أن يظن النظام فارغاً/معطّلاً
+      const newlyDiscovered=companies.some(c=>!knownIdsBefore.includes(c.id));
+      if(newlyDiscovered&&ACTIVE_COMPANY_ID==='default'&&!entries.length){
+        showAlert('☁️ عُثر على '+(companies.length-1)+' شركة أخرى مسجّلة سحابياً على هذا الحساب — اضغط "🏢 تبديل الشركة" أعلى القائمة الجانبية لاختيار شركتك','warn');
+      }
     }
     CloudSync.onChange('acct_companies',remote2=>{
       if(Array.isArray(remote2)){
