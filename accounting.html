@@ -1453,9 +1453,11 @@ tbody tr:hover{background:var(--g50)}
 <!-- ══ EXTERNAL IMPORT / RECONCILIATION SECTION ══ -->
 <div id="sec-ccimport" class="sec">
 <p style="font-size:11.5px;color:var(--g5);margin:-2px 0 14px;line-height:1.7">
-  استيراد بيانات من أنظمة محاسبية خارجية (دليل حسابات، استاذ مساعد كامل، كشوفات حركة مراكز التكلفة)
-  وتطبيقها على <strong>الشركة النشطة حالياً</strong>. الترتيب المقترح: ①دليل الحسابات، ②الأستاذ المساعد
-  (لإنشاء القيود الفعلية)، ③كشوفات مراكز التكلفة (لإلحاق مركز التكلفة بالقيود التي أُنشئت للتو).
+  استيراد بيانات من أنظمة محاسبية خارجية (دليل حسابات، استاذ مساعد كامل، كشوفات حركة مراكز التكلفة، أو
+  تقرير موحّد لحركة القيود مع مراكز التكلفة) وتطبيقها على <strong>الشركة النشطة حالياً</strong>. الترتيب
+  المقترح: ①دليل الحسابات، ثم إما ②الأستاذ المساعد (لإنشاء القيود) تليها ③كشوفات مراكز التكلفة لإلحاقها
+  بالقيود، <u>أو</u> بديلاً عنهما معاً ④تقرير حركة القيود مع مراكز التكلفة (إن كان متوفراً بنظامك المصدر)
+  الذي ينشئ القيود ويُلحق مركز التكلفة بها من مصدر واحد مباشرةً.
   عند رفع نسخة محدَّثة لاحقاً من أي ملف، تُعاد معالجة الحركات الجديدة/غير المكتملة فقط دون تكرار ما سبق ترحيله.
 </p>
 
@@ -1492,6 +1494,19 @@ tbody tr:hover{background:var(--g50)}
   <span style="font-size:10.5px;color:var(--g5)">يمكن اختيار أكثر من ملف لأكثر من مركز تكلفة دفعة واحدة</span>
  </div>
  <div id="cc-import-preview"></div>
+</div>
+
+<div class="card">
+ <div class="chd"><div class="ct"><div class="ti">4️⃣</div>استيراد حركة القيود اليومية مع مراكز التكلفة (تقرير موحّد)</div></div>
+ <p style="font-size:11px;color:var(--g5);margin:-4px 0 10px">
+  بديل عن الخطوتين ② و③ معاً لو كان نظامك المصدر يصدّر تقريراً واحداً يعرض كل حركة بالقيد اليومي
+  ومركز التكلفة الخاص بها (إن وُجد) في نفس السطر — يُنشئ القيود المتوازنة ويُلحق مركز التكلفة بكل
+  طرف مباشرةً من نفس الملف، ويسجّل تعريف أي مركز تكلفة جديد تلقائياً عند أول ظهور له.
+ </p>
+ <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+  <input type="file" id="journalcc-file-input" accept=".xlsx,.xls,.pdf" onchange="handleJournalCCFile(this)" style="font-size:11px">
+ </div>
+ <div id="journalcc-import-preview"></div>
 </div>
 
 <div class="card">
@@ -2487,6 +2502,9 @@ let ccImportLog=[], nxtCCLogId=1;
 // سجل استيراد قيود الأستاذ المساعد الكامل — يمنع إعادة إنشاء نفس القيد (المجمّع حسب نوع/رقم
 // المستند) عند رفع نسخة محدَّثة من نفس الملف
 let auxImportLog=[], nxtAuxLogId=1;
+// سجل استيراد "حركة القيود اليومية مع مراكز التكلفة" (تقرير موحّد ينشئ القيود ويُلحق مركز
+// التكلفة بها معاً من مصدر واحد) — نفس منطق منع التكرار حسب رقم المستند
+let journalCCImportLog=[], nxtJournalCCLogId=1;
 
 
 function ccProjMiniHtml(l,updFnName){
@@ -7933,20 +7951,32 @@ async function pdfExtractRows(file){
   const buf=await file.arrayBuffer();
   const pdf=await pdfjsLib.getDocument({data:buf}).promise;
   const rows=[];
+  // تجميع خانات السطر الواحد بالمسافة الفعلية بينها (وليس بتقريب ثابت لأقرب مضاعف)، لأن بعض
+  // التقارير (مثل تقرير حركة القيود مع مراكز التكلفة) تضع خانات نفس السطر بفارق طفيف بالخط
+  // القاعدي (أحياناً أقل من نقطة واحدة) قد يقع بالصدفة على طرفي حد التقريب الثابت فيُقسَّم
+  // السطر الواحد خطأً لسطرين (مثال حقيقي: 492.96 و493.08 بنفس السطر لكنهما يقعان بمضاعفين
+  // مختلفين لأقرب 2). التجميع هنا تراكمي: أي خانة تقع ضمن Y_TOL من أول خانة بالسطر تُضم إليه
+  const Y_TOL=3;
   for(let p=1;p<=pdf.numPages;p++){
     const page=await pdf.getPage(p);
     const content=await page.getTextContent();
-    const byY={};
-    content.items.forEach(function(it){
-      const t=(it.str||'').trim();
-      if(!t)return;
-      const y=Math.round(it.transform[5]/2)*2; // تجميع بتفاوت بسيط لمعالجة فروق طفيفة بالمحاذاة الرأسية
-      if(!byY[y])byY[y]=[];
-      byY[y].push({text:t,x:it.transform[4]});
+    const items=content.items.map(function(it){return {text:(it.str||'').trim(),x:it.transform[4],y:it.transform[5]};}).filter(function(it){return it.text;});
+    items.sort(function(a,b){return b.y-a.y||a.x-b.x;});
+    const pageRows=[];
+    let curRow=[],curY=null;
+    items.forEach(function(it){
+      if(curY===null||Math.abs(it.y-curY)<=Y_TOL){
+        if(curY===null)curY=it.y;
+        curRow.push(it);
+      }else{
+        pageRows.push(curRow);
+        curRow=[it];
+        curY=it.y;
+      }
     });
-    const ys=Object.keys(byY).map(Number).sort(function(a,b){return b-a;});
-    ys.forEach(function(y){
-      const parts=byY[y].sort(function(a,b){return a.x-b.x;}).map(function(o){return o.text;});
+    if(curRow.length)pageRows.push(curRow);
+    pageRows.forEach(function(r){
+      const parts=r.slice().sort(function(a,b){return a.x-b.x;}).map(function(o){return o.text;});
       rows.push(parts.join(' | '));
     });
   }
@@ -8394,6 +8424,170 @@ function importAuxLedgerGroups(groups,sourceLabel,dryRun){
   return {results:results};
 }
 
+// ── الخطوة ④: استيراد "حركة القيود اليومية مع مراكز التكلفة" — تقرير موحّد واحد يحمل مركز
+// التكلفة على كل سطر مباشرةً (بخلاف الخطوة ② التي لا تحوي مراكز تكلفة، والخطوة ③ التي تطابق
+// حركات موجودة فعلاً دون إنشاء قيود). هنا يُنشأ القيد ويُلحق مركز التكلفة به من نفس المصدر معاً ──
+function extractJournalCCFromExcelAOA(aoa){
+  const rows=[];
+  if(!aoa||!aoa.length)return rows;
+  let headerRow=-1,col={};
+  for(let r=0;r<Math.min(aoa.length,15);r++){
+    const row=(aoa[r]||[]).map(function(c){return String(c||'').trim();});
+    const iDate=row.findIndex(function(s){return /^Date$|^التاريخ$/i.test(s);});
+    const iDoc=row.findIndex(function(s){return /^document$|^مستند$|^مﺴتﻨد$/i.test(s);});
+    const iAcc=row.findIndex(function(s){return /^Account$|^الحساب$|^الحســــــــاب$/i.test(s);});
+    const iCr=row.findIndex(function(s){return /^Credit$|^دائن$/i.test(s);});
+    const iDr=row.findIndex(function(s){return /^Debit$|^مدين$|^مــــدين$/i.test(s);});
+    const iCC=row.findIndex(function(s){return /^Cost Center$|^مركز تكلفة$|^مركز التكلفة$/i.test(s);});
+    const iType=row.findIndex(function(s){return /^TYPE$|^نوع$/i.test(s);});
+    if(iDate>=0&&iDoc>=0&&iAcc>=0&&iCr>=0&&iDr>=0){
+      headerRow=r;col={date:iDate,doc:iDoc,acc:iAcc,cr:iCr,dr:iDr,cc:iCC,type:iType};
+      break;
+    }
+  }
+  if(headerRow<0)return rows;
+  for(let r=headerRow+1;r<aoa.length;r++){
+    const row=aoa[r]||[];
+    const dateVal=row[col.date];
+    if(!dateVal)continue;
+    const accCell=String(row[col.acc]||'').trim();
+    if(!accCell)continue;
+    const m=accCell.match(/^(\d+)\s+(.*)$|^(.*?)\s+(\d+)$/);
+    let accCode=null,accName=accCell;
+    if(m){
+      if(m[1]){accCode=m[1];accName=m[2];}
+      else if(m[4]){accCode=m[4];accName=m[3];}
+    }
+    if(!accCode)continue;
+    const ccCell=col.cc>=0?String(row[col.cc]||'').trim():'';
+    rows.push({
+      ccCode:ccCell&&/^\d+$/.test(ccCell)?ccCell:null,
+      date:excelDateToISO(dateVal),
+      docType:col.type>=0?String(row[col.type]||'').trim():'JV',
+      docNo:String(row[col.doc]||'').trim(),
+      accCode:accCode,accName:accName.trim(),desc:'',
+      credit:parseFloat(String(row[col.cr]||'0').replace(/,/g,''))||0,
+      debit:parseFloat(String(row[col.dr]||'0').replace(/,/g,''))||0
+    });
+  }
+  return rows;
+}
+function extractJournalCCFromPdfLines(lines){
+  const rows=[];
+  const dateTokenRe=/^\d{1,2}\/\d{1,2}\/\d{2,4}$/;
+  const numTestRe=/^-?\(?[\d,]+\.\d{2}\)?$/;
+  let lastRow=null,pendingDesc=[];
+  lines.forEach(function(line){
+    // ترويسة/تذييل الصفحة يتكرران بأعلى كل صفحة بهذا التقرير — تُستبعد فوراً
+    if(/Page \d+ of|يعﺮض المسﺘﻨدات|By Number Of ducoment|اﻷجمالي الﻜﻠي|^From\s*[:|]|^To\s*[:|]|ﻣﺮﻛـــﺰ ﺗﻜﻠﻔــﺔ|^Cost Center\s*\|/i.test(line))return;
+    const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
+    if(!parts.length)return;
+    const dateIdx=parts.findIndex(function(p){return dateTokenRe.test(p);});
+    if(dateIdx===-1){
+      // بلا تاريخ: إما سطر بيان مكمّل للسطر السابق، أو سطر إجمالي المستند (رقمان عشريان فقط
+      // يساويان مجموع مدين/دائن المستند بالكامل — التحقق من التوازن يتم لاحقاً بالتجميع حسب
+      // رقم المستند، فلا حاجة لقراءة هذا السطر)
+      if(parts.every(function(p){return numTestRe.test(p);}))return;
+      if(lastRow)pendingDesc.push(parts.join(' '));
+      return;
+    }
+    const before=parts.slice(0,dateIdx); // عمود مركز التكلفة إن وُجد (يظهر كقيمتين متطابقتين)
+    const after=parts.slice(dateIdx+1); // JV | رقم المستند | رمز الحساب | اسم الحساب... | دائن | مدين
+    const typeIdx=after.findIndex(function(p){return /^[A-Za-z]{1,4}$/.test(p);});
+    if(typeIdx===-1)return;
+    const docNo=after[typeIdx+1];
+    if(!docNo)return;
+    const rest=after.slice(typeIdx+2);
+    const amounts=rest.filter(function(p){return numTestRe.test(p);});
+    if(amounts.length<2)return;
+    const nonAmount=rest.filter(function(p){return !numTestRe.test(p);});
+    const accCode=pickAccountCodeCandidate(nonAmount);
+    if(!accCode)return;
+    const accName=nonAmount.filter(function(p){return p!==accCode;}).join(' ').trim();
+    // ترتيب الأعمدة بترويسة التقرير: دائن ثم مدين
+    const credit=parseFloat(amounts[amounts.length-2].replace(/[(),]/g,''))||0;
+    const debit=parseFloat(amounts[amounts.length-1].replace(/[(),]/g,''))||0;
+    // مركز التكلفة رمز رقمي دائماً بهذا التقرير؛ أي نص عربي واقع بنفس الموضع هو شظية بيان
+    // ملتفّة من سطر مجاور التقطها تجميع الأسطر بالتفاوت الرأسي خطأً، فيُستبعد بأمان
+    const ccCode=(before.length&&/^\d+$/.test(before[0]))?before[0]:null;
+    if(lastRow)lastRow.desc=pendingDesc.join(' ').trim();
+    pendingDesc=[];
+    const row={ccCode:ccCode,date:excelDateToISO(parts[dateIdx]),docType:after[typeIdx],docNo:docNo,
+      accCode:accCode,accName:accName,desc:'',debit:debit,credit:credit};
+    rows.push(row);
+    lastRow=row;
+  });
+  if(lastRow)lastRow.desc=pendingDesc.join(' ').trim();
+  return rows;
+}
+function importJournalCCGroups(groups,sourceLabel,dryRun){
+  sourceLabel=sourceLabel||'استيراد خارجي';
+  const results=[];
+  const ccCache={},newCCCodes=[];
+  function resolveCC(code){
+    if(!code)return null;
+    if(ccCache[code])return ccCache[code];
+    let cc=costCenters.find(function(c){return c.code===code;});
+    if(!cc){
+      cc={id:dryRun?0:nxtCCId++,code:code,name:'مركز '+code,active:true};
+      if(!dryRun)costCenters.push(cc);
+      newCCCodes.push(code);
+    }
+    ccCache[code]=cc;
+    return cc;
+  }
+  groups.forEach(function(g){
+    const already=journalCCImportLog.find(function(l){return l.key===g.key&&l.status==='created';});
+    if(already){
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'skipped',note:'تم استيراده مسبقاً',lineCount:g.rows.length});
+      return;
+    }
+    if(g.rows.length<2){
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'single-leg',note:'طرف واحد فقط بالملف — بانتظار الطرف المقابل بنسخة أحدث',lineCount:g.rows.length});
+      return;
+    }
+    if(!g.balanced){
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'unbalanced',
+        note:'غير متوازن (مدين '+fmtNum(g.totalDr)+' ≠ دائن '+fmtNum(g.totalCr)+') — بانتظار بقية الأطراف',lineCount:g.rows.length});
+      return;
+    }
+    const missing=g.rows.filter(function(r){return !accounts.find(function(a){return a.code===r.accCode;});});
+    if(missing.length){
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'no-account',
+        note:'رمز الحساب '+missing[0].accCode+' غير موجود بدليل الحسابات — استورد دليل الحسابات أولاً',lineCount:g.rows.length});
+      return;
+    }
+    const dv=validateEntryDate(g.date);
+    if(!dv.ok){
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'bad-date',note:dv.msg,lineCount:g.rows.length});
+      return;
+    }
+    const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
+    const ccTagged=g.rows.filter(function(r){return !!r.ccCode;}).length;
+    g.rows.forEach(function(r){if(r.ccCode)resolveCC(r.ccCode);});
+    let entId=null;
+    if(!dryRun){
+      const ent={
+        id:nxtEntId++,date:g.date,desc:desc,ref:(g.docType||'')+'-'+(g.docNo||''),year:CY,isDraft:false,
+        attachment:null,attachDesc:'',
+        lines:g.rows.map(function(r){
+          const acc=accounts.find(function(a){return a.code===r.accCode;});
+          const cc=r.ccCode?resolveCC(r.ccCode):null;
+          return {accId:acc.id,desc:r.desc||'',debit:r.debit,credit:r.credit,subId:null,costCenterId:cc?cc.id:null,projectId:null,
+            extRef:(g.docType||'')+'-'+(g.docNo||''),extSrc:sourceLabel};
+        })
+      };
+      entries.push(ent);
+      entId=ent.id;
+      const rec={id:already?already.id:nxtJournalCCLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,
+        lineCount:g.rows.length,ccTagged:ccTagged,status:'created',srcLabel:sourceLabel,importedAt:new Date().toISOString()};
+      journalCCImportLog.push(rec);
+    }
+    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'created',entryId:entId,lineCount:g.rows.length,ccTagged:ccTagged,desc:desc});
+  });
+  return {results:results,newCostCenters:newCCCodes};
+}
+
 // ── محرك المطابقة والترحيل: يطابق كل حركة مع قيد موجود فعلاً بنفس الحساب/التاريخ/المبلغ
 // ويُلحق مركز التكلفة به فقط — لا يُنشئ أي قيد جديد إطلاقاً (كل سطر بالكشف طرف واحد من
 // قيد متوازن، والطرف المقابل غير ظاهر بهذا التقرير، فلا يمكن تكوين قيد كامل منه بأمان) ──
@@ -8615,6 +8809,68 @@ function commitAuxImport(){
   const created=res.results.filter(function(r){return r.status==='created';}).length;
   renderEnts();updateBadges();renderDash();persist();
   showAlert('تم إنشاء '+created+' قيد يومية من الأستاذ المساعد ✓ — يمكنك الآن رفع كشوفات مراكز التكلفة (الخطوة التالية) لإلحاقها بهذه القيود');
+}
+
+// ── واجهة الاستخدام: رفع "حركة القيود اليومية مع مراكز التكلفة" (الخطوة ④) ──
+let __journalCCPendingGroups=null,__journalCCPendingSource='';
+async function handleJournalCCFile(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  try{
+    let rows;
+    if(/\.pdf$/i.test(file.name)){
+      const lines=await pdfExtractRows(file);
+      rows=extractJournalCCFromPdfLines(lines);
+    }else{
+      const buf=await file.arrayBuffer();
+      const wb=XLSX.read(buf,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true});
+      rows=extractJournalCCFromExcelAOA(aoa);
+    }
+    if(!rows.length){showAlert('لم يتم العثور على أي حركات قابلة للقراءة في الملف','err');return;}
+    const groups=groupAuxLedgerRows(rows);
+    __journalCCPendingGroups=groups;
+    __journalCCPendingSource=file.name;
+    renderJournalCCPreview(importJournalCCGroups(groups,file.name,true));
+  }catch(e){console.error(e);showAlert('تعذّرت قراءة الملف: '+e.message,'err');}
+}
+function renderJournalCCPreview(res){
+  const box=document.getElementById('journalcc-import-preview');
+  if(!box)return;
+  const counts={};
+  res.results.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
+  const ccTaggedTotal=res.results.reduce(function(s,r){return s+(r.ccTagged||0);},0);
+  const rows=res.results.map(function(r){
+    return '<tr><td>'+fmtDate(r.date)+'</td><td>'+(r.docType||'')+' '+(r.docNo||'')+'</td><td>'+r.lineCount+'</td>'
+      +'<td>'+(r.ccTagged?r.ccTagged:'—')+'</td>'
+      +'<td>'+(AUX_STATUS_LBL[r.status]||r.status)+(r.note?'<div style="font-size:9.5px;color:var(--g5);margin-top:2px">'+r.note+'</div>':'')+'</td></tr>';
+  }).join('');
+  box.innerHTML=''
+    +'<div class="sg">'
+    +'<div class="sc"><div class="sl">مستندات بالملف</div><div class="sv">'+res.results.length+'</div></div>'
+    +'<div class="sc"><div class="sl">سيُنشأ الآن</div><div class="sv" style="color:var(--gn)">'+(counts.created||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">أطراف بمركز تكلفة</div><div class="sv">'+ccTaggedTotal+'</div></div>'
+    +'<div class="sc"><div class="sl">مراكز تكلفة جديدة</div><div class="sv">'+(res.newCostCenters?res.newCostCenters.length:0)+'</div></div>'
+    +'<div class="sc"><div class="sl">مستورد مسبقاً</div><div class="sv">'+(counts.skipped||0)+'</div></div>'
+    +'<div class="sc"><div class="sl">غير متوازن / طرف واحد</div><div class="sv" style="color:var(--am)">'+((counts.unbalanced||0)+(counts['single-leg']||0))+'</div></div>'
+    +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
+    +'</div>'
+    +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>المستند</th><th>عدد الأطراف</th><th>أطراف بمركز تكلفة</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="actions" style="margin-top:10px">'
+    +'<button class="btn bp" onclick="commitJournalCCImport()">✅ تأكيد وترحيل القيود مع مراكز التكلفة ('+(counts.created||0)+')</button>'
+    +'</div>';
+}
+function commitJournalCCImport(){
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية الإضافة','err');return;}
+  if(!__journalCCPendingGroups){showAlert('لا يوجد ملف مُحمَّل للمعاينة','err');return;}
+  const res=importJournalCCGroups(__journalCCPendingGroups,__journalCCPendingSource,false);
+  __journalCCPendingGroups=null;
+  document.getElementById('journalcc-import-preview').innerHTML='';
+  document.getElementById('journalcc-file-input').value='';
+  const created=res.results.filter(function(r){return r.status==='created';}).length;
+  const ccTaggedTotal=res.results.reduce(function(s,r){return s+(r.ccTagged||0);},0);
+  renderEnts();updateBadges();renderDash();persist();
+  showAlert('تم إنشاء '+created+' قيد يومية مع إلحاق مركز التكلفة بـ '+ccTaggedTotal+' طرفاً منها مباشرةً ✓');
 }
 
 // ── واجهة الاستخدام: رفع ومطابقة كشف حركة مركز تكلفة ──
@@ -12248,7 +12504,7 @@ function renderCompanySwitcher(){
 }
 
 function buildPersistData(){
-  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId,auxImportLog,nxtAuxLogId};
+  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId,auxImportLog,nxtAuxLogId,journalCCImportLog,nxtJournalCCLogId};
 }
 let localDirtySinceBoot=false;
 let __bootDataSnapshot=null;
@@ -12347,6 +12603,8 @@ function applyPersistedData(d){
     if(d.nxtCCLogId!==undefined)nxtCCLogId=d.nxtCCLogId;
     if(d.auxImportLog!==undefined)auxImportLog=d.auxImportLog;
     if(d.nxtAuxLogId!==undefined)nxtAuxLogId=d.nxtAuxLogId;
+    if(d.journalCCImportLog!==undefined)journalCCImportLog=d.journalCCImportLog;
+    if(d.nxtJournalCCLogId!==undefined)nxtJournalCCLogId=d.nxtJournalCCLogId;
   }catch(e){console.error('applyPersistedData:',e);}
 }
 setInterval(persist,3000);
