@@ -8376,50 +8376,54 @@ function importAuxLedgerGroups(groups,sourceLabel,dryRun){
   sourceLabel=sourceLabel||'استيراد خارجي';
   const results=[];
   groups.forEach(function(g){
+    // الرقم المرجعي ووصف المستند يُحسبان أولاً ويُرفقان بكل حالة نتيجة (وليس فقط عند إنشاء
+    // القيد فعلياً) حتى تظهر بجدول المعاينة/السجل حتى للمستندات المرفوضة مؤقتاً (غير متوازنة،
+    // بانتظار طرف آخر، حساب غير موجود...) فيسهل على المستخدم تمييز أي مستند دون فتح الملف الأصلي
+    const ref=(g.docType||'')+'-'+(g.docNo||'');
+    const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
     const already=auxImportLog.find(function(l){return l.key===g.key&&l.status==='created';});
     if(already){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'skipped',note:'تم استيراده مسبقاً',lineCount:g.rows.length});
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'skipped',note:'تم استيراده مسبقاً',lineCount:g.rows.length});
       return;
     }
     if(g.rows.length<2){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'single-leg',note:'طرف واحد فقط بالملف — بانتظار الطرف المقابل بنسخة أحدث',lineCount:g.rows.length});
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'single-leg',note:'طرف واحد فقط بالملف — بانتظار الطرف المقابل بنسخة أحدث',lineCount:g.rows.length});
       return;
     }
     if(!g.balanced){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'unbalanced',
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'unbalanced',
         note:'غير متوازن (مدين '+fmtNum(g.totalDr)+' ≠ دائن '+fmtNum(g.totalCr)+') — بانتظار بقية الأطراف',lineCount:g.rows.length});
       return;
     }
     const missing=g.rows.filter(function(r){return !accounts.find(function(a){return a.code===r.accCode;});});
     if(missing.length){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'no-account',
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'no-account',
         note:'رمز الحساب '+missing[0].accCode+' غير موجود بدليل الحسابات — استورد دليل الحسابات أولاً',lineCount:g.rows.length});
       return;
     }
     const dv=validateEntryDate(g.date);
     if(!dv.ok){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'bad-date',note:dv.msg,lineCount:g.rows.length});
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'bad-date',note:dv.msg,lineCount:g.rows.length});
       return;
     }
-    const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
     let entId=null;
     if(!dryRun){
       const ent={
-        id:nxtEntId++,date:g.date,desc:desc,ref:(g.docType||'')+'-'+(g.docNo||''),year:CY,isDraft:false,
+        id:nxtEntId++,date:g.date,desc:desc,ref:ref,year:CY,isDraft:false,
         attachment:null,attachDesc:'',
         lines:g.rows.map(function(r){
           const acc=accounts.find(function(a){return a.code===r.accCode;});
           return {accId:acc.id,desc:r.desc||'',debit:r.debit,credit:r.credit,subId:null,costCenterId:null,projectId:null,
-            extRef:(g.docType||'')+'-'+(g.docNo||''),extSrc:sourceLabel};
+            extRef:ref,extSrc:sourceLabel};
         })
       };
       entries.push(ent);
       entId=ent.id;
-      const rec={id:already?already.id:nxtAuxLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,
+      const rec={id:already?already.id:nxtAuxLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,
         lineCount:g.rows.length,status:'created',srcLabel:sourceLabel,importedAt:new Date().toISOString()};
       auxImportLog.push(rec);
     }
-    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'created',entryId:entId,lineCount:g.rows.length,desc:desc});
+    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'created',entryId:entId,lineCount:g.rows.length});
   });
   return {results:results};
 }
@@ -8482,38 +8486,48 @@ function extractJournalCCFromPdfLines(lines){
     if(/Page \d+ of|يعﺮض المسﺘﻨدات|By Number Of ducoment|اﻷجمالي الﻜﻠي|^From\s*[:|]|^To\s*[:|]|ﻣﺮﻛـــﺰ ﺗﻜﻠﻔــﺔ|^Cost Center\s*\|/i.test(line))return;
     const parts=line.split('|').map(function(s){return s.trim();}).filter(Boolean);
     if(!parts.length)return;
+    // يُحاول أولاً تفسير السطر كصف حركة كامل (تاريخ عمود + JV + رقم مستند + حساب + دائن/مدين)؛
+    // أي إخفاق بأي شرط من شروط البنية الكاملة (وليس فقط غياب تاريخ) يعني أن هذا سطر بيان مكمّل
+    // وليس صف حركة — مهم لأن نص البيان نفسه كثيراً ما يتضمّن تاريخاً بصيغة DD/MM/YYYY (مثال
+    // حقيقي: "...حتي 27/06/2026") يطابق نفس نمط عمود التاريخ (DD/MM/YY)، فلا يكفي وجود مطابقة
+    // تاريخ وحدها للحكم بأن السطر صف حركة — كان هذا يُسقط سطر البيان بالكامل بدل إلحاقه بالحركة
+    let row=null;
     const dateIdx=parts.findIndex(function(p){return dateTokenRe.test(p);});
-    if(dateIdx===-1){
-      // بلا تاريخ: إما سطر بيان مكمّل للسطر السابق، أو سطر إجمالي المستند (رقمان عشريان فقط
-      // يساويان مجموع مدين/دائن المستند بالكامل — التحقق من التوازن يتم لاحقاً بالتجميع حسب
-      // رقم المستند، فلا حاجة لقراءة هذا السطر)
+    if(dateIdx!==-1){
+      const before=parts.slice(0,dateIdx); // عمود مركز التكلفة إن وُجد (يظهر كقيمتين متطابقتين)
+      const after=parts.slice(dateIdx+1); // JV | رقم المستند | رمز الحساب | اسم الحساب... | دائن | مدين
+      const typeIdx=after.findIndex(function(p){return /^[A-Za-z]{1,4}$/.test(p);});
+      const docNo=typeIdx!==-1?after[typeIdx+1]:null;
+      if(typeIdx!==-1&&docNo){
+        const rest=after.slice(typeIdx+2);
+        const amounts=rest.filter(function(p){return numTestRe.test(p);});
+        if(amounts.length>=2){
+          const nonAmount=rest.filter(function(p){return !numTestRe.test(p);});
+          const accCode=pickAccountCodeCandidate(nonAmount);
+          if(accCode){
+            const accName=nonAmount.filter(function(p){return p!==accCode;}).join(' ').trim();
+            // ترتيب الأعمدة بترويسة التقرير: دائن ثم مدين
+            const credit=parseFloat(amounts[amounts.length-2].replace(/[(),]/g,''))||0;
+            const debit=parseFloat(amounts[amounts.length-1].replace(/[(),]/g,''))||0;
+            // مركز التكلفة رمز رقمي دائماً بهذا التقرير؛ أي نص عربي واقع بنفس الموضع هو شظية بيان
+            // ملتفّة من سطر مجاور التقطها تجميع الأسطر بالتفاوت الرأسي خطأً، فيُستبعد بأمان
+            const ccCode=(before.length&&/^\d+$/.test(before[0]))?before[0]:null;
+            row={ccCode:ccCode,date:excelDateToISO(parts[dateIdx]),docType:after[typeIdx],docNo:docNo,
+              accCode:accCode,accName:accName,desc:'',debit:debit,credit:credit};
+          }
+        }
+      }
+    }
+    if(!row){
+      // ليس صف حركة صالحاً: إما سطر بيان مكمّل للسطر السابق، أو سطر إجمالي المستند (رقمان
+      // عشريان فقط يساويان مجموع مدين/دائن المستند بالكامل — التحقق من التوازن يتم لاحقاً
+      // بالتجميع حسب رقم المستند، فلا حاجة لقراءة هذا السطر)
       if(parts.every(function(p){return numTestRe.test(p);}))return;
       if(lastRow)pendingDesc.push(parts.join(' '));
       return;
     }
-    const before=parts.slice(0,dateIdx); // عمود مركز التكلفة إن وُجد (يظهر كقيمتين متطابقتين)
-    const after=parts.slice(dateIdx+1); // JV | رقم المستند | رمز الحساب | اسم الحساب... | دائن | مدين
-    const typeIdx=after.findIndex(function(p){return /^[A-Za-z]{1,4}$/.test(p);});
-    if(typeIdx===-1)return;
-    const docNo=after[typeIdx+1];
-    if(!docNo)return;
-    const rest=after.slice(typeIdx+2);
-    const amounts=rest.filter(function(p){return numTestRe.test(p);});
-    if(amounts.length<2)return;
-    const nonAmount=rest.filter(function(p){return !numTestRe.test(p);});
-    const accCode=pickAccountCodeCandidate(nonAmount);
-    if(!accCode)return;
-    const accName=nonAmount.filter(function(p){return p!==accCode;}).join(' ').trim();
-    // ترتيب الأعمدة بترويسة التقرير: دائن ثم مدين
-    const credit=parseFloat(amounts[amounts.length-2].replace(/[(),]/g,''))||0;
-    const debit=parseFloat(amounts[amounts.length-1].replace(/[(),]/g,''))||0;
-    // مركز التكلفة رمز رقمي دائماً بهذا التقرير؛ أي نص عربي واقع بنفس الموضع هو شظية بيان
-    // ملتفّة من سطر مجاور التقطها تجميع الأسطر بالتفاوت الرأسي خطأً، فيُستبعد بأمان
-    const ccCode=(before.length&&/^\d+$/.test(before[0]))?before[0]:null;
     if(lastRow)lastRow.desc=pendingDesc.join(' ').trim();
     pendingDesc=[];
-    const row={ccCode:ccCode,date:excelDateToISO(parts[dateIdx]),docType:after[typeIdx],docNo:docNo,
-      accCode:accCode,accName:accName,desc:'',debit:debit,credit:credit};
     rows.push(row);
     lastRow=row;
   });
@@ -8537,53 +8551,57 @@ function importJournalCCGroups(groups,sourceLabel,dryRun){
     return cc;
   }
   groups.forEach(function(g){
+    // الرقم المرجعي ووصف المستند المسحوب من المصدر يُرفقان بكل حالة نتيجة (وليس فقط عند إنشاء
+    // القيد فعلياً) حتى يظهرا بجدول المعاينة قبل التأكيد وبسجل الاستيراد بعده، لأي مستند —
+    // بما فيها المرفوضة مؤقتاً (غير متوازن، حساب غير موجود...) — فيسهل تمييزه دون فتح الملف الأصلي
+    const ref=(g.docType||'')+'-'+(g.docNo||'');
+    const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
     const already=journalCCImportLog.find(function(l){return l.key===g.key&&l.status==='created';});
     if(already){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'skipped',note:'تم استيراده مسبقاً',lineCount:g.rows.length});
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'skipped',note:'تم استيراده مسبقاً',lineCount:g.rows.length});
       return;
     }
     if(g.rows.length<2){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'single-leg',note:'طرف واحد فقط بالملف — بانتظار الطرف المقابل بنسخة أحدث',lineCount:g.rows.length});
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'single-leg',note:'طرف واحد فقط بالملف — بانتظار الطرف المقابل بنسخة أحدث',lineCount:g.rows.length});
       return;
     }
     if(!g.balanced){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'unbalanced',
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'unbalanced',
         note:'غير متوازن (مدين '+fmtNum(g.totalDr)+' ≠ دائن '+fmtNum(g.totalCr)+') — بانتظار بقية الأطراف',lineCount:g.rows.length});
       return;
     }
     const missing=g.rows.filter(function(r){return !accounts.find(function(a){return a.code===r.accCode;});});
     if(missing.length){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'no-account',
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'no-account',
         note:'رمز الحساب '+missing[0].accCode+' غير موجود بدليل الحسابات — استورد دليل الحسابات أولاً',lineCount:g.rows.length});
       return;
     }
     const dv=validateEntryDate(g.date);
     if(!dv.ok){
-      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'bad-date',note:dv.msg,lineCount:g.rows.length});
+      results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'bad-date',note:dv.msg,lineCount:g.rows.length});
       return;
     }
-    const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
     const ccTagged=g.rows.filter(function(r){return !!r.ccCode;}).length;
     g.rows.forEach(function(r){if(r.ccCode)resolveCC(r.ccCode);});
     let entId=null;
     if(!dryRun){
       const ent={
-        id:nxtEntId++,date:g.date,desc:desc,ref:(g.docType||'')+'-'+(g.docNo||''),year:CY,isDraft:false,
+        id:nxtEntId++,date:g.date,desc:desc,ref:ref,year:CY,isDraft:false,
         attachment:null,attachDesc:'',
         lines:g.rows.map(function(r){
           const acc=accounts.find(function(a){return a.code===r.accCode;});
           const cc=r.ccCode?resolveCC(r.ccCode):null;
           return {accId:acc.id,desc:r.desc||'',debit:r.debit,credit:r.credit,subId:null,costCenterId:cc?cc.id:null,projectId:null,
-            extRef:(g.docType||'')+'-'+(g.docNo||''),extSrc:sourceLabel};
+            extRef:ref,extSrc:sourceLabel};
         })
       };
       entries.push(ent);
       entId=ent.id;
-      const rec={id:already?already.id:nxtJournalCCLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,
+      const rec={id:already?already.id:nxtJournalCCLogId++,key:g.key,entryId:entId,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,
         lineCount:g.rows.length,ccTagged:ccTagged,status:'created',srcLabel:sourceLabel,importedAt:new Date().toISOString()};
       journalCCImportLog.push(rec);
     }
-    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,status:'created',entryId:entId,lineCount:g.rows.length,ccTagged:ccTagged,desc:desc});
+    results.push({key:g.key,docType:g.docType,docNo:g.docNo,date:g.date,ref:ref,desc:desc,status:'created',entryId:entId,lineCount:g.rows.length,ccTagged:ccTagged});
   });
   return {results:results,newCostCenters:newCCCodes};
 }
@@ -8783,7 +8801,10 @@ function renderAuxPreview(res){
   const counts={};
   res.results.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
   const rows=res.results.map(function(r){
-    return '<tr><td>'+fmtDate(r.date)+'</td><td>'+(r.docType||'')+' '+(r.docNo||'')+'</td><td>'+r.lineCount+'</td>'
+    return '<tr><td>'+fmtDate(r.date)+'</td><td>'+(r.docType||'')+' '+(r.docNo||'')+'</td>'
+      +'<td style="font-size:10.5px;color:var(--g6)">'+(r.ref||'—')+'</td>'
+      +'<td style="max-width:220px;font-size:10.5px">'+(r.desc||'—')+'</td>'
+      +'<td>'+r.lineCount+'</td>'
       +'<td>'+(AUX_STATUS_LBL[r.status]||r.status)+(r.note?'<div style="font-size:9.5px;color:var(--g5);margin-top:2px">'+r.note+'</div>':'')+'</td></tr>';
   }).join('');
   box.innerHTML=''
@@ -8794,7 +8815,7 @@ function renderAuxPreview(res){
     +'<div class="sc"><div class="sl">غير متوازن / طرف واحد</div><div class="sv" style="color:var(--am)">'+((counts.unbalanced||0)+(counts['single-leg']||0))+'</div></div>'
     +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
     +'</div>'
-    +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>المستند</th><th>عدد الأطراف</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>المستند</th><th>الرقم المرجعي</th><th>الوصف</th><th>عدد الأطراف</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<div class="actions" style="margin-top:10px">'
     +'<button class="btn bp" onclick="commitAuxImport()">✅ تأكيد وترحيل القيود ('+(counts.created||0)+')</button>'
     +'</div>';
@@ -8841,7 +8862,10 @@ function renderJournalCCPreview(res){
   res.results.forEach(function(r){counts[r.status]=(counts[r.status]||0)+1;});
   const ccTaggedTotal=res.results.reduce(function(s,r){return s+(r.ccTagged||0);},0);
   const rows=res.results.map(function(r){
-    return '<tr><td>'+fmtDate(r.date)+'</td><td>'+(r.docType||'')+' '+(r.docNo||'')+'</td><td>'+r.lineCount+'</td>'
+    return '<tr><td>'+fmtDate(r.date)+'</td><td>'+(r.docType||'')+' '+(r.docNo||'')+'</td>'
+      +'<td style="font-size:10.5px;color:var(--g6)">'+(r.ref||'—')+'</td>'
+      +'<td style="max-width:220px;font-size:10.5px">'+(r.desc||'—')+'</td>'
+      +'<td>'+r.lineCount+'</td>'
       +'<td>'+(r.ccTagged?r.ccTagged:'—')+'</td>'
       +'<td>'+(AUX_STATUS_LBL[r.status]||r.status)+(r.note?'<div style="font-size:9.5px;color:var(--g5);margin-top:2px">'+r.note+'</div>':'')+'</td></tr>';
   }).join('');
@@ -8855,7 +8879,7 @@ function renderJournalCCPreview(res){
     +'<div class="sc"><div class="sl">غير متوازن / طرف واحد</div><div class="sv" style="color:var(--am)">'+((counts.unbalanced||0)+(counts['single-leg']||0))+'</div></div>'
     +'<div class="sc"><div class="sl">حساب غير موجود</div><div class="sv" style="color:var(--rd)">'+(counts['no-account']||0)+'</div></div>'
     +'</div>'
-    +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>المستند</th><th>عدد الأطراف</th><th>أطراف بمركز تكلفة</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="tw" style="max-height:380px"><table><thead><tr><th>التاريخ</th><th>المستند</th><th>الرقم المرجعي</th><th>الوصف</th><th>عدد الأطراف</th><th>أطراف بمركز تكلفة</th><th>الحالة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
     +'<div class="actions" style="margin-top:10px">'
     +'<button class="btn bp" onclick="commitJournalCCImport()">✅ تأكيد وترحيل القيود مع مراكز التكلفة ('+(counts.created||0)+')</button>'
     +'</div>';
