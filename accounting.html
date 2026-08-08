@@ -2868,6 +2868,27 @@ function getSubBal(s){
   entries.forEach(e=>e.lines.forEach(l=>{if(l.subId===s.id)b+=(l.debit||0)-(l.credit||0);}));
   return b;
 }
+// حسابات دليل الحسابات المندرجة (بأي عمق) تحت فرع "مدينين تجاريين" تُعتبر عملاء ضمنياً، وتحت
+// "دائنين تجاريين" أو "مقاولي الباطن" تُعتبر موردين ضمنياً — حتى لو لم تُسجَّل كسجل تحليلي
+// (subLedger) صراحةً عبر شاشة "إضافة عميل/مورد". هذا يغطي الحسابات المستوردة مباشرة لدليل
+// الحسابات من نظام خارجي دون المرور بشاشات العملاء/الموردين، فتظل حركتها ظاهرة بتقاريرهم
+function getImpliedSubType(acc){
+  let a=acc;
+  while(a){
+    if(/مدينين\s*تجاريين/i.test(a.name)) return "customer";
+    if(/دائنين\s*تجاريين|مقاول(ي)?\s*(ال)?باطن/i.test(a.name)) return "vendor";
+    a=a.par?accounts.find(x=>x.id===a.par):null;
+  }
+  return null;
+}
+function getImpliedSubAccounts(tp){
+  return accounts.filter(a=>isLeaf(a.id)&&getImpliedSubType(a)===tp);
+}
+function goToAccountLedger(accId){
+  const acc=accounts.find(a=>a.id===accId);if(!acc)return;
+  SS('lg',null);
+  setTimeout(function(){selLgAcc(accId,acc.code+' — '+acc.name);},30);
+}
 let subAccFilter=null;
 function filterSubByAcc(accId){subAccFilter=accId;SS("sub",null);}
 function openSubTab(tp){
@@ -2889,7 +2910,23 @@ function renderSub(tp){
   let list=subLedger.filter(s=>s.type===tp);
   if(subAccFilter)list=list.filter(s=>s.mainAccId===subAccFilter);
   if(subQ)list=list.filter(s=>s.code.toLowerCase().includes(subQ)||s.name.toLowerCase().includes(subQ));
-  if(!list.length){document.getElementById("sub-tb").innerHTML='<div class="empty"><span class="ei">📂</span><p>لا توجد سجلات — أضف باستخدام الزر أعلاه</p></div>';return;}
+  let implied=getImpliedSubAccounts(tp);
+  if(subAccFilter)implied=implied.filter(a=>a.id===subAccFilter||a.par===subAccFilter);
+  if(subQ)implied=implied.filter(a=>a.code.toLowerCase().includes(subQ)||a.name.toLowerCase().includes(subQ));
+  if(!list.length&&!implied.length){document.getElementById("sub-tb").innerHTML='<div class="empty"><span class="ei">📂</span><p>لا توجد سجلات — أضف باستخدام الزر أعلاه</p></div>';return;}
+  const impliedRows=implied.map(a=>{
+    const bal=getBalance(a.id,true);
+    return `<tr title="حساب من دليل الحسابات مندرج تحت فرع ${tp==='customer'?'مدينين تجاريين':'دائنين تجاريين/مقاولي الباطن'} — يُعامَل كـ${tp==='customer'?'عميل':'مورد'} تلقائياً">
+      <td><span class="bdg b1" style="font-family:monospace">${a.code}</span></td>
+      <td><strong>${a.name}</strong><br><small style="color:var(--g4)">📋 من دليل الحسابات</small></td>
+      <td style="font-size:11px">${a.par?(()=>{const p=accounts.find(x=>x.id===a.par);return p?`<span class="bdg b1">${p.code}</span> ${p.name}`:"—";})():"—"}</td>
+      <td style="direction:ltr;text-align:left">${fmtDisp(parseFloat(a.open)||0)}</td>
+      <td style="direction:ltr;text-align:left;color:var(--g4)">—</td>
+      <td style="direction:ltr;text-align:left;color:var(--g4)">—</td>
+      <td style="direction:ltr;text-align:left;font-weight:800;color:${bal>=0?"var(--gn)":"var(--rd)"}">${fmtDisp(Math.abs(bal))} <small>${bal>=0?"م":"د"}</small></td>
+      <td style="white-space:nowrap"><button class="btn bg bxs" onclick="goToAccountLedger(${a.id})" title="عرض كشف الحساب">📖</button></td>
+    </tr>`;
+  }).join("");
   document.getElementById("sub-tb").innerHTML=`<div class="tw"><table>
     <thead><tr><th>الكود</th><th>الاسم</th><th>الحساب الرئيسي</th><th>الرصيد الافتتاحي</th><th>مدين</th><th>دائن</th><th>الرصيد</th><th>إجراءات</th></tr></thead>
     <tbody>${list.map(s=>{
@@ -2911,11 +2948,11 @@ function renderSub(tp){
           <button class="btn bd bxs" onclick="delSubRecord(${s.id})">🗑</button>
         </td>
       </tr>`;
-    }).join("")}
+    }).join("")}${impliedRows}
     <tr class="tr-tot"><td colspan="3">الإجمالي</td>
-      <td style="direction:ltr;text-align:left">${fmtDisp(list.reduce((s,r)=>s+(parseFloat(r.open)||0),0))}</td>
+      <td style="direction:ltr;text-align:left">${fmtDisp(list.reduce((s,r)=>s+(parseFloat(r.open)||0),0)+implied.reduce((s,a)=>s+(parseFloat(a.open)||0),0))}</td>
       <td></td><td></td>
-      <td style="direction:ltr;text-align:left">${fmtDisp(list.reduce((s,r)=>s+Math.abs(getSubBal(r)),0))}</td><td></td>
+      <td style="direction:ltr;text-align:left">${fmtDisp(list.reduce((s,r)=>s+Math.abs(getSubBal(r)),0)+implied.reduce((s,a)=>s+Math.abs(getBalance(a.id,true)),0))}</td><td></td>
     </tr></tbody></table></div>`;
 }
 function showSubDetail(subId){
@@ -4134,8 +4171,10 @@ function getKpiData(fromD,toD){
   const pmt=vouchers.filter(function(v){return v.type==='payment'&&v.status==='posted'&&inRange(v.date);}).reduce(function(s,v){return s+v.amount;},0);
   const netCashFlow=rcv-pmt;
 
-  const arTotal=subLedger.filter(function(s){return s.type==='customer';}).reduce(function(s,x){return s+Math.max(getSubBal(x),0);},0);
-  const apTotal=subLedger.filter(function(s){return s.type==='vendor';}).reduce(function(s,x){return s+Math.max(getSubBal(x),0);},0);
+  const arTotal=subLedger.filter(function(s){return s.type==='customer';}).reduce(function(s,x){return s+Math.max(getSubBal(x),0);},0)
+    +getImpliedSubAccounts('customer').reduce(function(s,a){return s+Math.max(getBalance(a.id,true),0);},0);
+  const apTotal=subLedger.filter(function(s){return s.type==='vendor';}).reduce(function(s,x){return s+Math.max(getSubBal(x),0);},0)
+    +getImpliedSubAccounts('vendor').reduce(function(s,a){return s+Math.max(getBalance(a.id,true),0);},0);
 
   const invValue=inventory.reduce(function(s,i){return s+(i.qty||0)*(i.costPrice||0);},0);
   const lowStockCount=inventory.filter(function(i){return i.minQty>0&&i.qty<=i.minQty;}).length;
