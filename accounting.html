@@ -9324,6 +9324,10 @@ function extractAuxLedgerFromPdfLines(lines){
 // مع كل أطراف كل حساب (وليس نوع المستند، الذي قد يُستخرج بشكل غير متسق من سطر لآخر بنفس
 // المستند بسبب التفاف النص في PDF، فيُقسّم القيد الواحد خطأً إلى مجموعتين منفصلتين لا تتوازن
 // أي منهما بمفردها رغم أن مجموعهما الفعلي متوازن)
+// التجميع بالرقم وحده مقصود: نوع المستند بملفات المصدر الحقيقية غالباً يظهر مرة واحدة فقط بأول
+// سطر لكل مستند ويُترك فارغاً بباقي أسطره (تماماً كرمز/اسم الحساب اللذين يُستدَل عليهما بنفس
+// الأسلوب — راجع curAccCode/curAccName بدوال الاستخراج)، فلا يصح اعتبار الفراغ نوعاً مختلفاً
+// يفصل المستند عن نفسه. رقم المستند وحده هو المعرِّف المستقر عبر أسطر نفس المستند
 function groupAuxLedgerRows(rows){
   const groups={};
   rows.forEach(function(r){
@@ -9369,7 +9373,9 @@ function importAuxLedgerGroups(groups,sourceLabel,dryRun){
     // بانتظار طرف آخر، حساب غير موجود...) فيسهل على المستخدم تمييز أي مستند دون فتح الملف الأصلي
     const ref=(g.docType||'')+'-'+(g.docNo||'');
     const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
-    const already=auxImportLog.find(function(l){return l.key===g.key&&l.status==='created';});
+    // المطابقة على حقلي النوع/الرقم مباشرة وليس على نص g.key الخام — متوافقة رجعياً مع سجلات
+    // استيراد قديمة أُنشئت قبل تصحيح مفتاح التجميع (كان بالرقم فقط)، فلا تتكرر عند إعادة الاستيراد
+    const already=auxImportLog.find(function(l){return (l.docType||'')===(g.docType||'')&&(l.docNo||'')===(g.docNo||'')&&l.status==='created';});
     const existingEnt=already?entries.find(function(e){return e.id===already.entryId;}):null;
     // مستند مستورَد مسبقاً ولم تتغيّر بياناته إطلاقاً بالملف الحالي عن آخر استيراد له — يُتجاهل
     // فوراً كالسابق تماماً. أما إن تغيّر شيء (وصف/مبلغ/تاريخ) أو كان القيد قد حُذف يدوياً، يُكمَل
@@ -9556,7 +9562,9 @@ function importJournalCCGroups(groups,sourceLabel,dryRun){
     // بما فيها المرفوضة مؤقتاً (غير متوازن، حساب غير موجود...) — فيسهل تمييزه دون فتح الملف الأصلي
     const ref=(g.docType||'')+'-'+(g.docNo||'');
     const desc=g.rows.map(function(r){return r.desc;}).sort(function(a,b){return b.length-a.length;})[0]||('مستند '+g.docType+' '+g.docNo);
-    const already=journalCCImportLog.find(function(l){return l.key===g.key&&l.status==='created';});
+    // المطابقة على حقلي النوع/الرقم مباشرة وليس على نص g.key الخام — متوافقة رجعياً مع سجلات
+    // استيراد قديمة أُنشئت قبل تصحيح مفتاح التجميع (كان بالرقم فقط)، فلا تتكرر عند إعادة الاستيراد
+    const already=journalCCImportLog.find(function(l){return (l.docType||'')===(g.docType||'')&&(l.docNo||'')===(g.docNo||'')&&l.status==='created';});
     const existingEnt=already?entries.find(function(e){return e.id===already.entryId;}):null;
     // مستند مستورَد مسبقاً ولم تتغيّر بياناته (ولا مركز التكلفة على أي طرف منها) إطلاقاً عن آخر
     // استيراد له — يُتجاهل فوراً كالسابق. أي تغيّر (وصف/مبلغ/تاريخ/مركز تكلفة) أو حذف القيد يدوياً
@@ -9627,11 +9635,18 @@ function ccImportKey(row){
 }
 // يستخرج الرقم الأخير من مرجع القيد (مثال: "JV-16" → "16") لمطابقته برقم مستند كشف مركز
 // التكلفة — نفس معيار توازن القيد بالضبط (رقم القيد وحده)، بغض النظر عن أي بادئة نوع مستند
-function extractDocNoFromRef(ref){
-  if(!ref)return'';
-  const m=String(ref).match(/(\d+)\s*$/);
-  return m?m[1]:'';
+// يستخرج {type, no} من نص مرجع كـ"JV-16" أو "16" أو "قيد 16" — نوع المستند اختياري (سلسلة أحرف
+// قبل الرقم إن وُجدت)، والرقم إلزامي. يُستخدَم لمطابقة مرجع القيد الفعلي (e.ref، بصيغة نوع-رقم
+// دوماً) مع عمود "Document" الخام بكشف مركز التكلفة المستورَد (قد يتضمن النوع أو لا حسب المصدر)
+function parseDocRef(ref){
+  if(!ref)return{type:'',no:''};
+  const s=String(ref).trim();
+  let m=s.match(/^([A-Za-z؀-ۿ]+)\s*[-#]?\s*(\d+)$/);
+  if(m)return{type:m[1],no:m[2]};
+  m=s.match(/(\d+)\s*$/);
+  return m?{type:'',no:m[1]}:{type:'',no:''};
 }
+function extractDocNoFromRef(ref){return parseDocRef(ref).no;}
 function reconcileCCStatement(parsed, sourceLabel, dryRun){
   sourceLabel=sourceLabel||'استيراد خارجي';
   if(!parsed.ccCode)return{error:'تعذّر التعرّف على رمز مركز التكلفة في الملف'};
@@ -9669,11 +9684,20 @@ function reconcileCCStatement(parsed, sourceLabel, dryRun){
       return found;
     }
     // المعيار الأساسي للربط: رقم المستند نفسه (كما أوضح المستخدم) — يطابق القيود المُنشأة من
-    // استيراد الأستاذ المساعد (خطوة ②) والتي تحمل رقم المستند بحقل ref. إن لم يُعثر على أي
-    // تطابق مرجعي (قيد أُدخل يدوياً بلا رقم مستند مطابق)، نرجع لمطابقة التاريخ كما كان سابقاً
+    // استيراد الأستاذ المساعد (خطوة ②) والتي تحمل رقم المستند بحقل ref (بصيغة "نوع-رقم" دوماً،
+    // كـ"JV-16"). عمود "Document" بكشف مركز التكلفة قد يتضمن النوع أو لا حسب المصدر — فتُقارَن
+    // القيمتان برقم المستند دوماً، والنوع أيضاً فقط إن كان مُستخرَجاً من كليهما معاً (تفادياً لخلط
+    // مستندين مختلفي النوع يتشاركان نفس الرقم، كـ"JV-16" و"PV-16"، إن كان النوع متاحاً للمقارنة).
+    // إن لم يُعثر على أي تطابق مرجعي (قيد أُدخل يدوياً بلا رقم مستند مطابق)، نرجع لمطابقة التاريخ
     let candidates=[];
     if(row.doc){
-      candidates=findCandidates(function(e){return extractDocNoFromRef(e.ref)===row.doc;});
+      const rowRef=parseDocRef(row.doc);
+      candidates=findCandidates(function(e){
+        const eRef=parseDocRef(e.ref);
+        if(eRef.no!==rowRef.no)return false;
+        if(eRef.type&&rowRef.type)return eRef.type.toLowerCase()===rowRef.type.toLowerCase();
+        return true;
+      });
     }
     if(!candidates.length){
       candidates=findCandidates(function(e){return e.date===row.date;});
