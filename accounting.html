@@ -599,6 +599,7 @@ tbody tr:hover{background:var(--g50)}
   <button class="nb" onclick="SS('tax',this)"><span class="nb-ic">🧾</span><span class="nb-txt">إدارة الضرائب</span></button>
   <button class="nb" onclick="SS('cc',this)"><span class="nb-ic">🏷️</span><span class="nb-txt">مراكز التكلفة</span></button>
   <button class="nb" onclick="SS('proj',this)"><span class="nb-ic">📁</span><span class="nb-txt">المشاريع</span></button>
+  <button class="nb" onclick="SS('branches',this)"><span class="nb-ic">🏢</span><span class="nb-txt">الفروع</span></button>
   <button class="nb" onclick="openOV()"><span class="nb-ic">📋</span><span class="nb-txt">القيد الافتتاحي</span></button>
   <button class="nb" onclick="SS('docdesign',this)"><span class="nb-ic">🎨</span><span class="nb-txt">تصميم المستندات</span></button>
  </div>
@@ -780,6 +781,7 @@ tbody tr:hover{background:var(--g50)}
      <input id="dch-to" type="date" onchange="renderDash()" style="display:none;width:118px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px">
      <select id="dch-proj" onchange="renderDash()" style="max-width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل المشاريع</option></select>
      <select id="dch-cc" onchange="renderDash()" style="max-width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل مراكز التكلفة</option></select>
+     <select id="dch-branch" onchange="renderDash()" style="max-width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل الفروع</option></select>
     </div>
     <div id="dch-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:11.5px;font-weight:700"></div>
     <canvas id="d-bar-chart" height="190" style="width:100%"></canvas>
@@ -1031,6 +1033,7 @@ tbody tr:hover{background:var(--g50)}
   <div class="fgrp"><label>إلى تاريخ</label><input id="lg-to" type="date" onchange="renderLg()"></div>
   <div class="fgrp" id="lg-cc-wrap" style="display:none"><label>🏷️ مركز التكلفة</label><select id="lg-cc" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
   <div class="fgrp" id="lg-proj-wrap" style="display:none"><label>🏗️ المشروع</label><select id="lg-proj" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
+  <div class="fgrp" id="lg-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="lg-branch" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
   <button class="btn bo bsm" onclick="clrLg()" style="align-self:flex-end">↺ مسح</button>
  </div>
 </div>
@@ -1102,7 +1105,7 @@ tbody tr:hover{background:var(--g50)}
   </div>
   <button class="btn bo bsm" onclick="trClearAccFilter()">↺ مسح فلتر الحساب</button>
  </div>
- <div id="tr-dim-row" style="display:none;grid-template-columns:1fr 1fr;gap:10px;align-items:flex-end;padding:14px 16px;background:#f8fafc;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:14px">
+ <div id="tr-dim-row" style="display:none;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:flex-end;padding:14px 16px;background:#f8fafc;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:14px">
   <div class="fgrp">
    <label>🏷️ مركز التكلفة</label>
    <select id="tr-cc" onchange="renderTr()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
@@ -1113,6 +1116,12 @@ tbody tr:hover{background:var(--g50)}
    <label>🏗️ المشروع</label>
    <select id="tr-proj" onchange="renderTr()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
     <option value="">— كل المشاريع —</option>
+   </select>
+  </div>
+  <div class="fgrp">
+   <label>🏢 الفرع</label>
+   <select id="tr-branch" onchange="renderTr()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
+    <option value="">— كل الفروع —</option>
    </select>
   </div>
  </div>
@@ -1593,6 +1602,35 @@ tbody tr:hover{background:var(--g50)}
 </div>
 </div>
 
+<!-- ══ BRANCHES SECTION ══ -->
+<div id="sec-branches" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🏢</div>الفروع</div>
+  <button class="btn bp" onclick="openBranchForm()">＋ فرع جديد</button>
+ </div>
+ <p style="font-size:11px;color:var(--g5);margin:-4px 0 10px;line-height:1.7">
+  تصنيف القيود على الفروع تلقائي بالكامل ولا يُسنَد يدوياً: أي قيد بأحد أطرافه مركز تكلفة
+  "بلاك نايت" أو "الرياض"، أو بوصفه ذِكر لـ"ابراهيم" (حركات عهدته) ← فرع الرياض. باقي القيود
+  ← فرع جدة. يُعاد حساب هذا التصنيف حياً في كل تقرير، فيبقى متوافقاً تلقائياً مع أي تحديث لاحق
+  (استيراد جديد، مطابقة كشف مركز تكلفة، إلخ) دون أي إجراء إضافي.
+ </p>
+ <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-bottom:12px" id="branch-summary"></div>
+ <div id="branch-tb"></div>
+</div>
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🔍</div>عمليات غير مرتبطة فعلياً بفرع</div>
+ </div>
+ <p style="font-size:11px;color:var(--g5);margin:-4px 0 10px;line-height:1.7">
+  القيود بلا أي مركز تكلفة وبلا ذِكر لـ"ابراهيم" بوصفها — تُصنَّف فرع جدة تلقائياً بحكم القاعدة
+  الافتراضية أعلاه، لكنها هنا فعلياً <strong>بلا أي إشارة تُحدِّد فرعها</strong>. راجعها وأسند
+  لها مركز تكلفة مناسباً إن كان تصنيفها الحالي (جدة) غير صحيح.
+ </p>
+ <div id="branch-unlinked-tb"></div>
+</div>
+</div>
+
 <!-- ══ EXTERNAL IMPORT / RECONCILIATION SECTION ══ -->
 <div id="sec-ccimport" class="sec">
 <p style="font-size:11.5px;color:var(--g5);margin:-2px 0 14px;line-height:1.7">
@@ -1681,6 +1719,16 @@ tbody tr:hover{background:var(--g50)}
  </div>
  <div class="fgrp" style="margin-top:8px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="cc-active" checked style="width:15px;height:15px"> نشط</label></div>
  <div class="mact"><button class="btn bo" onclick="CM('m-cc')">إلغاء</button><button class="btn bp" onclick="saveCC()">💾 حفظ</button></div>
+</div></div>
+
+<!-- ══ BRANCH MODAL ══ -->
+<div class="mb" id="m-branch" style="display:none" onclick="if(event.target===this)CM('m-branch')">
+<div class="modal modal-md">
+ <div class="mt">🏢 فرع</div>
+ <input type="hidden" id="branch-id">
+ <div class="fgrp"><label>الاسم *</label><input id="branch-name" type="text" placeholder="اسم الفرع"></div>
+ <div class="fgrp" style="margin-top:8px"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="branch-active" checked style="width:15px;height:15px"> نشط</label></div>
+ <div class="mact"><button class="btn bo" onclick="CM('m-branch')">إلغاء</button><button class="btn bp" onclick="saveBranch()">💾 حفظ</button></div>
 </div></div>
 
 <!-- ══ PROJECT MODAL ══ -->
@@ -2647,6 +2695,34 @@ function renderFontSelect(activeId){
 let costCenters=[], nxtCCId=1;
 let docTemplates=[], nxtDocTplId=1;
 let projects=[], nxtProjId=1;
+// الفروع بُعد قائم بذاته لكنه — بخلاف مركز التكلفة/المشروع — لا يُسنَد يدوياً على أي سطر قيد.
+// يُحسَب دوماً وقت العرض/التصفية عبر getEntryBranchId() اعتماداً على مركز تكلفة أطراف القيد
+// ووصفه، فلا يُخزَّن على القيد إطلاقاً — هذا يضمن بقاءه محدَّثاً تلقائياً مع أي تغيير لاحق (إعادة
+// استيراد، مطابقة كشف مركز تكلفة، تعديل اسم مركز تكلفة...) دون أي عملية ترحيل/تصحيح يدوية
+let branches=[{id:1,name:"الرياض",active:true},{id:2,name:"جدة",active:true}], nxtBranchId=3;
+// قاعدة التصنيف التلقائي كما حدَّدها المستخدم: أي قيد بأحد أطرافه مركز تكلفة "بلاك نايت" أو
+// "الرياض" (بصرف النظر عمّن أسنده — استيراد أولي أو مطابقة كشف لاحقة)، أو بوصفه (أو وصف أي سطر
+// به) ذكر لـ"ابراهيم" (حركات عهدته) ← فرع الرياض. غير ذلك ← فرع جدة (الفرع الافتراضي للباقي)
+function getEntryBranchId(e){
+  const riyadh=branches.find(function(b){return b.name==="الرياض";});
+  const jeddah=branches.find(function(b){return b.name==="جدة";});
+  const riyadhCCRe=/بلاك\s*نايت|الرياض/;
+  const hasRiyadhCC=(e.lines||[]).some(function(l){
+    if(!l.costCenterId)return false;
+    const cc=costCenters.find(function(c){return c.id===l.costCenterId;});
+    return cc&&riyadhCCRe.test(cc.name||"");
+  });
+  const hasIbrahimCustody=/ابراهيم/.test(e.desc||"")||(e.lines||[]).some(function(l){return /ابراهيم/.test(l.desc||"");});
+  if(hasRiyadhCC||hasIbrahimCustody)return riyadh?riyadh.id:null;
+  return jeddah?jeddah.id:null;
+}
+// قيد بلا أي إشارة تُحدِّد فرعه فعلياً (لا مركز تكلفة على أي طرف، ولا ذِكر لعهدة إبراهيم) — يُصنَّف
+// فرع جدة تلقائياً بحكم قاعدة "الباقي جدة"، لكنه هنا فعلياً بلا فرع حقيقي، فيستحق مراجعة يدوية
+function isEntryBranchUnlinked(e){
+  const hasAnyCC=(e.lines||[]).some(function(l){return !!l.costCenterId;});
+  const hasIbrahimCustody=/ابراهيم/.test(e.desc||"")||(e.lines||[]).some(function(l){return /ابراهيم/.test(l.desc||"");});
+  return !hasAnyCC&&!hasIbrahimCustody;
+}
 // سجل استيراد/مطابقة كشوفات مراكز التكلفة الخارجية — يمنع إعادة معالجة نفس الحركة عند رفع نسخة محدَّثة من نفس الملف
 let ccImportLog=[], nxtCCLogId=1;
 // سجل استيراد قيود الأستاذ المساعد الكامل — يمنع إعادة إنشاء نفس القيد (المجمّع حسب نوع/رقم
@@ -3530,6 +3606,7 @@ const PGS={
   ccrpt:["تقرير مراكز التكلفة والمشاريع","ملخص الحركات والتكاليف حسب مركز التكلفة أو المشروع"],
   cc:["مراكز التكلفة","تعريف وإدارة مراكز التكلفة"],
   proj:["المشاريع","تعريف وإدارة المشاريع"],
+  branches:["الفروع","تعريف وإدارة الفروع"],
   stkadj:["تسوية الجرد والتوالف","تسوية فروقات الجرد الفعلي وإخراج البضاعة التالفة"],
   rpt:["مركز التقارير","جميع تقارير النظام مجمّعة حسب القسم"],
   audit:["فحص وتدقيق البيانات","اكتشاف القيود غير المتوازنة وفوارق ميزان المراجعة"],
@@ -3538,7 +3615,7 @@ const PGS={
 };
 
 const PAGE_GROUP={
-  set:'⚙️ الحسابات العامة',acc:'⚙️ الحسابات العامة',sub:'⚙️ الحسابات العامة',tax:'⚙️ الحسابات العامة',cc:'⚙️ الحسابات العامة',proj:'⚙️ الحسابات العامة',
+  set:'⚙️ الحسابات العامة',acc:'⚙️ الحسابات العامة',sub:'⚙️ الحسابات العامة',tax:'⚙️ الحسابات العامة',cc:'⚙️ الحسابات العامة',proj:'⚙️ الحسابات العامة',branches:'⚙️ الحسابات العامة',
   ent:'📝 القيود والسندات',post:'📝 القيود والسندات',vch:'📝 القيود والسندات',
   sinv:'🟢 إدارة أنظمة المبيعات',sret:'🟢 إدارة أنظمة المبيعات',
   pinv:'🔴 إدارة أنظمة المشتريات',pret:'🔴 إدارة أنظمة المشتريات',
@@ -3919,6 +3996,7 @@ function SS(id,btn){
   if(id==="ccrpt"){renderCCProjReport();}
   if(id==="cc"){renderCostCenters();}
   if(id==="proj"){renderProjects();}
+  if(id==="branches"){renderBranches();renderUnlinkedBranchEntries();}
   if(id==="stkrep"){renderStkRep();}
   if(id==="stkadj"){renderInvAdjustments();}
 }
@@ -4199,6 +4277,8 @@ function populateDashChartFilters(){
   if(projSel){const cv=projSel.value;projSel.innerHTML='<option value="">كل المشاريع</option>'+(projects||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');projSel.value=cv;}
   const ccSel=document.getElementById('dch-cc');
   if(ccSel){const cv=ccSel.value;ccSel.innerHTML='<option value="">كل مراكز التكلفة</option>'+(costCenters||[]).map(c=>`<option value="${c.id}">${c.name}</option>`).join('');ccSel.value=cv;}
+  const branchSel=document.getElementById('dch-branch');
+  if(branchSel){const cv=branchSel.value;branchSel.innerHTML='<option value="">كل الفروع</option>'+(branches||[]).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');branchSel.value=cv;}
 }
 function dashChartPeriodChange(){
   const v=(document.getElementById('dch-period')||{}).value||'year';
@@ -4229,17 +4309,19 @@ function getDashChartFilter(){
   }
   const projId=parseInt((document.getElementById('dch-proj')||{}).value)||null;
   const ccId=parseInt((document.getElementById('dch-cc')||{}).value)||null;
-  return {months,projId,ccId};
+  const branchId=parseInt((document.getElementById('dch-branch')||{}).value)||null;
+  return {months,projId,ccId,branchId};
 }
 function renderDashCharts(tA,tL,tE){
   drawDonutChart('d-donut-chart',[['الأصول',Math.max(tA,0)],['الخصوم',Math.max(tL,0)],['حقوق الملكية',Math.max(tE,0)]],'d-donut-legend',chartGoBS);
   populateDashChartFilters();
-  const {months,projId,ccId}=getDashChartFilter();
+  const {months,projId,ccId,branchId}=getDashChartFilter();
   const revByMonth={},expByMonth={},revSrcByMonth={},expSrcByMonth={};
   months.forEach(m=>{revByMonth[m]=0;expByMonth[m]=0;revSrcByMonth[m]={};expSrcByMonth[m]={};});
   entries.forEach(e=>{
     const mKey=(e.date||'').slice(0,7);
     if(!(mKey in revByMonth))return;
+    if(branchId&&getEntryBranchId(e)!==branchId)return;
     (e.lines||[]).forEach(l=>{
       if(projId&&l.projectId!==projId)return;
       if(ccId&&l.costCenterId!==ccId)return;
@@ -4657,7 +4739,7 @@ function renderAccs(){
 }
 
 // ═══ LEDGER ═══
-function clrLg(){["lg-s","lg-from","lg-to","lg-cc","lg-proj"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});document.getElementById("lg-id").value="";document.getElementById("lg-body").innerHTML='<div class="empty"><span class="ei">📖</span><p>ابحث عن حساب</p></div>';}
+function clrLg(){["lg-s","lg-from","lg-to","lg-cc","lg-proj","lg-branch"].forEach(id=>{const el=document.getElementById(id);if(el)el.value="";});document.getElementById("lg-id").value="";document.getElementById("lg-body").innerHTML='<div class="empty"><span class="ei">📖</span><p>ابحث عن حساب</p></div>';}
 
 function setTrMode(m,btn){trMode=m;document.querySelectorAll(".tr-mb").forEach(b=>b.classList.remove("active"));if(btn)btn.classList.add("active");renderTr();}
 function clrTr(){["tr-s","tr-from","tr-to"].forEach(id=>document.getElementById(id).value="");document.getElementById("tr-ty").value="";document.getElementById("tr-sh").value="all";renderTr();}
@@ -4846,7 +4928,7 @@ function printLedgerVch(accId){
   // (فترة/مركز تكلفة/مشروع) — كانت هذه الدالة تعيد بناء منطقها الخاص المستقل بلا أي فلترة
   // إطلاقاً (تطبع كامل تاريخ الحساب دوماً)، فيختلف المطبوع عمّا يظهر فعلياً على الشاشة
   const f=currentLgFilters();
-  const d=getLgData(accId,f.fromD,f.toD,f.ccId,f.projId);if(!d)return;
+  const d=getLgData(accId,f.fromD,f.toD,f.ccId,f.projId,f.branchId);if(!d)return;
   const acc=d.acc;
   let rows=`<tr style="background:#f0f9ff"><td colspan="3" style="padding:6px 9px;border:1px solid #e2e8f0;font-weight:700">رصيد افتتاحي</td>
     <td style="padding:6px 9px;border:1px solid #e2e8f0">—</td><td style="padding:6px 9px;border:1px solid #e2e8f0">—</td>
@@ -4896,33 +4978,34 @@ function currentLgFilters(){
     fromD:((document.getElementById('lg-from')||{}).value)||'',
     toD:((document.getElementById('lg-to')||{}).value)||'',
     ccId:parseInt((document.getElementById('lg-cc')||{}).value)||0,
-    projId:parseInt((document.getElementById('lg-proj')||{}).value)||0
+    projId:parseInt((document.getElementById('lg-proj')||{}).value)||0,
+    branchId:parseInt((document.getElementById('lg-branch')||{}).value)||0
   };
 }
-function getLgData(accId,fromD,toD,ccId,projId){
+function getLgData(accId,fromD,toD,ccId,projId,branchId){
   const acc=accounts.find(a=>a.id===accId);if(!acc)return null;
-  const hasDimFilter=!!(ccId||projId);
+  const hasDimFilter=!!(ccId||projId||branchId);
   let ob;
-  // الرصيد الافتتاحي لا يُنسب لمركز تكلفة/مشروع معيّن — يُستبعد عند التصفية بأحدهما (نفس معيار renderLg)
+  // الرصيد الافتتاحي لا يُنسب لمركز تكلفة/مشروع/فرع معيّن — يُستبعد عند التصفية بأحدها (نفس معيار renderLg)
   if(hasDimFilter){ob=0;}
   else if(fromD){ob=getBalanceAtDate(accId,fromD);}
   else{ob=parseFloat(acc.open)||0;if(NORM[acc.type]==="cr")ob=-ob;}
   let bal=ob;const rows=[];
-  postedEntries().filter(e=>e.lines.some(l=>l.accId===accId)&&(!fromD||e.date>=fromD)&&(!toD||e.date<=toD)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+  postedEntries().filter(e=>e.lines.some(l=>l.accId===accId)&&(!fromD||e.date>=fromD)&&(!toD||e.date<=toD)&&(!branchId||getEntryBranchId(e)===branchId)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
     e.lines.filter(l=>l.accId===accId&&(!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId)).forEach(l=>{bal+=l.debit-l.credit;rows.push({date:e.date,desc:l.desc||e.desc,ref:e.ref||"",dr:l.debit||0,cr:l.credit||0,bal});});
   });
   return {acc,ob,rows,finalBal:bal};
 }
 function expSingleLgXL(id){
   const f=currentLgFilters();
-  const d=getLgData(id,f.fromD,f.toD,f.ccId,f.projId);if(!d)return;
+  const d=getLgData(id,f.fromD,f.toD,f.ccId,f.projId,f.branchId);if(!d)return;
   const data=[[`كشف حساب: ${d.acc.code} - ${d.acc.name}`],[`السنة: ${CY} | التاريخ: ${fmtDateISO(new Date())} | العملة: ${cur()}${f.fromD||f.toD?` | الفترة: ${f.fromD||'—'} إلى ${f.toD||'—'}`:''}`],[],["التاريخ","البيان","المرجع","مدين","دائن","الرصيد"],["-","رصيد افتتاحي","-","","",fmtNum(Math.abs(d.ob))],
     ...d.rows.map(r=>[fmtDateISO(r.date),r.desc,r.ref,r.dr||"",r.cr||"",fmtNum(Math.abs(r.bal))])];
   XLSX.writeFile(mkWB("كشف حساب",data,[{wch:13},{wch:36},{wch:13},{wch:12},{wch:12},{wch:14}]),`acct_${d.acc.code}_${CY}.xlsx`);showAlert("تم التصدير Excel");
 }
 function expSingleLgPDF(id){
   const f=currentLgFilters();
-  const d=getLgData(id,f.fromD,f.toD,f.ccId,f.projId);if(!d)return;
+  const d=getLgData(id,f.fromD,f.toD,f.ccId,f.projId,f.branchId);if(!d)return;
   const doc=mkPDF(false);const sy=pdfHdr(doc,`كشف حساب: ${d.acc.code} - ${d.acc.name}`,[`النوع: ${TN[d.acc.type]} | السنة: ${CY}${f.fromD||f.toD?` | الفترة: ${f.fromD||'—'} إلى ${f.toD||'—'}`:''}`]);
   arTbl(doc,{startY:sy,head:[["التاريخ","البيان","المرجع","مدين","دائن","الرصيد"]],
     body:[["-","رصيد افتتاحي","-","","",fmtNum(Math.abs(d.ob))+" "+(d.ob>=0?"م":"د")],...d.rows.map(r=>[fmtDateISO(r.date),r.desc,r.ref,r.dr?fmtNum(r.dr):"",r.cr?fmtNum(r.cr):"",fmtNum(Math.abs(r.bal))+" "+(r.bal>=0?"م":"د")])],
@@ -8902,6 +8985,56 @@ function deleteCC(id){
   costCenters=costCenters.filter(function(c){return c.id!==id;});
   renderCostCenters();showAlert("تم الحذف","warn");
 }
+function renderBranches(){
+  const el=document.getElementById("branch-tb");if(!el)return;
+  const sumEl=document.getElementById("branch-summary");
+  const activeCount=branches.filter(function(b){return b.active!==false;}).length;
+  if(sumEl)sumEl.innerHTML='<div class="sc"><div class="sl">إجمالي الفروع</div><div class="sv">'+branches.length+'</div></div>'
+    +'<div class="sc gn"><div class="sl">نشطة</div><div class="sv">'+activeCount+'</div></div>';
+  if(!branches.length){el.innerHTML='<div class="empty"><span class="ei">🏢</span><p>لا توجد فروع — أضف فرعاً جديداً</p></div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>الاسم</th><th>عدد القيود المصنَّفة له حالياً</th><th>الحالة</th><th>إجراءات</th></tr></thead><tbody>'
+    +branches.map(function(b){
+      const cnt=postedEntries().filter(function(e){return getEntryBranchId(e)===b.id;}).length;
+      return '<tr><td><strong>'+b.name+'</strong></td><td>'+cnt+'</td>'
+      +'<td>'+(b.active!==false?'<span class="bdg b4">✅ نشط</span>':'<span class="bdg b5">⏸ غير نشط</span>')+'</td>'
+      +'<td><button class="btn bo bxs" onclick="openBranchForm('+b.id+')">✏️</button> <button class="btn bd bxs" onclick="deleteBranch('+b.id+')">🗑️</button></td></tr>';}).join('')
+    +'</tbody></table></div>';
+}
+function renderUnlinkedBranchEntries(){
+  const el=document.getElementById("branch-unlinked-tb");if(!el)return;
+  const rows=postedEntries().filter(isEntryBranchUnlinked).sort(function(a,b){return b.date.localeCompare(a.date);});
+  if(!rows.length){el.innerHTML='<div class="empty"><span class="ei">✅</span><p>لا توجد عمليات غير مرتبطة — كل القيود لها إشارة تُحدِّد فرعها</p></div>';return;}
+  el.innerHTML='<div class="tw"><table><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>القيد#</th><th>فرعها الحالي (افتراضي)</th><th></th></tr></thead><tbody>'
+    +rows.map(function(e){
+      const b=branches.find(function(x){return x.id===getEntryBranchId(e);});
+      return '<tr><td>'+fmtDate(e.date)+'</td><td style="font-family:monospace;color:var(--g4)">'+(e.ref||'—')+'</td><td>'+(e.desc||'')+'</td>'
+        +'<td>#'+e.id+'</td><td>'+(b?b.name:'—')+'</td>'
+        +'<td><button class="btn bo bxs" onclick="openEditEntry('+e.id+')">👁 مراجعة</button></td></tr>';
+    }).join('')
+    +'</tbody></table></div>';
+}
+function openBranchForm(id){
+  const b=id?branches.find(function(x){return x.id===id;}):null;
+  document.getElementById("branch-id").value=id||"";
+  document.getElementById("branch-name").value=b?b.name:"";
+  document.getElementById("branch-active").checked=b?b.active!==false:true;
+  document.getElementById("m-branch").style.display="flex";
+}
+function saveBranch(){
+  const id=parseInt(document.getElementById("branch-id").value)||0;
+  const name=document.getElementById("branch-name").value.trim();
+  const active=document.getElementById("branch-active").checked;
+  if(!name){showAlert("يرجى إدخال اسم الفرع","err");return;}
+  if(id){const b=branches.find(function(x){return x.id===id;});if(b)Object.assign(b,{name,active});}
+  else branches.push({id:nxtBranchId++,name,active});
+  CM("m-branch");renderBranches();renderUnlinkedBranchEntries();showAlert("تم حفظ الفرع ✓");
+}
+function deleteBranch(id){
+  if(!can('delete')){showAlert('⛔ لا تملك صلاحية الحذف','err');return;}
+  if(!confirm("حذف الفرع؟ لن يتأثر أي قيد سابق — سيُصبح تصنيف الفروع المتأثرة بهذا الفرع بلا فرع."))return;
+  branches=branches.filter(function(b){return b.id!==id;});
+  renderBranches();renderUnlinkedBranchEntries();showAlert("تم الحذف","warn");
+}
 
 // ════════════════════════════════════════════════════════════════
 // استيراد ومطابقة البيانات الخارجية (دليل حسابات + كشوفات مراكز تكلفة)
@@ -11169,7 +11302,7 @@ function populateTrGroupSelect(){
 }
 function populateTrDimSelects(){
   const row=document.getElementById("tr-dim-row");if(!row)return;
-  const hasDims=(costCenters&&costCenters.length)||(projects&&projects.length);
+  const hasDims=(costCenters&&costCenters.length)||(projects&&projects.length)||(branches&&branches.length);
   row.style.display=hasDims?"grid":"none";
   const ccSel=document.getElementById("tr-cc");
   if(ccSel){
@@ -11184,6 +11317,13 @@ function populateTrDimSelects(){
     projSel.innerHTML='<option value="">— كل المشاريع —</option>'
       +(projects||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
     projSel.value=cur;
+  }
+  const branchSel=document.getElementById("tr-branch");
+  if(branchSel){
+    const cur=branchSel.value;
+    branchSel.innerHTML='<option value="">— كل الفروع —</option>'
+      +(branches||[]).filter(b=>b.active!==false).map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
+    branchSel.value=cur;
   }
 }
 function trAccSearch(val){
@@ -11221,8 +11361,9 @@ function getTrData(){
   const singleId   = parseInt((document.getElementById("tr-acc-id")||{}).value)||0;
   const ccId       = parseInt((document.getElementById("tr-cc")||{}).value)||0;
   const projId     = parseInt((document.getElementById("tr-proj")||{}).value)||0;
-  const hasDimFilter = !!(ccId||projId);
-  const dimOk = function(l){return (!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId);};
+  const branchId   = parseInt((document.getElementById("tr-branch")||{}).value)||0;
+  const hasDimFilter = !!(ccId||projId||branchId);
+  const dimOk = function(l,e){return (!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId)&&(!branchId||getEntryBranchId(e)===branchId);};
   const hasRange   = !!(fromD||toD);
   const NORM = {asset:"dr",liability:"cr",equity:"cr",revenue:"cr",expense:"dr"};
 
@@ -11247,7 +11388,7 @@ function getTrData(){
         // No date range: opening balance + ALL entries
         if(normSide==="dr") mvDr += openAmt; else mvCr += openAmt;
         postedEntries().forEach(function(e){
-          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l);}).forEach(function(l){
+          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l,e);}).forEach(function(l){
             mvDr+=l.debit||0; mvCr+=l.credit||0;
           });
         });
@@ -11256,7 +11397,7 @@ function getTrData(){
         if(normSide==="dr") opDr += openAmt; else opCr += openAmt;
         // Entries BEFORE period = opening balance additions
         postedEntries().filter(function(e){ return fromD && e.date<fromD; }).forEach(function(e){
-          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l);}).forEach(function(l){
+          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l,e);}).forEach(function(l){
             opDr+=l.debit||0; opCr+=l.credit||0;
           });
         });
@@ -11264,7 +11405,7 @@ function getTrData(){
         postedEntries().filter(function(e){
           return (!fromD||e.date>=fromD) && (!toD||e.date<=toD);
         }).forEach(function(e){
-          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l);}).forEach(function(l){
+          e.lines.filter(function(l){return l.accId===a.id&&dimOk(l,e);}).forEach(function(l){
             mvDr+=l.debit||0; mvCr+=l.credit||0;
           });
         });
@@ -12756,9 +12897,10 @@ function renderLg(){
   const selAccId=parseInt((document.getElementById('lg-id')||{}).value)||0;
   const el=document.getElementById('lg-body');if(!el)return;
   // إظهار/تعبئة فلاتر مركز التكلفة والمشروع (فقط إذا كانت معرّفة بالنظام)
-  const ccWrap=document.getElementById('lg-cc-wrap'), projWrap=document.getElementById('lg-proj-wrap');
+  const ccWrap=document.getElementById('lg-cc-wrap'), projWrap=document.getElementById('lg-proj-wrap'), branchWrap=document.getElementById('lg-branch-wrap');
   if(ccWrap) ccWrap.style.display=(costCenters&&costCenters.length)?'flex':'none';
   if(projWrap) projWrap.style.display=(projects&&projects.length)?'flex':'none';
+  if(branchWrap) branchWrap.style.display=(branches&&branches.length)?'flex':'none';
   const ccSel=document.getElementById('lg-cc');
   if(ccSel&&costCenters&&costCenters.length){
     const curCc=ccSel.value;
@@ -12771,9 +12913,16 @@ function renderLg(){
     projSel.innerHTML='<option value="">— الكل —</option>'+projects.map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join('');
     projSel.value=curProj;
   }
+  const branchSel=document.getElementById('lg-branch');
+  if(branchSel&&branches&&branches.length){
+    const curBranch=branchSel.value;
+    branchSel.innerHTML='<option value="">— الكل —</option>'+branches.filter(function(b){return b.active!==false;}).map(function(b){return '<option value="'+b.id+'">'+b.name+'</option>';}).join('');
+    branchSel.value=curBranch;
+  }
   const ccId=parseInt((document.getElementById('lg-cc')||{}).value)||0;
   const projId=parseInt((document.getElementById('lg-proj')||{}).value)||0;
-  const hasDimFilter=!!(ccId||projId);
+  const branchId=parseInt((document.getElementById('lg-branch')||{}).value)||0;
+  const hasDimFilter=!!(ccId||projId||branchId);
   const filtAccs=accounts.filter(function(a){
     if(!isLeaf(a.id)) return false;
     if(selAccId&&a.id!==selAccId) return false;
@@ -12785,7 +12934,7 @@ function renderLg(){
   filtAccs.forEach(function(acc){
     const lines=[];
     postedEntries().filter(function(e){
-      return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);
+      return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD)&&(!branchId||getEntryBranchId(e)===branchId);
     }).forEach(function(e){
       e.lines.filter(function(l){return l.accId===acc.id&&(!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId);}).forEach(function(l){
         lines.push({date:e.date,ref:e.ref||'',desc:l.desc||e.desc||'',
@@ -12856,7 +13005,7 @@ function printLgReport(){
   const sq=((document.getElementById('lg-s')||{}).value||'').toLowerCase();
   const selAccId=parseInt((document.getElementById('lg-id')||{}).value)||0;
   const f=currentLgFilters();
-  const hasDimFilter=!!(f.ccId||f.projId);
+  const hasDimFilter=!!(f.ccId||f.projId||f.branchId);
   const filtAccs=accounts.filter(function(a){
     if(!isLeaf(a.id)) return false;
     if(selAccId&&a.id!==selAccId) return false;
@@ -12867,7 +13016,7 @@ function printLgReport(){
   let html='<div style="text-align:center;font-size:13px;font-weight:700;color:'+hc+';margin-bottom:4px">دفتر الأستاذ العام</div>'+periodLine;
   let matchedAny=false;
   filtAccs.forEach(function(acc){
-    const d=getLgData(acc.id,f.fromD,f.toD,f.ccId,f.projId);
+    const d=getLgData(acc.id,f.fromD,f.toD,f.ccId,f.projId,f.branchId);
     if(!d||!d.rows.length) return;
     matchedAny=true;
     html+=`<div style="margin-bottom:14px;page-break-inside:avoid">
@@ -13621,7 +13770,7 @@ function renderCompanySwitcher(){
 }
 
 function buildPersistData(){
-  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId,auxImportLog,nxtAuxLogId,journalCCImportLog,nxtJournalCCLogId,docTemplates,nxtDocTplId};
+  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId,auxImportLog,nxtAuxLogId,journalCCImportLog,nxtJournalCCLogId,docTemplates,nxtDocTplId,branches,nxtBranchId};
 }
 let localDirtySinceBoot=false;
 let __bootDataSnapshot=null;
@@ -13722,6 +13871,8 @@ function applyPersistedData(d){
     if(d.nxtAuxLogId!==undefined)nxtAuxLogId=d.nxtAuxLogId;
     if(d.journalCCImportLog!==undefined)journalCCImportLog=d.journalCCImportLog;
     if(d.nxtJournalCCLogId!==undefined)nxtJournalCCLogId=d.nxtJournalCCLogId;
+    if(d.branches!==undefined)branches=d.branches;
+    if(d.nxtBranchId!==undefined)nxtBranchId=d.nxtBranchId;
     if(d.docTemplates!==undefined)docTemplates=d.docTemplates;
     if(d.nxtDocTplId!==undefined)nxtDocTplId=d.nxtDocTplId;
   }catch(e){console.error('applyPersistedData:',e);}
