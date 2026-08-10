@@ -1150,7 +1150,8 @@ tbody tr:hover{background:var(--g50)}
  <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;padding:9px 11px;background:var(--g50);border-radius:var(--r);margin-bottom:10px">
   <div class="fgrp"><label>📅 من تاريخ</label><input id="fs-from" type="date" onchange="renderFS(fsTab)"></div>
   <div class="fgrp"><label>📅 إلى تاريخ</label><input id="fs-to" type="date" onchange="renderFS(fsTab)"></div>
-  <button class="btn bo bsm" onclick="document.getElementById('fs-from').value='';document.getElementById('fs-to').value='';renderFS(fsTab)" style="align-self:flex-end">↺ كل الفترة</button>
+  <div class="fgrp" id="fs-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="fs-branch" onchange="renderFS(fsTab)" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
+  <button class="btn bo bsm" onclick="document.getElementById('fs-from').value='';document.getElementById('fs-to').value='';document.getElementById('fs-branch').value='';renderFS(fsTab)" style="align-self:flex-end">↺ كل الفترة</button>
   <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--g6);cursor:pointer;align-self:flex-end;padding:7px 4px">
    <input type="checkbox" id="fs-hide-zero" onchange="renderFS(fsTab)">إخفاء الأرصدة الصفرية
   </label>
@@ -2010,6 +2011,29 @@ tbody tr:hover{background:var(--g50)}
  <input type="hidden" id="ccrpt-active-dim" value="cc">
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px" id="ccrpt-summary"></div>
  <div id="ccrpt-body"></div>
+</div>
+</div>
+
+<!-- ══ BRANCH REPORT SECTION ══ -->
+<div id="sec-branchrpt" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🏢</div>تقرير الفروع</div>
+  <div style="display:flex;gap:6px;align-items:center">
+   <input id="branchrpt-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderBranchReport()">
+   <input id="branchrpt-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderBranchReport()">
+   <button class="btn bp bsm" onclick="renderBranchReport()">🔄 عرض</button>
+   <button class="btn bo bsm" onclick="document.getElementById('branchrpt-from').value='';document.getElementById('branchrpt-to').value='';renderBranchReport()">↺</button>
+   <button class="btn bg bsm" onclick="expBranchXL()">📊 Excel</button>
+   <button class="btn bo bsm" onclick="printBranchReport()">🖨️ طباعة</button>
+  </div>
+ </div>
+ <p style="font-size:11px;color:var(--g5);margin:-4px 0 14px;line-height:1.7">
+  حركة العمليات والحسابات على كل فرع — التصنيف حي (غير مخزَّن) بنفس قاعدة شاشة "الفروع": بحسب
+  مركز التكلفة/الوصف على كل قيد، فيتحدَّث تلقائياً مع أي تغيير.
+ </p>
+ <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px" id="branchrpt-summary"></div>
+ <div id="branchrpt-body"></div>
 </div>
 </div>
 
@@ -3604,6 +3628,7 @@ const PGS={
   depsched:["جدول إهلاك الأصول","تقرير مجمّع لإهلاك جميع الأصول الثابتة"],
   cashflow:["قائمة التدفقات النقدية","التدفقات النقدية من الأنشطة التشغيلية والاستثمارية والتمويلية"],
   ccrpt:["تقرير مراكز التكلفة والمشاريع","ملخص الحركات والتكاليف حسب مركز التكلفة أو المشروع"],
+  branchrpt:["تقرير الفروع","حركة العمليات والحسابات على كل فرع"],
   cc:["مراكز التكلفة","تعريف وإدارة مراكز التكلفة"],
   proj:["المشاريع","تعريف وإدارة المشاريع"],
   branches:["الفروع","تعريف وإدارة الفروع"],
@@ -3621,7 +3646,7 @@ const PAGE_GROUP={
   pinv:'🔴 إدارة أنظمة المشتريات',pret:'🔴 إدارة أنظمة المشتريات',
   wh:'📦 إدارة أنظمة المخزون',items:'📦 إدارة أنظمة المخزون',gr:'📦 إدارة أنظمة المخزون',stkout:'📦 إدارة أنظمة المخزون',stkadj:'📦 إدارة أنظمة المخزون',stkbal:'📦 إدارة أنظمة المخزون',
   ast:'🏭 الأصول والإيجارات والعهد',rent:'🏭 الأصول والإيجارات والعهد',cust:'🏭 الأصول والإيجارات والعهد',
-  rpt:'📊 التقارير',kpi:'📊 التقارير',lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',taxrpt:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',stkrep:'📊 التقارير',whrpt:'📊 التقارير',depsched:'📊 التقارير',
+  rpt:'📊 التقارير',kpi:'📊 التقارير',lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',taxrpt:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',branchrpt:'📊 التقارير',stkrep:'📊 التقارير',whrpt:'📊 التقارير',depsched:'📊 التقارير',
   audit:'🔧 إدارة النظام',ccimport:'🔧 إدارة النظام',
   notifs:'🔧 إدارة النظام',yr:'🔧 إدارة النظام',bk:'🔧 إدارة النظام',int:'🔧 إدارة النظام',
 };
@@ -3637,6 +3662,7 @@ const RPT_SECTIONS=[
     {ic:'✅',lb:'الوثائق المرحلة وغير المرحلة',go:'post'},
     {ic:'🧾',lb:'تقرير الضريبة',go:'taxrpt'},
     {ic:'🏷️',lb:'مراكز التكلفة والمشاريع',go:'ccrpt'},
+    {ic:'🏢',lb:'تقرير الفروع',go:'branchrpt'},
     {ic:'🧾',lb:'سندات القبض والصرف',go:'vch'},
     {ic:'🩺',lb:'فحص وتدقيق البيانات',go:'audit'},
     {ic:'📈',lb:'مؤشرات الأداء والتوجهات العامة',go:'kpi'},
@@ -3994,6 +4020,7 @@ function SS(id,btn){
   if(id==="depsched"){renderDepSchedule();}
   if(id==="cashflow"){renderCashFlow();}
   if(id==="ccrpt"){renderCCProjReport();}
+  if(id==="branchrpt"){renderBranchReport();}
   if(id==="cc"){renderCostCenters();}
   if(id==="proj"){renderProjects();}
   if(id==="branches"){renderBranches();renderUnlinkedBranchEntries();}
@@ -4787,18 +4814,27 @@ function printTrSubDetail(accId){
 
 // ═══ FINANCIAL STATEMENTS (with date range) ═══
 function switchFS(tab,btn){fsTab=tab;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));if(btn)btn.classList.add("active");renderFS(tab);}
-function getTree(type,parId,fromD,toD){
+function getTree(type,parId,fromD,toD,branchId){
+  // فلتر الفرع (كفلتر مركز التكلفة/المشروع بتقارير أخرى) يُقصي الرصيد الافتتاحي — لا يمكن نسبته
+  // لفرع معيّن — ويفرض حساب الرصيد بالكامل من القيود المطابقة فقط، حتى بلا فترة زمنية محدَّدة
+  const hasDimFilter=!!branchId;
   return accounts.filter(a=>a.type===type&&a.par===parId).map(a=>{
+    const children=getTree(type,a.id,fromD,toD,branchId);
     let bal;
-    if(fromD||toD){
-      let b=parseFloat(a.open)||0;if(NORM[a.type]==="cr")b=-b;
-      if(fromD)entries.filter(e=>e.date<fromD).forEach(e=>e.lines.filter(l=>l.accId===a.id).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
-      entries.filter(e=>(!fromD||e.date>=fromD)&&(!toD||e.date<=toD)).forEach(e=>e.lines.filter(l=>l.accId===a.id).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
+    if(fromD||toD||hasDimFilter){
+      let b=hasDimFilter?0:(parseFloat(a.open)||0);if(NORM[a.type]==="cr")b=-b;
+      if(fromD)entries.filter(e=>e.date<fromD&&(!branchId||getEntryBranchId(e)===branchId)).forEach(e=>e.lines.filter(l=>l.accId===a.id).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
+      entries.filter(e=>(!fromD||e.date>=fromD)&&(!toD||e.date<=toD)&&(!branchId||getEntryBranchId(e)===branchId)).forEach(e=>e.lines.filter(l=>l.accId===a.id).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
+      // كان يُحسَب من أسطر مسنَدة لهذا الحساب مباشرة فقط، متجاهلاً أرصدة أبنائه بالكامل — أي حساب
+      // أب (بمستوى وسيط بشجرة الحسابات) بلا ترحيل مباشر عليه (الوضع الطبيعي، فالترحيل الفعلي على
+      // الحسابات الطرفية دوماً) كان يظهر رصيده صفراً زوراً بمجرد تفعيل فلتر تاريخ أو فرع، فيختل
+      // إجمالي القوائم المالية المصفّاة (راجع getBalance(id,true) للنمط المطابق بلا فلتر تاريخ/فرع)
+      b+=children.reduce(function(s,c){return s+c.bal;},0);
       bal=b;
     } else {
       bal=getBalance(a.id,true);
     }
-    return {a,bal,children:getTree(type,a.id,fromD,toD)};
+    return {a,bal,children};
   });
 }
 function fsRowsHTML(nodes,depth=0){
@@ -4854,8 +4890,17 @@ function renderFS(tab){
   const fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
   const toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
   const hideZero=document.getElementById("fs-hide-zero")?document.getElementById("fs-hide-zero").checked:false;
-  let revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD),costN=getTree("cost",null,fromD,toD);
-  let asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
+  const branchWrap=document.getElementById("fs-branch-wrap");
+  if(branchWrap) branchWrap.style.display=(branches&&branches.length)?"flex":"none";
+  const branchSel=document.getElementById("fs-branch");
+  if(branchSel&&branches&&branches.length){
+    const curBranch=branchSel.value;
+    branchSel.innerHTML='<option value="">— الكل —</option>'+branches.filter(function(b){return b.active!==false;}).map(function(b){return '<option value="'+b.id+'">'+b.name+'</option>';}).join('');
+    branchSel.value=curBranch;
+  }
+  const branchId=parseInt((document.getElementById("fs-branch")||{}).value)||0;
+  let revN=getTree("revenue",null,fromD,toD,branchId),expN=getTree("expense",null,fromD,toD,branchId),costN=getTree("cost",null,fromD,toD,branchId);
+  let asN=getTree("asset",null,fromD,toD,branchId),laN=getTree("liability",null,fromD,toD,branchId),eqN=getTree("equity",null,fromD,toD,branchId);
   const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const tC=costN.reduce((s,n)=>s+n.bal,0);
   const tX=expN.reduce((s,n)=>s+n.bal,0);
@@ -4864,7 +4909,7 @@ function renderFS(tab){
   const tA=asN.reduce((s,n)=>s+n.bal,0);
   const tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
-  const openEq=eqN.reduce((s,n)=>s+(parseFloat(n.a.open)||0),0);
+  const openEq=branchId?0:eqN.reduce((s,n)=>s+(parseFloat(n.a.open)||0),0);
   if(hideZero){revN=fsFilterZero(revN);expN=fsFilterZero(expN);costN=fsFilterZero(costN);asN=fsFilterZero(asN);laN=fsFilterZero(laN);eqN=fsFilterZero(eqN);}
   let html="";
   if(tab==="is"){
@@ -5129,9 +5174,10 @@ function expAccPDF(){
 function expFSXL(fromD,toD){
   if(fromD===undefined) fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
   if(toD===undefined) toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
+  const branchId=parseInt((document.getElementById("fs-branch")||{}).value)||0;
   function flatN(nodes,d=0){let r=[];nodes.forEach(n=>{r.push(["  ".repeat(d)+n.a.name,fmtNum(Math.abs(n.bal))]);if(n.children.length)r=r.concat(flatN(n.children,d+1));});return r;}
-  const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD),costN=getTree("cost",null,fromD,toD);
-  const asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
+  const revN=getTree("revenue",null,fromD,toD,branchId),expN=getTree("expense",null,fromD,toD,branchId),costN=getTree("cost",null,fromD,toD,branchId);
+  const asN=getTree("asset",null,fromD,toD,branchId),laN=getTree("liability",null,fromD,toD,branchId),eqN=getTree("equity",null,fromD,toD,branchId);
   const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0),tC=costN.reduce((s,n)=>s+n.bal,0),tX=expN.reduce((s,n)=>s+n.bal,0),gp=tR-tC,np=gp-tX;
   const tA=asN.reduce((s,n)=>s+n.bal,0),tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0),tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const hdr=[`${CFG.name} | التاريخ: ${fmtDateISO(new Date())} | العملة: ${cur()}${fromD||toD?" | الفترة: "+fmtDate(fromD)+"—"+fmtDate(toD):""}`];
@@ -5149,9 +5195,10 @@ function expFSXL(fromD,toD){
 function expFSPDF(fromD,toD){
   if(fromD===undefined) fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
   if(toD===undefined) toD=document.getElementById("fs-to")?document.getElementById("fs-to").value:"";
+  const branchId=parseInt((document.getElementById("fs-branch")||{}).value)||0;
   function flatR(nodes,d=0){let r=[];nodes.forEach(n=>{r.push(["  ".repeat(d)+n.a.name,fmtNum(Math.abs(n.bal))]);if(n.children.length)r=r.concat(flatR(n.children,d+1));});return r;}
-  const revN=getTree("revenue",null,fromD,toD),expN=getTree("expense",null,fromD,toD),costN=getTree("cost",null,fromD,toD);
-  const asN=getTree("asset",null,fromD,toD),laN=getTree("liability",null,fromD,toD),eqN=getTree("equity",null,fromD,toD);
+  const revN=getTree("revenue",null,fromD,toD,branchId),expN=getTree("expense",null,fromD,toD,branchId),costN=getTree("cost",null,fromD,toD,branchId);
+  const asN=getTree("asset",null,fromD,toD,branchId),laN=getTree("liability",null,fromD,toD,branchId),eqN=getTree("equity",null,fromD,toD,branchId);
   const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0),tC=costN.reduce((s,n)=>s+n.bal,0),tX=expN.reduce((s,n)=>s+n.bal,0),gp=tR-tC,np=gp-tX;
   const tA=asN.reduce((s,n)=>s+n.bal,0),tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0),tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const subs=fromD||toD?[`الفترة: ${fmtDate(fromD)||"البداية"} — ${fmtDate(toD)||"اليوم"}`]:[];
@@ -6007,6 +6054,158 @@ function printCCProjReport(){
   }).join('');
   printA4('<div style="text-align:center;font-size:13px;font-weight:700;color:'+hc+';margin-bottom:12px">'+(dim==="cc"?"تقرير مراكز التكلفة":"تقرير المشاريع")+'</div>'
     +'<table><thead><tr><th>'+(dim==="cc"?"مركز التكلفة":"المشروع")+'</th><th>عدد الحركات</th><th>إجمالي مدين</th><th>إجمالي دائن</th><th>الصافي</th></tr></thead>'
+    +'<tbody>'+body+'</tbody></table>');
+}
+// ── تقرير الفروع — منفصل تماماً عن تقرير مراكز التكلفة/المشاريع أعلاه لأن الفرع بُعد على مستوى
+// القيد بالكامل (getEntryBranchId) وليس على مستوى السطر كمركز التكلفة/المشروع، فتُدرَج هنا كل
+// أسطر القيد المصنَّف لفرع معيّن بصرف النظر عن مركز تكلفة/مشروع كل سطر على حدة
+function getBranchReportData(){
+  const fromD=(document.getElementById("branchrpt-from")||{}).value||"";
+  const toD=(document.getElementById("branchrpt-to")||{}).value||"";
+  return (branches||[]).map(function(item){
+    let debit=0,credit=0,moveCount=0;
+    const accMap={};
+    postedEntries().filter(function(e){return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);}).forEach(function(e){
+      if(getEntryBranchId(e)!==item.id)return;
+      e.lines.forEach(function(l){
+        debit+=l.debit||0; credit+=l.credit||0; moveCount++;
+        const acc=accounts.find(function(a){return a.id===l.accId;});
+        if(!acc) return;
+        if(!accMap[acc.id]) accMap[acc.id]={code:acc.code,name:acc.name,type:acc.type,debit:0,credit:0,lines:[]};
+        accMap[acc.id].debit+=l.debit||0; accMap[acc.id].credit+=l.credit||0;
+        accMap[acc.id].lines.push({date:e.date,ref:e.ref||"",desc:l.desc||e.desc||"",entId:e.id,debit:l.debit||0,credit:l.credit||0});
+      });
+    });
+    Object.values(accMap).forEach(function(a){a.lines.sort(function(x,y){return x.date.localeCompare(y.date);});});
+    return {id:item.id,name:item.name,debit,credit,net:debit-credit,moveCount,
+      accounts:Object.values(accMap).sort(function(a,b){return a.code.localeCompare(b.code);})};
+  });
+}
+function printBranchDetail(branchId){
+  const row=getBranchReportData().find(function(r){return r.id===branchId;});
+  if(!row){showAlert("لا توجد بيانات لهذا الفرع","warn");return;}
+  const hc=CFG.rptColor||"#0f4c75";
+  const fromD=(document.getElementById("branchrpt-from")||{}).value||"";
+  const toD=(document.getElementById("branchrpt-to")||{}).value||"";
+  const periodLine=fromD||toD?'<div style="text-align:center;font-size:10.5px;color:#64748b;margin-bottom:10px">الفترة: '+(fromD?fmtDate(fromD):"البداية")+' — '+(toD?fmtDate(toD):"اليوم")+'</div>':'';
+  const accBlocks=row.accounts.map(function(a){
+    const linesHtml=a.lines.map(function(ln){
+      return '<tr><td>'+fmtDate(ln.date)+'</td><td>'+(ln.ref||"—")+'</td><td>'+ln.desc+'</td>'
+        +'<td style="direction:ltr;text-align:left">'+(ln.debit?fmtNum(ln.debit):"")+'</td>'
+        +'<td style="direction:ltr;text-align:left">'+(ln.credit?fmtNum(ln.credit):"")+'</td></tr>';
+    }).join('');
+    return '<div style="margin-top:12px;font-weight:700;font-size:11.5px;color:'+hc+'">'+a.code+' — '+a.name+'</div>'
+      +'<table><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>مدين</th><th>دائن</th></tr></thead>'
+      +'<tbody>'+linesHtml+'</tbody>'
+      +'<tfoot><tr style="font-weight:700;background:#f1f5f9"><td colspan="3">إجمالي '+a.name+'</td>'
+      +'<td style="direction:ltr;text-align:left">'+fmtNum(a.debit)+'</td><td style="direction:ltr;text-align:left">'+fmtNum(a.credit)+'</td></tr></tfoot></table>';
+  }).join('');
+  const html='<div style="text-align:center;font-size:14px;font-weight:800;color:'+hc+';margin-bottom:4px">تقرير فرع تفصيلي — '+row.name+'</div>'
+    +periodLine
+    +'<div style="display:flex;justify-content:space-around;margin-bottom:14px;padding:10px;background:#f8fafc;border-radius:8px;font-size:11.5px">'
+    +'<div>عدد الحركات: <strong>'+row.moveCount+'</strong></div>'
+    +'<div>إجمالي مدين: <strong style="direction:ltr;display:inline-block">'+fmtNum(row.debit)+'</strong></div>'
+    +'<div>إجمالي دائن: <strong style="direction:ltr;display:inline-block">'+fmtNum(row.credit)+'</strong></div>'
+    +'<div>الصافي: <strong style="direction:ltr;display:inline-block">'+fmtNum(Math.abs(row.net))+(row.net>0?" (مدين)":row.net<0?" (دائن)":" (متوازن)")+'</strong></div>'
+    +'</div>'
+    +(accBlocks||'<div style="text-align:center;color:#94a3b8;padding:20px">لا توجد حركات</div>');
+  printA4(html);
+}
+function renderBranchReport(){
+  const el=document.getElementById("branchrpt-body");if(!el) return;
+  const hcRef=CFG.rptColor||"#0f4c75";
+  const rows=getBranchReportData();
+  const sumEl=document.getElementById("branchrpt-summary");
+  const totalDebit=rows.reduce(function(s,r){return s+r.debit;},0);
+  const totalCredit=rows.reduce(function(s,r){return s+r.credit;},0);
+  const activeCount=rows.filter(function(r){return r.moveCount>0;}).length;
+  if(sumEl) sumEl.innerHTML=
+    '<div class="sc bl"><div class="sl">عدد الفروع</div><div class="sv">'+rows.length+'</div></div>'+
+    '<div class="sc gn"><div class="sl">لديها حركة</div><div class="sv">'+activeCount+'</div></div>'+
+    '<div class="sc am"><div class="sl">إجمالي مدين</div><div class="sv">'+fmtNum(totalDebit)+'</div></div>'+
+    '<div class="sc rd"><div class="sl">إجمالي دائن</div><div class="sv">'+fmtNum(totalCredit)+'</div></div>';
+  if(!rows.length){
+    el.innerHTML='<div class="empty"><span class="ei">🏢</span><p>لا توجد فروع معرّفة</p></div>';
+    return;
+  }
+  el.innerHTML=rows.map(function(r){
+    const detailId="branchrpt-detail-"+r.id;
+    return '<div style="margin-bottom:12px;border:1px solid var(--g200);border-radius:var(--r);overflow:hidden">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#f8fafc;cursor:pointer;flex-wrap:wrap;gap:8px" onclick="toggleCCProjDetail(\''+detailId+'\')">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+          +'<span style="font-weight:700">🏢 '+r.name+'</span>'
+          +'<span class="bdg '+(r.moveCount?"b4":"b5")+'" style="font-size:9px">'+r.moveCount+' حركة</span>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:16px;font-size:11.5px">'
+          +'<span style="color:#1d4ed8">مدين: '+fmtNum(r.debit)+'</span>'
+          +'<span style="color:#16a34a">دائن: '+fmtNum(r.credit)+'</span>'
+          +'<span style="font-weight:700;color:'+(r.net>0?"#1d4ed8":r.net<0?"#16a34a":"var(--g5)")+'">صافي: '+fmtNum(Math.abs(r.net))+(r.net>0?" (مدين)":r.net<0?" (دائن)":" (متوازن)")+'</span>'
+          +'<button class="btn bo bxs" title="طباعة تفاصيل هذا الفرع" onclick="event.stopPropagation();printBranchDetail('+r.id+')">🖨️</button>'
+        +'</div>'
+      +'</div>'
+      +'<div id="'+detailId+'" style="display:none;padding:10px 14px">'
+        +(r.accounts.length
+          ?'<table style="width:100%;font-size:11px;border-collapse:collapse">'
+            +'<thead><tr style="background:#f1f5f9"><th style="text-align:right;padding:5px">الحساب</th><th style="text-align:left;padding:5px">مدين</th><th style="text-align:left;padding:5px">دائن</th></tr></thead>'
+            +'<tbody>'+r.accounts.map(function(a){
+              const accDetailId=detailId+"-acc"+a.code.replace(/\W/g,"");
+              return '<tr style="cursor:pointer" onclick="toggleCCProjDetail(\''+accDetailId+'\')" title="اضغط لعرض تفاصيل الحركات">'
+                +'<td style="padding:5px">'+a.code+' — '+a.name+' <span style="color:var(--g4);font-size:9.5px">▾ '+a.lines.length+' حركة</span></td>'
+                +'<td style="direction:ltr;text-align:left;padding:5px;color:#1d4ed8">'+(a.debit?fmtNum(a.debit):'')+'</td>'
+                +'<td style="direction:ltr;text-align:left;padding:5px;color:#16a34a">'+(a.credit?fmtNum(a.credit):'')+'</td></tr>'
+                +'<tr id="'+accDetailId+'" style="display:none"><td colspan="3" style="padding:0 0 8px">'
+                  +'<table style="width:100%;font-size:10.5px;border-collapse:collapse;background:#fbfcfe" onclick="event.stopPropagation()">'
+                    +'<thead><tr style="background:#eef2f7;color:var(--g5)">'
+                      +'<th style="text-align:right;padding:4px 8px">التاريخ</th><th style="text-align:right;padding:4px 8px">المرجع</th>'
+                      +'<th style="text-align:right;padding:4px 8px">البيان</th><th style="text-align:center;padding:4px 8px">القيد#</th>'
+                      +'<th style="text-align:left;padding:4px 8px">مدين</th><th style="text-align:left;padding:4px 8px">دائن</th></tr></thead>'
+                    +'<tbody>'+a.lines.map(function(ln){
+                      return '<tr><td style="padding:4px 8px;white-space:nowrap">'+fmtDate(ln.date)+'</td>'
+                        +'<td style="padding:4px 8px;font-family:monospace;color:var(--g6)">'+(ln.ref||'—')+'</td>'
+                        +'<td style="padding:4px 8px">'+(ln.desc||'—')+'</td>'
+                        +'<td style="padding:4px 8px;text-align:center"><a onclick="openEditEntry('+ln.entId+')" style="cursor:pointer;color:'+hcRef+';font-weight:700">👁 #'+ln.entId+'</a></td>'
+                        +'<td style="direction:ltr;text-align:left;padding:4px 8px;color:#1d4ed8">'+(ln.debit?fmtNum(ln.debit):'')+'</td>'
+                        +'<td style="direction:ltr;text-align:left;padding:4px 8px;color:#16a34a">'+(ln.credit?fmtNum(ln.credit):'')+'</td></tr>';
+                    }).join('')
+                    +'</tbody></table>'
+                +'</td></tr>';
+            }).join('')
+            +'</tbody></table>'
+          :'<div style="color:var(--g4);font-size:11px">لا توجد حركات</div>')
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+function expBranchXL(){
+  if(typeof XLSX==="undefined"){showAlert("مكتبة Excel غير محملة","err");return;}
+  const rows=getBranchReportData();
+  const wb=XLSX.utils.book_new();
+  const data=[["تقرير الفروع"],[],["الفرع","عدد الحركات","إجمالي مدين","إجمالي دائن","الصافي"]];
+  rows.forEach(function(r){data.push([r.name,r.moveCount,r.debit,r.credit,r.net]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),"الفروع");
+  const detailData=[["تفاصيل حركات الفروع"],[],["الفرع","الحساب","التاريخ","المرجع","البيان","القيد#","مدين","دائن"]];
+  rows.forEach(function(r){
+    r.accounts.forEach(function(a){
+      a.lines.forEach(function(ln){
+        detailData.push([r.name,a.code+" — "+a.name,ln.date,ln.ref,ln.desc,ln.entId,ln.debit,ln.credit]);
+      });
+    });
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detailData),"تفاصيل الحركات");
+  XLSX.writeFile(wb,"branches_"+today()+".xlsx");
+  showAlert("تم التصدير Excel ✓");
+}
+function printBranchReport(){
+  const hc=CFG.rptColor||"#0f4c75";
+  const rows=getBranchReportData();
+  const body=rows.map(function(r){
+    return '<tr><td>'+r.name+'</td><td style="text-align:center">'+r.moveCount+'</td>'
+      +'<td style="direction:ltr;text-align:left">'+fmtNum(r.debit)+'</td>'
+      +'<td style="direction:ltr;text-align:left">'+fmtNum(r.credit)+'</td>'
+      +'<td style="direction:ltr;text-align:left;font-weight:700">'+fmtNum(Math.abs(r.net))+(r.net>0?' (مدين)':r.net<0?' (دائن)':' (متوازن)')+'</td></tr>';
+  }).join('');
+  printA4('<div style="text-align:center;font-size:13px;font-weight:700;color:'+hc+';margin-bottom:12px">تقرير الفروع</div>'
+    +'<table><thead><tr><th>الفرع</th><th>عدد الحركات</th><th>إجمالي مدين</th><th>إجمالي دائن</th><th>الصافي</th></tr></thead>'
     +'<tbody>'+body+'</tbody></table>');
 }
 
