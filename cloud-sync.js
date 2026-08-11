@@ -44,13 +44,17 @@ const firebaseConfig = {
     }).catch(err=>console.error('[CloudSync] فشل الحفظ ('+docName+'):',err));
   }
 
+  // فترة التأخير 8 ثوانٍ (كانت 1.5) — كل تعديل متتالٍ خلال هذه المدة يُلغي مؤقت الإرسال السابق
+  // ويبدأ من جديد (debounce)، فتُدمَج التعديلات السريعة المتلاحقة (كإدخال سطور قيد الواحد تلو
+  // الآخر) في إرسال واحد بدل عدة إرسالات، مما يُخفِّف استهلاك حصة الكتابة اليومية المحدودة بخطة
+  // Firebase المجانية (Spark) — راجع flush() للحفظ الفوري قبل إغلاق الصفحة رغم هذا التأخير
   function save(docName,data){
     pendingData[docName]=data;
     clearTimeout(saveTimers[docName]);
     saveTimers[docName]=setTimeout(()=>{
       delete saveTimers[docName];
       doWrite(docName,pendingData[docName]);
-    },1500);
+    },8000);
   }
 
   // كتابة فورية بدون تأخير — للعمليات الصريحة قليلة التكرار (مثال: إدارة المستخدمين)

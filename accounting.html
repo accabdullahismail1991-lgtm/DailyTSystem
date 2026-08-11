@@ -14110,6 +14110,19 @@ function renderCompanySwitcher(){
 function buildPersistData(){
   return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId,auxImportLog,nxtAuxLogId,journalCCImportLog,nxtJournalCCLogId,docTemplates,nxtDocTplId,branches,nxtBranchId};
 }
+// شعار الشركة (CFG.logo) ومرفقات القيود (entries[].attachment) صور/ملفات base64 — غالباً أكبر
+// حجماً بأضعاف من كل بيانات القيود والحسابات مجتمعة، وتُعاد كاملة في كل مزامنة سحابية طالما
+// التبويب مفتوح ونشِط. تبقى محفوظة محلياً بكامل حجمها (localStorage لا حدود Firestore عليه)،
+// لكنها تُستبعَد من الحمولة السحابية تحديداً — أكبر مساهم فعلي في استهلاك حصة الكتابة اليومية
+// المحدودة بخطة Firebase المجانية (راجع رسالة resource-exhausted عند تجاوزها)
+function buildCloudSyncPayload(data){
+  const cloud=Object.assign({},data);
+  if(cloud.CFG&&cloud.CFG.logo)cloud.CFG=Object.assign({},cloud.CFG,{logo:undefined});
+  if(Array.isArray(cloud.entries)&&cloud.entries.some(function(e){return e.attachment;})){
+    cloud.entries=cloud.entries.map(function(e){return e.attachment?Object.assign({},e,{attachment:undefined}):e;});
+  }
+  return cloud;
+}
 let localDirtySinceBoot=false;
 let __bootDataSnapshot=null;
 let __lastCloudSyncJson=null;
@@ -14122,10 +14135,13 @@ function persist(){
     // إرسال إلى Firestore فقط إذا تغيّرت البيانات فعلياً منذ آخر إرسال — تجنّباً لإرسال
     // نفس البيانات كل 3 ثوانٍ إلى ما لا نهاية طالما التبويب مفتوح (وهو ما كان يُراكم كتابات
     // في طابور Firestore حتى رسالة "Write stream exhausted maximum allowed queued writes"
-    // عند أي تعثّر مؤقت بالشبكة أثناء جلسة طويلة)
-    if(json!==__lastCloudSyncJson){
-      __lastCloudSyncJson=json;
-      try{window.CloudSync&&CloudSync.save(CLOUD_DOC_NAME,data);}catch(e){}
+    // عند أي تعثّر مؤقت بالشبكة أثناء جلسة طويلة). المقارنة هنا على الحمولة السحابية المُخفَّفة
+    // تحديداً (بلا شعار/مرفقات) لا الحمولة الكاملة، فتغيّر الشعار وحده مثلاً لا يُطلق مزامنة إطلاقاً
+    const cloudData=buildCloudSyncPayload(data);
+    const cloudJson=JSON.stringify(cloudData);
+    if(cloudJson!==__lastCloudSyncJson){
+      __lastCloudSyncJson=cloudJson;
+      try{window.CloudSync&&CloudSync.save(CLOUD_DOC_NAME,cloudData);}catch(e){}
     }
     syncActiveCompanyName();
   }catch(e){console.error('persist:',e);}
@@ -14145,9 +14161,10 @@ function forceSyncNow(){
     const data=buildPersistData();
     const json=JSON.stringify(data);
     localStorage.setItem(PERSIST_KEY,json);
-    __lastCloudSyncJson=json;
+    const cloudData=buildCloudSyncPayload(data);
+    __lastCloudSyncJson=JSON.stringify(cloudData);
     if(window.CloudSync&&CloudSync.saveNow){
-      CloudSync.saveNow(CLOUD_DOC_NAME,data).then(function(){
+      CloudSync.saveNow(CLOUD_DOC_NAME,cloudData).then(function(){
         showAlert('✅ تم حفظ ومزامنة كل البيانات فوراً مع قاعدة البيانات السحابية');
       }).catch(function(){
         showAlert('⚠ تم الحفظ محلياً، لكن تعذّرت المزامنة السحابية (تحقق من الاتصال بالإنترنت)','warn');
@@ -14310,10 +14327,23 @@ function initCloudSync(){
     if(localDirtySinceBoot){
       // بيانات محلية جديدة تغيّرت أثناء انتظار السحابة — لا تستبدلها، هي بالفعل قيد المزامنة عبر persist()
     }else if(remote){
+      // الحمولة السحابية لا تتضمن شعار الشركة/مرفقات القيود عمداً (استُبعِدت لتخفيف حجم كل
+      // مزامنة سحابية — راجع buildCloudSyncPayload) فتُستعاد هنا من النسخة المحلية الحالية على
+      // هذا الجهاز تحديداً قبل التطبيق، وإلا فقدها هذا الجهاز رغم بقائها سليمة به محلياً بمجرد
+      // إعادة تحميل الصفحة. يبقى هذا محدوداً بنفس الجهاز فقط: جهاز آخر لم يرفع الشعار/المرفق
+      // بنفسه محلياً من قبل لن يحصل عليه عبر السحابة بعد الآن — أثر مقصود لتخفيف حجم كل إرسال
+      if(remote.CFG&&CFG&&CFG.logo&&!remote.CFG.logo)remote.CFG=Object.assign({},remote.CFG,{logo:CFG.logo});
+      if(Array.isArray(remote.entries)&&Array.isArray(entries)){
+        const localAtt=new Map();
+        entries.forEach(function(e){if(e.attachment)localAtt.set(e.id,e.attachment);});
+        if(localAtt.size)remote.entries=remote.entries.map(function(e){
+          return(!e.attachment&&localAtt.has(e.id))?Object.assign({},e,{attachment:localAtt.get(e.id)}):e;
+        });
+      }
       applyPersistedData(remote);
       const mergedJson=JSON.stringify(buildPersistData());
       try{localStorage.setItem(PERSIST_KEY,mergedJson);}catch(e){}
-      __lastCloudSyncJson=mergedJson;
+      __lastCloudSyncJson=JSON.stringify(buildCloudSyncPayload(buildPersistData()));
       renderAll();
     }else{
       persist();
