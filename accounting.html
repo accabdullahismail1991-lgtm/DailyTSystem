@@ -487,6 +487,7 @@ tbody tr:hover{background:var(--g50)}
  <div class="fgrp"><label>التاريخ *</label><input id="ee-date" type="date"></div>
  <div class="fgrp s2"><label>البيان *</label><input id="ee-desc" type="text"></div>
  <div class="fgrp"><label>المرجع</label><input id="ee-ref" type="text"></div>
+ <div class="fgrp" id="ee-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="ee-branch"><option value="">تلقائي (افتراضي)</option></select></div>
 </div>
 <div style="padding:11px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r)">
  <div class="el-hd">
@@ -924,7 +925,30 @@ tbody tr:hover{background:var(--g50)}
    <button class="btn bg bsm" onclick="expAccXL()">📊</button><button class="btn bo bsm" onclick="expAccPDF()">📄</button>
   </div>
  </div>
- <div class="tw"><table><thead><tr><th>الرمز</th><th>اسم الحساب</th><th>النوع</th><th>المستوى</th><th>السجلات التحليلية</th><th>الرصيد الافتتاحي</th><th>الرصيد الحالي</th><th>إجراءات</th></tr></thead><tbody id="acc-tb"></tbody></table></div>
+ <div id="acc-bulk-bar" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;background:var(--tl2);border:1px solid var(--teal);border-radius:var(--r);margin-bottom:10px">
+  <strong style="font-size:11.5px" id="acc-bulk-count">0 حساب محدَّد</strong>
+  <select id="acc-bulk-type" style="font-size:11px;padding:5px 7px">
+   <option value="">— بلا تغيير —</option>
+   <option value="asset">أصل</option><option value="liability">خصم</option><option value="equity">حقوق ملكية</option>
+   <option value="revenue">إيراد</option><option value="expense">مصروف</option><option value="cost">تكلفة</option>
+  </select>
+  <select id="acc-bulk-cfact" style="font-size:11px;padding:5px 7px">
+   <option value="">— نشاط التدفقات: بلا تغيير —</option>
+   <option value="__auto__">تلقائي (إلغاء التصنيف اليدوي)</option>
+   <option value="operating">🔵 تشغيلية</option><option value="investing">🟣 استثمارية</option><option value="financing">🟢 تمويلية</option>
+  </select>
+  <select id="acc-bulk-bscls" style="font-size:11px;padding:5px 7px">
+   <option value="">— تصنيف الميزانية: بلا تغيير —</option>
+   <option value="__auto__">تلقائي (إلغاء التصنيف اليدوي)</option>
+   <option value="current">متداول</option><option value="noncurrent">غير متداول</option>
+  </select>
+  <button class="btn bp bsm" onclick="applyBulkAccClassify()">✓ تطبيق على المحدَّد</button>
+  <button class="btn bo bsm" onclick="clearAccBulkSelection()">✕ إلغاء التحديد</button>
+ </div>
+ <div class="tw"><table><thead><tr>
+  <th style="width:26px"><input type="checkbox" id="acc-select-all" onchange="toggleAllAccSelect(this.checked)"></th>
+  <th>الرمز</th><th>اسم الحساب</th><th>النوع</th><th>نشاط التدفقات النقدية</th><th>تصنيف الميزانية</th><th>المستوى</th><th>السجلات التحليلية</th><th>الرصيد الافتتاحي</th><th>الرصيد الحالي</th><th>إجراءات</th>
+ </tr></thead><tbody id="acc-tb"></tbody></table></div>
 </div>
 </div>
 
@@ -969,7 +993,7 @@ tbody tr:hover{background:var(--g50)}
    <button class="btn bp bsm" onclick="openNewEntryModal()">✏️ ＋ قيد يومية جديد</button>
   </div>
  </div>
- <div class="tw"><table><thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>المبلغ</th><th>الحسابات</th><th style="color:var(--tl2)">تحليلي</th><th>مرفق</th><th>إجراءات</th></tr></thead><tbody id="ent-tb"></tbody></table></div>
+ <div class="tw"><table><thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>المبلغ</th><th>الحسابات</th><th style="color:var(--tl2)">تحليلي</th><th>🏢 الفرع</th><th>مرفق</th><th>إجراءات</th></tr></thead><tbody id="ent-tb"></tbody></table></div>
 </div>
 </div>
 
@@ -987,6 +1011,7 @@ tbody tr:hover{background:var(--g50)}
   <div class="fgrp"><label>التاريخ *</label><input id="en-dt" type="date"></div>
   <div class="fgrp s2"><label>البيان *</label><input id="en-desc" type="text" placeholder="وصف القيد..."></div>
   <div class="fgrp"><label>المرجع</label><input id="en-ref" type="text" placeholder="INV-001"></div>
+  <div class="fgrp" id="en-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="en-branch"><option value="">تلقائي (افتراضي)</option></select></div>
  </div>
  <div style="padding:11px;background:var(--g50);border:1px solid var(--g200);border-radius:var(--r)">
   <div class="el-hd">
@@ -1978,6 +2003,7 @@ tbody tr:hover{background:var(--g50)}
   <div style="display:flex;gap:6px;align-items:center">
    <input id="cf-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
    <input id="cf-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
+   <select id="cf-branch" onchange="renderCashFlow()" style="display:none;font-size:11px;padding:5px 8px;border:1px solid var(--g200);border-radius:5px"><option value="">🏢 كل الفروع</option></select>
    <button class="btn bp bsm" onclick="renderCashFlow()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';renderCashFlow()">↺</button>
    <button class="btn bo bsm" onclick="printCashFlow()">🖨️ طباعة</button>
@@ -2728,6 +2754,10 @@ let branches=[{id:1,name:"الرياض",active:true},{id:2,name:"جدة",active:
 // "الرياض" (بصرف النظر عمّن أسنده — استيراد أولي أو مطابقة كشف لاحقة)، أو بوصفه (أو وصف أي سطر
 // به) ذكر لـ"ابراهيم" (حركات عهدته) ← فرع الرياض. غير ذلك ← فرع جدة (الفرع الافتراضي للباقي)
 function getEntryBranchId(e){
+  // تعيين يدوي على القيد نفسه (اختيار المستخدم صراحة بنموذج القيد) يُلغي القاعدة التلقائية لهذا
+  // القيد فقط، بشرط أن يشير فعلاً لفرع ما زال موجوداً (لم يُحذَف لاحقاً) — وإلا يُتجاهَل ويُحتكَم
+  // للقاعدة التلقائية كالمعتاد
+  if(e.branchOverride&&branches.some(function(b){return b.id===e.branchOverride;}))return e.branchOverride;
   const riyadh=branches.find(function(b){return b.name==="الرياض";});
   const jeddah=branches.find(function(b){return b.name==="جدة";});
   const riyadhCCRe=/بلاك\s*نايت|الرياض/;
@@ -2743,6 +2773,7 @@ function getEntryBranchId(e){
 // قيد بلا أي إشارة تُحدِّد فرعه فعلياً (لا مركز تكلفة على أي طرف، ولا ذِكر لعهدة إبراهيم) — يُصنَّف
 // فرع جدة تلقائياً بحكم قاعدة "الباقي جدة"، لكنه هنا فعلياً بلا فرع حقيقي، فيستحق مراجعة يدوية
 function isEntryBranchUnlinked(e){
+  if(e.branchOverride&&branches.some(function(b){return b.id===e.branchOverride;}))return false;
   const hasAnyCC=(e.lines||[]).some(function(l){return !!l.costCenterId;});
   const hasIbrahimCustody=/ابراهيم/.test(e.desc||"")||(e.lines||[]).some(function(l){return /ابراهيم/.test(l.desc||"");});
   return !hasAnyCC&&!hasIbrahimCustody;
@@ -3264,9 +3295,23 @@ function calcEnTots(){
 }
 
 
+// يملأ قائمة اختيار الفرع اليدوي بنموذج قيد (جديد أو تعديل) — خيار "تلقائي" أولاً (يعني عدم
+// التعيين، فيُحتكَم لقاعدة التصنيف التلقائي كالمعتاد)، ثم كل فرع مُعرَّف. تُخفى القائمة بالكامل
+// إن لم يوجد أي فرع مُعرَّف بعد
+function populateEntBranchSelect(selId,wrapId,curVal){
+  const wrap=document.getElementById(wrapId);
+  if(wrap) wrap.style.display=(branches&&branches.length)?"flex":"none";
+  const sel=document.getElementById(selId);
+  if(sel&&branches&&branches.length){
+    sel.innerHTML='<option value="">تلقائي (افتراضي)</option>'
+      +branches.filter(function(b){return b.active!==false;}).map(function(b){return '<option value="'+b.id+'">'+b.name+'</option>';}).join("");
+    sel.value=curVal!==undefined?curVal:"";
+  }
+}
 function clrEnt(){
   document.getElementById("en-desc").value="";document.getElementById("en-ref").value="";
   document.getElementById("en-dt").value=today();entLines=[];initLines();
+  populateEntBranchSelect("en-branch","en-branch-wrap","");
 }
 function openNewEntryModal(){
   clrEnt();
@@ -3277,6 +3322,7 @@ function saveEnt(){
   const date=document.getElementById("en-dt").value;
   const desc=document.getElementById("en-desc").value.trim();
   const ref=document.getElementById("en-ref").value.trim();
+  const branchOverride=parseInt((document.getElementById("en-branch")||{}).value)||null;
   const custId=parseInt((document.getElementById("en-ref")||{}).getAttribute("data-cust-id"))||0;
   if(!date){showAlert("يرجى إدخال التاريخ","err");return;}
   const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
@@ -3308,7 +3354,7 @@ function saveEnt(){
   const attachFile=document.getElementById("ent-attach");
   const attachDesc=(document.getElementById("ent-attach-desc")||{}).value||"";
   const newEnt={
-    id:nxtEntId++,date,desc,ref,year:CY,
+    id:nxtEntId++,date,desc,ref,year:CY,branchOverride,
     attachment:null,attachDesc,
     isDraft:!isBalanced||valid.length<2,
     lines:valid.map(function(l){
@@ -3356,7 +3402,8 @@ function openEditEntry(id){
   document.getElementById("ee-date").value=e.date;
   document.getElementById("ee-desc").value=e.desc;
   document.getElementById("ee-ref").value=e.ref||"";
-  ["ee-date","ee-desc","ee-ref"].forEach(function(fid){document.getElementById(fid).disabled=eeLocked;});
+  populateEntBranchSelect("ee-branch","ee-branch-wrap",e.branchOverride||"");
+  ["ee-date","ee-desc","ee-ref","ee-branch"].forEach(function(fid){const el=document.getElementById(fid);if(el)el.disabled=eeLocked;});
   document.getElementById("ee-lock-banner").style.display=eeLocked?"block":"none";
   const saveBtn=document.getElementById("ee-save-btn");if(saveBtn)saveBtn.style.display=eeLocked?"none":"";
   eeLines=e.lines.map(l=>{const a=accounts.find(x=>x.id===l.accId);return{id:gid(),accId:l.accId,lbl:a?(a.code+" - "+a.name):"",desc:l.desc,dr:l.debit,cr:l.credit,subId:l.subId||null,costCenterId:l.costCenterId||null,projectId:l.projectId||null};});
@@ -3419,13 +3466,14 @@ function saveEE(){
   if(eeLocked){showAlert('🔒 هذا القيد مُولَّد تلقائياً — عدّل المستند المصدر بدلاً من ذلك','err');return;}
   const id=parseInt(document.getElementById("ee-id").value);
   const date=document.getElementById("ee-date").value,desc=document.getElementById("ee-desc").value.trim(),ref=document.getElementById("ee-ref").value.trim();
+  const branchOverride=parseInt((document.getElementById("ee-branch")||{}).value)||null;
   if(!date||!desc){showAlert("يرجى إدخال التاريخ والبيان","err");return;}
   const dv=validateEntryDate(date);if(!dv.ok){showAlert(dv.msg,"err");return;}
   const valid=eeLines.filter(l=>l.accId&&((parseFloat(l.dr)||0)+(parseFloat(l.cr)||0)>0));
   const td=valid.reduce((s,l)=>s+(parseFloat(l.dr)||0),0),tc=valid.reduce((s,l)=>s+(parseFloat(l.cr)||0),0);
   if(Math.abs(td-tc)>0.01){showAlert("القيد غير متوازن","err");return;}
   const ent=entries.find(e=>e.id===id);if(!ent)return;
-  ent.date=date;ent.desc=desc;ent.ref=ref;
+  ent.date=date;ent.desc=desc;ent.ref=ref;ent.branchOverride=branchOverride;
   ent.lines=valid.map(l=>({accId:parseInt(l.accId),desc:typeof l.desc==="string"?l.desc:"",debit:parseFloat(l.dr)||0,credit:parseFloat(l.cr)||0,subId:l.subId||null,costCenterId:l.costCenterId||null,projectId:l.projectId||null}));
   CM("m-ee");renderEnts();showAlert("تم تعديل القيد ✓");
 }
@@ -4736,20 +4784,70 @@ function delAcc(id){
 }
 // accQ already declared above
 function filterAccs(q){accQ=q.toLowerCase();renderAccs();}
+let accSelIds=new Set();
+function toggleAccSelect(id,checked){
+  if(checked)accSelIds.add(id);else accSelIds.delete(id);
+  updateAccBulkBar();
+}
+function toggleAllAccSelect(checked){
+  const list=accounts.filter(a=>!accQ||a.code.toLowerCase().includes(accQ)||a.name.toLowerCase().includes(accQ));
+  accSelIds=checked?new Set(list.map(function(a){return a.id;})):new Set();
+  renderAccs();
+}
+function clearAccBulkSelection(){accSelIds=new Set();renderAccs();}
+function updateAccBulkBar(){
+  const bar=document.getElementById("acc-bulk-bar");if(!bar)return;
+  bar.style.display=accSelIds.size?"flex":"none";
+  const cnt=document.getElementById("acc-bulk-count");if(cnt)cnt.textContent=accSelIds.size+" حساب محدَّد";
+}
+// تعديل جماعي: يُطبِّق فقط الحقول التي اختار المستخدم لها قيمة فعلية (وليست "بلا تغيير") على كل
+// الحسابات المحدَّدة دفعة واحدة، بنفس منطق التعديل الفردي بالضبط (typeLocked يُثبَّت عند تغيير
+// النوع فعلياً، فتبقى محمية من إعادة الاستيراد لاحقاً — راجع importCOARows وsaveEditAcc)
+function applyBulkAccClassify(){
+  if(!can('edit')){showAlert('⛔ لا تملك صلاحية تعديل الحسابات','err');return;}
+  if(!accSelIds.size){showAlert("لم يُحدَّد أي حساب","err");return;}
+  const typeVal=(document.getElementById("acc-bulk-type")||{}).value||"";
+  const cfVal=(document.getElementById("acc-bulk-cfact")||{}).value||"";
+  const bsVal=(document.getElementById("acc-bulk-bscls")||{}).value||"";
+  if(!typeVal&&!cfVal&&!bsVal){showAlert("اختر تصنيفاً واحداً على الأقل لتطبيقه","err");return;}
+  if(!confirm("سيُطبَّق هذا على "+accSelIds.size+" حساباً محدَّداً. متابعة؟"))return;
+  let changed=0;
+  accSelIds.forEach(function(id){
+    const acc=accounts.find(function(a){return a.id===id;});if(!acc)return;
+    if(typeVal&&acc.type!==typeVal){acc.type=typeVal;acc.typeLocked=true;}
+    if(cfVal)acc.cfActivity=(cfVal==="__auto__")?null:cfVal;
+    if(bsVal)acc.bsClass=(bsVal==="__auto__")?null:bsVal;
+    changed++;
+  });
+  accounts.sort(function(a,b){return a.code.localeCompare(b.code);});
+  accSelIds=new Set();
+  ["acc-bulk-type","acc-bulk-cfact","acc-bulk-bscls"].forEach(function(id){const el=document.getElementById(id);if(el)el.value="";});
+  renderAccs();
+  showAlert("تم تعديل تصنيف "+changed+" حساباً ✓");
+}
 function renderAccs(){
   try{
 
   const tb=document.getElementById("acc-tb");
   const list=accounts.filter(a=>!accQ||a.code.toLowerCase().includes(accQ)||a.name.toLowerCase().includes(accQ));
-  if(!list.length){tb.innerHTML='<tr><td colspan="8"><div class="empty"><span class="ei">🔍</span><p>لا توجد نتائج</p></div></td></tr>';return;}
+  updateAccBulkBar();
+  const selAllEl=document.getElementById("acc-select-all");
+  if(selAllEl)selAllEl.checked=list.length>0&&list.every(function(a){return accSelIds.has(a.id);});
+  if(!list.length){tb.innerHTML='<tr><td colspan="11"><div class="empty"><span class="ei">🔍</span><p>لا توجد نتائج</p></div></td></tr>';return;}
   const tC={asset:"b1",liability:"b2",equity:"b3",revenue:"b4",cost:"b7",expense:"b5"};
   const subCount=accId=>subLedger.filter(s=>s.mainAccId===accId).length;
   tb.innerHTML=list.map(a=>{
     const lvl=getLevel(a);const bal=getBalance(a.id,true);const sc=subCount(a.id);
+    const leaf=isLeaf(a.id);
+    const cfActCell=leaf?`${CF_ACTIVITY_LABELS[getEffectiveCFActivity(a)]||"—"}${a.cfActivity?' <span title="عُدِّل يدوياً — لن يتغيَّر تلقائياً عند تحديث/استيراد دليل الحسابات" style="font-size:9px">🔒</span>':""}`:'<span style="color:var(--g4)">—</span>';
+    const bsClsCell=(leaf&&(a.type==="asset"||a.type==="liability"))?`${BS_CLASS_LABELS[getEffectiveBSClass(a)]}${a.bsClass?' <span title="عُدِّل يدوياً — لن يتغيَّر تلقائياً عند تحديث/استيراد دليل الحسابات" style="font-size:9px">🔒</span>':""}`:'<span style="color:var(--g4)">—</span>';
     return `<tr class="lv${Math.min(lvl,3)}">
+      <td><input type="checkbox" onchange="toggleAccSelect(${a.id},this.checked)" ${accSelIds.has(a.id)?"checked":""}></td>
       <td><strong style="letter-spacing:1px;font-family:monospace">${fmtCode(a.code)}</strong></td>
       <td class="nm-col" style="padding-right:${11+lvl*14}px">${a.name}</td>
-      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span>${a.typeLocked?` <span title="نوع الحساب عُدِّل يدوياً — لن يُغيَّر تلقائياً عند تحديث/استيراد دليل الحسابات" style="font-size:9px">🔒</span>`:""}${isLeaf(a.id)?`<div style="font-size:8.5px;color:var(--g4);margin-top:2px;white-space:nowrap">${CF_ACTIVITY_LABELS[getEffectiveCFActivity(a)]||""}${a.cfActivity?" (يدوي)":""}${(a.type==="asset"||a.type==="liability")?` · ${BS_CLASS_LABELS[getEffectiveBSClass(a)]}${a.bsClass?" (يدوي)":""}`:""}</div>`:""}</td>
+      <td><span class="bdg ${tC[a.type]}">${TN[a.type]}</span>${a.typeLocked?` <span title="نوع الحساب عُدِّل يدوياً — لن يُغيَّر تلقائياً عند تحديث/استيراد دليل الحسابات" style="font-size:9px">🔒</span>`:""}</td>
+      <td style="font-size:10px;white-space:nowrap">${cfActCell}</td>
+      <td style="font-size:10px;white-space:nowrap">${bsClsCell}</td>
       <td style="font-size:10px;color:var(--g4)">${lvl===0?"جذر":lvl===1?"م.1":lvl===2?"م.2":"م.3+"}</td>
       <td>${sc?`<span class="bdg b6" style="cursor:pointer" onclick="SS('sub',null);filterSubByAcc(${a.id})">${sc} سجل</span>`:"—"}</td>
       <td style="direction:ltr;text-align:left">${fmtNum(a.open)} ${cur()}</td>
@@ -5772,7 +5870,8 @@ function getEffectiveBSClass(a){
 function isProvisionAcc(a){return a&&/مخصص/i.test(a.name);}
 function computeCashFlow(){
   const {from,to}=getCFPeriod();
-  const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to);
+  const branchId=parseInt((document.getElementById("cf-branch")||{}).value)||0;
+  const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to&&(!branchId||getEntryBranchId(e)===branchId));
   const depAccIds=new Set(assets.map(a=>a.depExpAccId).filter(Boolean));
   const cashAccIds=new Set(getCashAccounts().map(a=>a.id));
 
@@ -5804,7 +5903,10 @@ function computeCashFlow(){
   });
   const netIncome=revenue-expense;
   const operating=netIncome+depExpense+provisionChange-arChange+apChange+operatingLiabChange;
-  const investing=-assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to).reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
+  // سجل الأصول الثابتة (assets[]) غير مرتبط بفرع إطلاقاً (لا يوجد بند شراء أصل مُسنَد لقيد
+  // بعينه يمكن تصنيفه)، فيُستبعَد بالكامل عند تفعيل فلتر الفرع بدل تضمين رقم غير مصفّى يخلط
+  // ببيانات مصفّاة، ما كان سيَكسر مطابقة صافي التغيّر مع التغيّر الفعلي بأرصدة النقدية بلا سبب حقيقي
+  const investing=branchId?0:-assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to).reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
   const financing=equityChange+financingLiabChange;
   const netChange=operating+investing+financing;
   const cashAccountNames=getCashAccounts().map(a=>a.code+" — "+a.name);
@@ -5821,8 +5923,18 @@ function cfHeader(label){
   return `<tr style="font-weight:800;background:var(--g50)"><td colspan="2" style="padding-right:14px">${label}</td></tr>`;
 }
 function renderCashFlow(){
+  const branchSel=document.getElementById("cf-branch");
+  if(branchSel){
+    branchSel.style.display=(branches&&branches.length)?"inline-block":"none";
+    if(branches&&branches.length){
+      const cur=branchSel.value;
+      branchSel.innerHTML='<option value="">🏢 كل الفروع</option>'+branches.filter(function(b){return b.active!==false;}).map(function(b){return '<option value="'+b.id+'">'+b.name+'</option>';}).join("");
+      branchSel.value=cur;
+    }
+  }
   const cf=computeCashFlow();
   const body=document.getElementById("cashflow-body");if(!body)return;
+  const branchActive=!!parseInt((document.getElementById("cf-branch")||{}).value);
   const cfr=(label,val)=>`<div class="fs-r s1"><span>${label}</span><span style="direction:ltr;color:${val<0?'var(--rd)':'var(--g8)'}">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)} ${cur()}</span></div>`;
   const cft=(label,val)=>`<div class="fs-r tot"><span>${label}</span><span style="direction:ltr;color:${val<0?'var(--rd)':'var(--gn)'}">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)} ${cur()}</span></div>`;
   body.innerHTML=fsLetterhead("قائمة التدفقات النقدية",cf.from,cf.to)+`
@@ -5835,7 +5947,7 @@ function renderCashFlow(){
       ${cfr((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
       ${cf.operatingLiabChange?cfr((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى (مستحقات، ضرائب...)",cf.operatingLiabChange):''}
       ${cft("صافي النقد من الأنشطة التشغيلية",cf.operating)}
-      <div class="fs-hdr" style="margin-top:10px">الأنشطة الاستثمارية</div>
+      <div class="fs-hdr" style="margin-top:10px">الأنشطة الاستثمارية${branchActive?' <span style="font-weight:400;font-size:9.5px;color:var(--g5)">(سجل الأصول الثابتة غير مرتبط بفرع — مُستبعَد أثناء التصفية بفرع)</span>':''}</div>
       ${cfr("شراء أصول ثابتة",cf.investing)}
       ${cft("صافي النقد من الأنشطة الاستثمارية",cf.investing)}
       <div class="fs-hdr" style="margin-top:10px">الأنشطة التمويلية</div>
@@ -8948,13 +9060,14 @@ function deleteItem(id){
 function renderEnts(){
   try{
 
+  populateEntBranchSelect("en-branch","en-branch-wrap",(document.getElementById("en-branch")||{}).value);
   const tb=document.getElementById("ent-tb");if(!tb)return;
   const list=entries.filter(function(e){
     return !entQ||String(e.id).includes(entQ)||e.date.includes(entQ)||
       e.desc.toLowerCase().includes(entQ)||(e.ref||"").toLowerCase().includes(entQ);
   }).slice().reverse();
   if(!list.length){
-    tb.innerHTML='<tr><td colspan="9"><div class="empty"><span class="ei">📄</span><p>لا توجد قيود</p></div></td></tr>';return;
+    tb.innerHTML='<tr><td colspan="10"><div class="empty"><span class="ei">📄</span><p>لا توجد قيود</p></div></td></tr>';return;
   }
   tb.innerHTML=list.map(function(e){
     const tot=e.lines.reduce(function(s,l){return s+l.debit;},0);
@@ -8969,6 +9082,9 @@ function renderEnts(){
       e.opening?'<span class="bdg b6" style="font-size:8.5px">افتتاحي</span>':"";
     const draftBadge=e.isDraft?'<span class="bdg b5" title="قيد غير متوازن أو ناقص — لا يظهر في ميزان المراجعة أو الأستاذ العام حتى تُكمله" style="font-size:8.5px">⚠ مسودة غير متوازنة</span>':"";
     const attachBadge=e.attachment?'<span title="'+(e.attachDesc||'مرفق')+'" style="cursor:pointer" onclick="viewAttach('+e.id+')">📎</span>':"—";
+    const eBranch=branches.find(function(b){return b.id===getEntryBranchId(e);});
+    const isOverride=!!(e.branchOverride&&branches.some(function(b){return b.id===e.branchOverride;}));
+    const branchCell=eBranch?('<span style="font-size:10px">'+eBranch.name+(isOverride?' <span title="مُعيَّن يدوياً" style="color:var(--tl2)">✋</span>':'')+'</span>'):'<span style="font-size:10px;color:var(--g4)">—</span>';
     return '<tr>'+
       '<td><strong>'+e.id+'</strong> '+typ+' '+draftBadge+'</td>'+
       '<td>'+fmtDate(e.date)+'</td>'+
@@ -8977,6 +9093,7 @@ function renderEnts(){
       '<td style="font-weight:800">'+fmtDisp(tot)+' '+cur()+'</td>'+
       '<td style="font-size:10.5px;color:var(--g5);max-width:120px">'+accs+'</td>'+
       '<td style="font-size:10.5px;color:var(--tl2);max-width:120px">'+( subs||"—")+'</td>'+
+      '<td>'+branchCell+'</td>'+
       '<td style="text-align:center">'+attachBadge+'</td>'+
       '<td style="white-space:nowrap">'+
       '<button class="btn bo bxs" onclick="openEditEntry('+e.id+')">✏️</button>'+
@@ -9203,14 +9320,29 @@ function renderUnlinkedBranchEntries(){
   const el=document.getElementById("branch-unlinked-tb");if(!el)return;
   const rows=postedEntries().filter(isEntryBranchUnlinked).sort(function(a,b){return b.date.localeCompare(a.date);});
   if(!rows.length){el.innerHTML='<div class="empty"><span class="ei">✅</span><p>لا توجد عمليات غير مرتبطة — كل القيود لها إشارة تُحدِّد فرعها</p></div>';return;}
-  el.innerHTML='<div class="tw"><table><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>القيد#</th><th>فرعها الحالي (افتراضي)</th><th></th></tr></thead><tbody>'
+  el.innerHTML='<div class="tw"><table><thead><tr><th>التاريخ</th><th>المرجع</th><th>البيان</th><th>القيد#</th><th>فرعها الحالي (افتراضي)</th><th>تعيين فرع مباشرة</th><th></th></tr></thead><tbody>'
     +rows.map(function(e){
       const b=branches.find(function(x){return x.id===getEntryBranchId(e);});
+      const selId="unlinked-branch-"+e.id;
+      const branchOpts='<option value="">— اختر فرعاً —</option>'
+        +branches.filter(function(x){return x.active!==false;}).map(function(x){return '<option value="'+x.id+'">'+x.name+'</option>';}).join('');
       return '<tr><td>'+fmtDate(e.date)+'</td><td style="font-family:monospace;color:var(--g4)">'+(e.ref||'—')+'</td><td>'+(e.desc||'')+'</td>'
         +'<td>#'+e.id+'</td><td>'+(b?b.name:'—')+'</td>'
+        +'<td><select id="'+selId+'" style="font-size:10.5px;padding:3px 6px;border:1px solid var(--g200);border-radius:4px">'+branchOpts+'</select> '
+        +'<button class="btn bp bxs" onclick="assignBranchOverride('+e.id+',parseInt((document.getElementById(\''+selId+'\')||{}).value)||null)">✓ تعيين</button></td>'
         +'<td><button class="btn bo bxs" onclick="openEditEntry('+e.id+')">👁 مراجعة</button></td></tr>';
     }).join('')
     +'</tbody></table></div>';
+}
+// تعيين فرع مباشرة من تقرير "العمليات غير المرتبطة" دون فتح نافذة تعديل القيد كاملة — نفس آلية
+// التعيين اليدوي (branchOverride) المتاحة بنموذج القيد تماماً، فيَختفي القيد من هذا التقرير فوراً
+// بعد التعيين (لم يعد بلا إشارة تُحدِّد فرعه) ويظهر ضمن عدد حركات الفرع المُعيَّن بشاشة الفروع
+function assignBranchOverride(entryId,branchId){
+  if(!branchId){showAlert("يرجى اختيار فرع أولاً","err");return;}
+  const e=entries.find(function(x){return x.id===entryId;});if(!e)return;
+  e.branchOverride=branchId;
+  renderUnlinkedBranchEntries();renderBranches();
+  showAlert("تم تعيين الفرع ✓");
 }
 function openBranchForm(id){
   const b=id?branches.find(function(x){return x.id===id;}):null;
@@ -12653,7 +12785,14 @@ function injectPrintCSS(){
 @media print {
   body * { visibility: hidden !important; }
   #a4-print-frame, #a4-print-frame * { visibility: visible !important; }
-  #a4-print-frame { position:fixed; top:0; left:0; width:100%; height:100%; }
+  /* position:fixed كان يُثبِّت الإطار داخل ارتفاع صفحة واحدة فقط (بحكم طبيعة fixed المرتبطة
+     بحدود العرض المرئي/الصفحة)، فيُقتَص أي محتوى يتجاوزها بالكامل بدل الانتقال لصفحة تالية —
+     أي تقرير مطبوع بعدد حركات كافٍ لتجاوز صفحة A4 واحدة (تفاصيل مركز تكلفة أو فرع مثلاً) كان
+     يُطبَع ناقصاً بصمت دون أي تنبيه. absolute (بلا ارتفاع مُقيَّد) يُخرِج الإطار من التدفق
+     الطبيعي بنفس الأثر (تفادي انزياحه لأسفل خلف محتوى الصفحة المخفي visibility:hidden الذي
+     يبقى رغم ذلك شاغلاً لمساحته الطبيعية) لكن دون تقييد ارتفاعه، فيتوزّع محتواه الفعلي على
+     عدة صفحات طباعة طبيعياً كالمعتاد */
+  #a4-print-frame { position:absolute; top:0; left:0; width:100%; }
   @page { margin: 15mm 12mm; size: A4 portrait; }
 }
 #a4-print-frame {
