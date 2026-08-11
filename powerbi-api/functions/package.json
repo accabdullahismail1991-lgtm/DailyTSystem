@@ -1,0 +1,20 @@
+{
+  "name": "powerbi-api",
+  "description": "واجهة API وسيطة تعرض بيانات نظام المحاسبة (المخزَّنة بـFirestore) كجداول منظَّمة يستطيع Power BI قراءتها مباشرة (Get Data → Web).",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.1.0",
+    "firebase-functions": "^5.0.0"
+  },
+  "private": true
+}
