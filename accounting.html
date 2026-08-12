@@ -178,6 +178,7 @@ tbody tr:hover{background:var(--g50)}
 .sc2.c-purple .sc2-ic{background:#ede9fe;color:#6d28d9}
 .sc2.c-amber .sc2-ic{background:#fef3c7;color:#b45309}
 .sc2.c-teal .sc2-ic{background:var(--tp);color:var(--tl2)}
+.sc2.c-indigo .sc2-ic{background:#e0e7ff;color:#4338ca}
 /* ── Tabs ── */
 .tabs{display:flex;gap:2px;margin-bottom:12px;border-bottom:2px solid var(--g200)}
 .tab{padding:6px 14px;font-size:11.5px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--g5);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .11s;font-family:inherit}
@@ -467,6 +468,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    <option value="operating">🔵 أنشطة تشغيلية</option>
    <option value="investing">🟣 أنشطة استثمارية</option>
    <option value="financing">🟢 أنشطة تمويلية</option>
+   <option value="noncash">⚪ بند غير نقدي (إهلاك/مخصصات)</option>
   </select>
   <div id="ea-cfact-hint" style="font-size:10px;color:var(--g4);margin-top:3px"></div>
  </div>
@@ -945,6 +947,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
     <option value="operating">🔵 أنشطة تشغيلية</option>
     <option value="investing">🟣 أنشطة استثمارية</option>
     <option value="financing">🟢 أنشطة تمويلية</option>
+    <option value="noncash">⚪ بند غير نقدي (إهلاك/مخصصات)</option>
    </select>
   </div>
   <div class="fgrp s2"><label>تصنيف الميزانية (متداول/غير متداول)</label>
@@ -976,6 +979,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    <option value="">— نشاط التدفقات: بلا تغيير —</option>
    <option value="__auto__">تلقائي (إلغاء التصنيف اليدوي)</option>
    <option value="operating">🔵 تشغيلية</option><option value="investing">🟣 استثمارية</option><option value="financing">🟢 تمويلية</option>
+   <option value="noncash">⚪ بند غير نقدي</option>
   </select>
   <select id="acc-bulk-bscls" style="font-size:11px;padding:5px 7px">
    <option value="">— تصنيف الميزانية: بلا تغيير —</option>
@@ -1248,6 +1252,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
  <div class="chd">
   <div class="ct"><div class="ti">📈</div>مؤشرات الأداء والتوجهات العامة</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bp bsm" onclick="populateKpiDimSelects();renderKpi()">🔄 عرض</button>
    <button class="btn bg bsm" onclick="expKpiXL()">📊 Excel</button>
    <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة</button>
   </div>
@@ -1258,6 +1263,27 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <button class="btn bo bsm" onclick="setKpiPeriod('month')" style="align-self:flex-end">📅 هذا الشهر</button>
   <button class="btn bo bsm" onclick="setKpiPeriod('year')" style="align-self:flex-end">📅 السنة الحالية</button>
   <button class="btn bo bsm" onclick="setKpiPeriod('all')" style="align-self:flex-end">📅 كل الفترات</button>
+ </div>
+ <div id="kpi-dim-row" style="display:none;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:flex-end;padding:14px 16px;background:#f8fafc;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:4px">
+  <div class="fgrp">
+   <label>🏢 الفرع</label>
+   <select id="kpi-branch" onchange="renderKpi()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
+    <option value="">— كل الفروع —</option>
+   </select>
+  </div>
+  <div class="fgrp">
+   <label>🏗️ المشروع</label>
+   <select id="kpi-proj" onchange="renderKpi()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
+    <option value="">— كل المشاريع —</option>
+   </select>
+  </div>
+  <div class="fgrp">
+   <label>🏷️ مركز التكلفة</label>
+   <select id="kpi-cc" onchange="renderKpi()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)">
+    <option value="">— كل مراكز التكلفة —</option>
+   </select>
+  </div>
+  <button class="btn bo bsm" onclick="document.getElementById('kpi-branch').value='';document.getElementById('kpi-proj').value='';document.getElementById('kpi-cc').value='';renderKpi()">↺ مسح فلاتر الأبعاد</button>
  </div>
 </div>
 <div id="kpi-body"></div>
@@ -3123,7 +3149,7 @@ let inventoryMethod = "periodic";
 let invAdjustments = [], nxtInvAdjId = 1;
 let invAdjLines = [];
 let itemUomAlts = [];
-const CF_ACTIVITY_LABELS={operating:"🔵 تشغيلية",investing:"🟣 استثمارية",financing:"🟢 تمويلية",cash:"💵 نقدية"};
+const CF_ACTIVITY_LABELS={operating:"🔵 تشغيلية",investing:"🟣 استثمارية",financing:"🟢 تمويلية",cash:"💵 نقدية",noncash:"⚪ بند غير نقدي (إهلاك/مخصصات)"};
 const BS_CLASS_LABELS={current:"متداول",noncurrent:"غير متداول"};
 // "ال" أداة التعريف قد تفصل الكلمة الدالة عن سابقتها مباشرة (مثال حقيقي: "الأصول غير المتداولة"
 // وليس "غير متداولة") — لذا (ال)?\s* اختيارية قبل كل كلمة دالة، لا تُفترض ملاصقة كاملة بلا أداة تعريف
@@ -4203,7 +4229,7 @@ function SS(id,btn){
   if(id==="sub")  renderSub(subType);
   if(id==="rpt")  renderRptHub();
   if(id==="audit")renderAudit();
-  if(id==="kpi")  renderKpi();
+  if(id==="kpi")  {populateKpiDimSelects();renderKpi();}
   if(id==="ccimport")renderCCImportLog();
   if(id==="ent")  {renderEnts();if(!entLines.length)initLines();}
   if(id==="lg")   renderLg();
@@ -4648,41 +4674,62 @@ function renderDash(){
 }
 
 // ═══ KPI / PERFORMANCE INDICATORS DASHBOARD ═══
-function getKpiData(fromD,toD){
+// فاتورة مرتبطة بفرع/مركز تكلفة/مشروع فقط عبر القيد المحاسبي المُولَّد لها (لا حقول أبعاد
+// مباشرة على الفاتورة نفسها) — بلا فلتر أبعاد نشط تُعتبر مطابقة دوماً؛ ومع فلتر نشط، فاتورة
+// بلا قيد مرتبط (حالة قديمة نادرة) تُستبعَد لعدم إمكان تصنيفها
+function kpiInvoiceMatchesDim(inv,ccId,projId,branchId){
+  if(!ccId&&!projId&&!branchId)return true;
+  const e=entries.find(function(x){return x.id===inv.entryId;});
+  if(!e)return false;
+  if(branchId&&getEntryBranchId(e)!==branchId)return false;
+  if(ccId&&!(e.lines||[]).some(function(l){return l.costCenterId===ccId;}))return false;
+  if(projId&&!(e.lines||[]).some(function(l){return l.projectId===projId;}))return false;
+  return true;
+}
+function getKpiData(fromD,toD,ccId,projId,branchId){
   const inRange=function(d){return (!fromD||d>=fromD)&&(!toD||d<=toD);};
+  const hasDim=!!(ccId||projId||branchId);
 
-  const salesInv=salesInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&inRange(i.date);});
-  const salesRet=salesInvoices.filter(function(i){return i.status==='posted'&&i.isReturn&&inRange(i.date);});
+  const salesInv=salesInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&inRange(i.date)&&kpiInvoiceMatchesDim(i,ccId,projId,branchId);});
+  const salesRet=salesInvoices.filter(function(i){return i.status==='posted'&&i.isReturn&&inRange(i.date)&&kpiInvoiceMatchesDim(i,ccId,projId,branchId);});
   const salesInvTotal=salesInv.reduce(function(s,i){return s+i.total;},0)-salesRet.reduce(function(s,i){return s+i.total;},0);
   const salesCount=salesInv.length;
   const avgSaleInv=salesCount?salesInvTotal/salesCount:0;
 
-  const purInv=purchaseInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&inRange(i.date);});
-  const purRet=purchaseInvoices.filter(function(i){return i.status==='posted'&&i.isReturn&&inRange(i.date);});
+  const purInv=purchaseInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&inRange(i.date)&&kpiInvoiceMatchesDim(i,ccId,projId,branchId);});
+  const purRet=purchaseInvoices.filter(function(i){return i.status==='posted'&&i.isReturn&&inRange(i.date)&&kpiInvoiceMatchesDim(i,ccId,projId,branchId);});
   const purInvTotal=purInv.reduce(function(s,i){return s+i.total;},0)-purRet.reduce(function(s,i){return s+i.total;},0);
   const purCount=purInv.length;
 
   // مبيعات/مشتريات مُسجَّلة كقيود يومية مباشرة (بدون المرور بشاشة الفواتير) — كانت تقارير المبيعات
   // تتجاهلها كلياً وتقتصر على الفواتير فقط. هنا نضيفها لإجمالي المبيعات/المشتريات (وليس للعدد أو
   // متوسط الفاتورة — هذان مفهوم خاص بالفواتير تحديداً ولا معنى لحسابه من قيد يدوي). القيود
-  // المرتبطة أصلاً بفاتورة (inv.entryId) تُستثنى لتفادي الاحتساب المزدوج، فهي محسوبة أعلاه فعلاً
+  // المرتبطة أصلاً بفاتورة (inv.entryId) تُستثنى لتفادي الاحتساب المزدوج، فهي محسوبة أعلاه فعلاً.
+  // فلتر الأبعاد يُطبَّق على مستوى السطر (مركز التكلفة/المشروع) والقيد (الفرع)، كباقي التقارير
   const invoiceEntryIds=new Set();
   salesInvoices.forEach(function(i){if(i.entryId)invoiceEntryIds.add(i.entryId);});
   purchaseInvoices.forEach(function(i){if(i.entryId)invoiceEntryIds.add(i.entryId);});
-  let revenue=0,expense=0,manualSales=0,manualPur=0;
-  postedEntries().filter(function(e){return inRange(e.date);}).forEach(function(e){
+  let revenue=0,expense=0,cogs=0,manualSales=0,manualPur=0;
+  postedEntries().filter(function(e){return inRange(e.date)&&(!branchId||getEntryBranchId(e)===branchId);}).forEach(function(e){
     const isManual=!invoiceEntryIds.has(e.id);
     e.lines.forEach(function(l){
+      if(ccId&&l.costCenterId!==ccId)return;
+      if(projId&&l.projectId!==projId)return;
       const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
       if(acc.type==='revenue'){const amt=(l.credit||0)-(l.debit||0);revenue+=amt;if(isManual)manualSales+=amt;}
-      if(acc.type==='expense'||acc.type==='cost'){const amt=(l.debit||0)-(l.credit||0);expense+=amt;if(isManual)manualPur+=amt;}
+      if(acc.type==='cost'){const amt=(l.debit||0)-(l.credit||0);cogs+=amt;expense+=amt;if(isManual)manualPur+=amt;}
+      if(acc.type==='expense'){const amt=(l.debit||0)-(l.credit||0);expense+=amt;if(isManual)manualPur+=amt;}
     });
   });
   const salesTotal=salesInvTotal+manualSales;
   const purTotal=purInvTotal+manualPur;
   const netProfit=revenue-expense;
   const profitMargin=revenue?(netProfit/revenue*100):0;
+  const grossMargin=revenue?((revenue-cogs)/revenue*100):null;
 
+  // النقدية/الذمم/المخزون/الأصول الثابتة أرصدة لحظية إجمالية على مستوى الشركة، ولا يمكن نسبتها
+  // تاريخياً لبُعد تحليلي معيّن (فرع/مركز تكلفة/مشروع) — تبقى بالإجمالي العام دوماً بصرف النظر
+  // عن فلاتر الأبعاد، مع الإشارة لذلك بواجهة العرض حين يكون أحدها نشطاً
   const cashAccs=getCashAccounts();
   const cashBalance=cashAccs.reduce(function(s,a){return s+getBalance(a.id,false);},0);
   const rcv=vouchers.filter(function(v){return v.type==='receipt'&&v.status==='posted'&&inRange(v.date);}).reduce(function(s,v){return s+v.amount;},0);
@@ -4706,8 +4753,41 @@ function getKpiData(fromD,toD){
   salesInv.forEach(function(i){custTotals[i.customer]=(custTotals[i.customer]||0)+i.total;});
   const topCustomers=Object.entries(custTotals).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
 
-  return {salesTotal,salesCount,avgSaleInv,purTotal,purCount,revenue,expense,netProfit,profitMargin,
-    cashBalance,netCashFlow,rcv,pmt,arTotal,apTotal,invValue,lowStockCount,fixedAssetsNBV,topCustomers};
+  // ── نسب مالية بمعايير التحليل المالي الدولية (سيولة/ربحية/كفاءة تشغيلية/رافعة مالية) ──
+  // تُحتسَب الأصول/الخصوم/حقوق الملكية بنفس فلاتر الفترة والأبعاد أعلاه (كالقوائم المالية عند
+  // تصفيتها بفرع) — بلا أي فلتر تُمثِّل الأرصدة الفعلية الكاملة، ومع فلتر تُمثِّل صافي الحركة
+  // المنسوبة لذلك البُعد فقط (لا يمكن نسبة الرصيد الافتتاحي لبُعد معيّن)
+  const asN=getTree("asset",null,fromD,toD,branchId,ccId,projId);
+  const laN=getTree("liability",null,fromD,toD,branchId,ccId,projId);
+  const eqN=getTree("equity",null,fromD,toD,branchId,ccId,projId);
+  const tA=asN.reduce(function(s,n){return s+n.bal;},0);
+  const tL=laN.reduce(function(s,n){return s+Math.abs(n.bal);},0);
+  const tE=eqN.reduce(function(s,n){return s+Math.abs(n.bal);},0);
+  const asSplit=fsSplitTreeByClass(asN),laSplit=fsSplitTreeByClass(laN);
+  const asCur=asSplit.current.reduce(function(s,n){return s+n.bal;},0);
+  const laCur=laSplit.current.reduce(function(s,n){return s+Math.abs(n.bal);},0);
+
+  const periodDays=(fromD&&toD)?(Math.round((new Date(toD+'T00:00:00')-new Date(fromD+'T00:00:00'))/86400000)+1):null;
+  const ratios={
+    currentRatio: laCur?(asCur/laCur):null,
+    quickRatio: laCur?((asCur-invValue)/laCur):null,
+    cashRatio: laCur?(cashBalance/laCur):null,
+    workingCapital: asCur-laCur,
+    grossMargin: grossMargin,
+    netMargin: profitMargin,
+    roa: tA?(netProfit/tA*100):null,
+    roe: tE?(netProfit/tE*100):null,
+    debtRatio: tA?(tL/tA*100):null,
+    debtToEquity: tE?(tL/tE):null,
+    dso: (periodDays&&salesTotal)?(arTotal/salesTotal*periodDays):null,
+    dpo: (periodDays&&purTotal)?(apTotal/purTotal*periodDays):null,
+    inventoryTurnover: (cogs&&invValue)?(cogs/invValue):null,
+    dio: (periodDays&&cogs)?(invValue/cogs*periodDays):null,
+  };
+
+  return {salesTotal,salesCount,avgSaleInv,purTotal,purCount,revenue,expense,cogs,netProfit,profitMargin,grossMargin,
+    cashBalance,netCashFlow,rcv,pmt,arTotal,apTotal,invValue,lowStockCount,fixedAssetsNBV,topCustomers,
+    tA,tL,tE,asCur,laCur,ratios,hasDim};
 }
 function getPrevPeriod(fromD,toD){
   if(!fromD||!toD)return null;
@@ -4731,12 +4811,20 @@ function setKpiPeriod(mode){
   }
   renderKpi();
 }
+function currentKpiDims(){
+  return {
+    ccId:parseInt((document.getElementById('kpi-cc')||{}).value)||0,
+    projId:parseInt((document.getElementById('kpi-proj')||{}).value)||0,
+    branchId:parseInt((document.getElementById('kpi-branch')||{}).value)||0,
+  };
+}
 function renderKpi(){
   const fromD=(document.getElementById('kpi-from')||{}).value||'';
   const toD=(document.getElementById('kpi-to')||{}).value||'';
-  const k=getKpiData(fromD,toD);
+  const dims=currentKpiDims();
+  const k=getKpiData(fromD,toD,dims.ccId,dims.projId,dims.branchId);
   const prevP=getPrevPeriod(fromD,toD);
-  const prevK=prevP?getKpiData(prevP.from,prevP.to):null;
+  const prevK=prevP?getKpiData(prevP.from,prevP.to,dims.ccId,dims.projId,dims.branchId):null;
   const growth=function(a,b){if(!prevK||!b)return null;return ((a-b)/Math.abs(b))*100;};
 
   const el=document.getElementById('kpi-body');if(!el)return;
@@ -4751,6 +4839,17 @@ function renderKpi(){
       +'<div class="sc2-vl">'+(isCurrency?fmtDisp(val):val)+'</div>'
       +'<div class="sc2-sub">'+(isCurrency?cur()+' ':'')+growthBadge(growthVal)+'</div></div></div>';
   }
+  function rcard(ic,lb,valStr,cl,sub){
+    return '<div class="sc2 c-'+cl+'"><div class="sc2-ic">'+ic+'</div>'
+      +'<div class="sc2-body"><div class="sc2-lb">'+lb+'</div>'
+      +'<div class="sc2-vl">'+valStr+'</div>'
+      +'<div class="sc2-sub">'+(sub||'')+'</div></div></div>';
+  }
+  const rV=function(v){return (v===null||v===undefined||!isFinite(v))?'—':v.toFixed(2);};
+  const rPct=function(v){return (v===null||v===undefined||!isFinite(v))?'—':v.toFixed(1)+'%';};
+  const rDays=function(v){return (v===null||v===undefined||!isFinite(v))?'—':Math.round(v)+' يوم';};
+  const dimNote=k.hasDim?'<span style="font-weight:400;font-size:9.5px;color:var(--g5)">(الأرصدة اللحظية إجمالية على مستوى الشركة ولا يمكن نسبتها لبُعد تحليلي معيّن)</span>':'';
+  const ratioNote=(!fromD||!toD)?'<span style="font-weight:400;font-size:9.5px;color:var(--g5)">(حدِّد فترة "من/إلى" لاحتساب مؤشرات الأيام مثل متوسط التحصيل)</span>':'';
 
   let html='<div class="card"><div class="chd"><div class="ct"><div class="ti">🟢</div>المبيعات</div></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
@@ -4765,15 +4864,40 @@ function renderKpi(){
     +card('🧾','عدد الفواتير',k.purCount,'amber',null,false)
     +'</div></div>';
 
-  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">💰</div>الربحية</div></div>'
+  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">💰</div>الربحية (Profitability)</div></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
     +card('📈','الإيرادات',k.revenue,'green',null,true)
     +card('📉','المصروفات',k.expense,'red',null,true)
     +card('💰',k.netProfit>=0?'صافي الربح':'صافي الخسارة',Math.abs(k.netProfit),k.netProfit>=0?'green':'red',growth(k.netProfit,prevK?prevK.netProfit:null),true)
-    +card('📐','هامش الربح',k.profitMargin.toFixed(1)+'%','purple',null,false)
+    +rcard('📐','هامش الربح الإجمالي',rPct(k.ratios.grossMargin),'purple')
+    +rcard('📐','هامش الربح الصافي',rPct(k.ratios.netMargin),'purple')
+    +rcard('🏛️','العائد على الأصول ROA',rPct(k.ratios.roa),'indigo')
+    +rcard('🏛️','العائد على حقوق الملكية ROE',rPct(k.ratios.roe),'indigo')
     +'</div></div>';
 
-  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">🏦</div>النقدية والذمم</div></div>'
+  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">💧</div>السيولة (Liquidity)</div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
+    +rcard('💧','نسبة التداول Current Ratio',rV(k.ratios.currentRatio),'blue')
+    +rcard('⚡','النسبة السريعة Quick Ratio',rV(k.ratios.quickRatio),'teal')
+    +rcard('💵','نسبة النقدية Cash Ratio',rV(k.ratios.cashRatio),'green')
+    +card('📊','رأس المال العامل',k.ratios.workingCapital,k.ratios.workingCapital>=0?'green':'red',null,true)
+    +'</div></div>';
+
+  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">⚙️</div>الكفاءة التشغيلية (Efficiency)</div><span>'+ratioNote+'</span></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
+    +rcard('📥','متوسط فترة التحصيل DSO',rDays(k.ratios.dso),'amber')
+    +rcard('📤','متوسط فترة السداد DPO',rDays(k.ratios.dpo),'purple')
+    +rcard('🔄','معدل دوران المخزون',rV(k.ratios.inventoryTurnover)+'×','teal')
+    +rcard('📦','متوسط أيام بقاء المخزون DIO',rDays(k.ratios.dio),'blue')
+    +'</div></div>';
+
+  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">⚖️</div>الرافعة المالية والملاءة (Leverage &amp; Solvency)</div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
+    +rcard('⚖️','نسبة المديونية Debt Ratio',rPct(k.ratios.debtRatio),'red')
+    +rcard('⚖️','الدين لحقوق الملكية D/E',rV(k.ratios.debtToEquity),'amber')
+    +'</div></div>';
+
+  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">🏦</div>النقدية والذمم</div><span>'+dimNote+'</span></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
     +card('🏦','رصيد النقدية الحالي',k.cashBalance,'blue',null,true)
     +card('↔️','صافي التدفق النقدي (الفترة)',Math.abs(k.netCashFlow),k.netCashFlow>=0?'green':'red',null,true)
@@ -4781,7 +4905,7 @@ function renderKpi(){
     +card('🏭','ذمم دائنة (موردون)',k.apTotal,'purple',null,true)
     +'</div></div>';
 
-  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">📦</div>المخزون والأصول</div></div>'
+  html+='<div class="card"><div class="chd"><div class="ct"><div class="ti">📦</div>المخزون والأصول</div><span>'+dimNote+'</span></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px">'
     +card('📦','قيمة المخزون',k.invValue,'teal',null,true)
     +card('⚠️','أصناف منخفضة المخزون',k.lowStockCount,k.lowStockCount?'red':'green',null,false)
@@ -4798,20 +4922,23 @@ function renderKpi(){
   const months=[];for(let m=1;m<=12;m++)months.push(CY+'-'+String(m).padStart(2,'0'));
   const salesByMonth={},purByMonth={};
   months.forEach(function(m){salesByMonth[m]=0;purByMonth[m]=0;});
-  salesInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn;}).forEach(function(i){
+  salesInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&kpiInvoiceMatchesDim(i,dims.ccId,dims.projId,dims.branchId);}).forEach(function(i){
     const mk=(i.date||'').slice(0,7);if(mk in salesByMonth)salesByMonth[mk]+=i.total;
   });
-  purchaseInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn;}).forEach(function(i){
+  purchaseInvoices.filter(function(i){return i.status==='posted'&&!i.isReturn&&kpiInvoiceMatchesDim(i,dims.ccId,dims.projId,dims.branchId);}).forEach(function(i){
     const mk=(i.date||'').slice(0,7);if(mk in purByMonth)purByMonth[mk]+=i.total;
   });
   // مبيعات/مشتريات مُسجَّلة كقيود يومية مباشرة (بدون فاتورة) — تُضاف لنفس الرسم البياني الشهري
-  // بنفس منطق getKpiData أعلاه، باستثناء القيود المرتبطة أصلاً بفاتورة لتفادي الاحتساب المزدوج
+  // بنفس منطق getKpiData أعلاه، باستثناء القيود المرتبطة أصلاً بفاتورة لتفادي الاحتساب المزدوج،
+  // وبنفس فلاتر الأبعاد (فرع/مركز تكلفة/مشروع) المختارة أعلى الشاشة
   const kpiInvEntryIds=new Set();
   salesInvoices.forEach(function(i){if(i.entryId)kpiInvEntryIds.add(i.entryId);});
   purchaseInvoices.forEach(function(i){if(i.entryId)kpiInvEntryIds.add(i.entryId);});
-  postedEntries().filter(function(e){return !kpiInvEntryIds.has(e.id);}).forEach(function(e){
+  postedEntries().filter(function(e){return !kpiInvEntryIds.has(e.id)&&(!dims.branchId||getEntryBranchId(e)===dims.branchId);}).forEach(function(e){
     const mk=(e.date||'').slice(0,7);if(!(mk in salesByMonth))return;
     e.lines.forEach(function(l){
+      if(dims.ccId&&l.costCenterId!==dims.ccId)return;
+      if(dims.projId&&l.projectId!==dims.projId)return;
       const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
       if(acc.type==='revenue')salesByMonth[mk]+=(l.credit||0)-(l.debit||0);
       if(acc.type==='expense'||acc.type==='cost')purByMonth[mk]+=(l.debit||0)-(l.credit||0);
@@ -4832,13 +4959,32 @@ function expKpiXL(){
   if(typeof XLSX==='undefined'){showAlert('مكتبة Excel غير محملة','err');return;}
   const fromD=(document.getElementById('kpi-from')||{}).value||'';
   const toD=(document.getElementById('kpi-to')||{}).value||'';
-  const k=getKpiData(fromD,toD);
-  const data=[['مؤشرات الأداء والتوجهات العامة — '+CFG.name],['الفترة: '+(fromD||'البداية')+' إلى '+(toD||'اليوم')],[],
+  const dims=currentKpiDims();
+  const k=getKpiData(fromD,toD,dims.ccId,dims.projId,dims.branchId);
+  const rV=function(v){return (v===null||v===undefined||!isFinite(v))?'—':v.toFixed(2);};
+  const rPct=function(v){return (v===null||v===undefined||!isFinite(v))?'—':v.toFixed(1)+'%';};
+  const rDays=function(v){return (v===null||v===undefined||!isFinite(v))?'—':Math.round(v)+' يوم';};
+  const dimLine=[
+    dims.branchId?'الفرع: '+((branches.find(function(b){return b.id===dims.branchId;})||{}).name||''):'',
+    dims.projId?'المشروع: '+((projects.find(function(p){return p.id===dims.projId;})||{}).name||''):'',
+    dims.ccId?'مركز التكلفة: '+((costCenters.find(function(c){return c.id===dims.ccId;})||{}).name||''):'',
+  ].filter(Boolean).join(' | ');
+  const data=[['مؤشرات الأداء والتوجهات العامة — '+CFG.name],['الفترة: '+(fromD||'البداية')+' إلى '+(toD||'اليوم')],
+    dimLine?['الأبعاد المُصفَّاة: '+dimLine]:[],[],
     ['المؤشر','القيمة'],
     ['إجمالي المبيعات',k.salesTotal],['عدد فواتير المبيعات',k.salesCount],['متوسط قيمة الفاتورة',k.avgSaleInv],
     ['إجمالي المشتريات',k.purTotal],['عدد فواتير المشتريات',k.purCount],
     ['إجمالي الإيرادات',k.revenue],['إجمالي المصروفات',k.expense],
-    [k.netProfit>=0?'صافي الربح':'صافي الخسارة',Math.abs(k.netProfit)],['هامش الربح %',k.profitMargin.toFixed(2)],
+    [k.netProfit>=0?'صافي الربح':'صافي الخسارة',Math.abs(k.netProfit)],
+    [],['— النسب المالية الدولية —',''],
+    ['هامش الربح الإجمالي %',rPct(k.ratios.grossMargin)],['هامش الربح الصافي %',rPct(k.ratios.netMargin)],
+    ['العائد على الأصول ROA %',rPct(k.ratios.roa)],['العائد على حقوق الملكية ROE %',rPct(k.ratios.roe)],
+    ['نسبة التداول Current Ratio',rV(k.ratios.currentRatio)],['النسبة السريعة Quick Ratio',rV(k.ratios.quickRatio)],
+    ['نسبة النقدية Cash Ratio',rV(k.ratios.cashRatio)],['رأس المال العامل',k.ratios.workingCapital],
+    ['متوسط فترة التحصيل DSO',rDays(k.ratios.dso)],['متوسط فترة السداد DPO',rDays(k.ratios.dpo)],
+    ['معدل دوران المخزون',rV(k.ratios.inventoryTurnover)],['متوسط أيام بقاء المخزون DIO',rDays(k.ratios.dio)],
+    ['نسبة المديونية Debt Ratio %',rPct(k.ratios.debtRatio)],['الدين لحقوق الملكية D/E',rV(k.ratios.debtToEquity)],
+    [],
     ['رصيد النقدية الحالي',k.cashBalance],['صافي التدفق النقدي (الفترة)',k.netCashFlow],
     ['ذمم مدينة (عملاء)',k.arTotal],['ذمم دائنة (موردون)',k.apTotal],
     ['قيمة المخزون',k.invValue],['أصناف منخفضة المخزون',k.lowStockCount],
@@ -5089,17 +5235,18 @@ function printTrSubDetail(accId){
 
 // ═══ FINANCIAL STATEMENTS (with date range) ═══
 function switchFS(tab,btn){fsTab=tab;document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));if(btn)btn.classList.add("active");renderFS(tab);}
-function getTree(type,parId,fromD,toD,branchId){
-  // فلتر الفرع (كفلتر مركز التكلفة/المشروع بتقارير أخرى) يُقصي الرصيد الافتتاحي — لا يمكن نسبته
-  // لفرع معيّن — ويفرض حساب الرصيد بالكامل من القيود المطابقة فقط، حتى بلا فترة زمنية محدَّدة
-  const hasDimFilter=!!branchId;
+function getTree(type,parId,fromD,toD,branchId,ccId,projId){
+  // فلتر الفرع/مركز التكلفة/المشروع يُقصي الرصيد الافتتاحي — لا يمكن نسبته لبُعد تحليلي معيّن —
+  // ويفرض حساب الرصيد بالكامل من القيود المطابقة فقط، حتى بلا فترة زمنية محدَّدة
+  const hasDimFilter=!!(branchId||ccId||projId);
+  const lineOk=l=>(!ccId||l.costCenterId===ccId)&&(!projId||l.projectId===projId);
   return accounts.filter(a=>a.type===type&&a.par===parId).map(a=>{
-    const children=getTree(type,a.id,fromD,toD,branchId);
+    const children=getTree(type,a.id,fromD,toD,branchId,ccId,projId);
     let bal;
     if(fromD||toD||hasDimFilter){
       let b=hasDimFilter?0:(parseFloat(a.open)||0);if(NORM[a.type]==="cr")b=-b;
-      if(fromD)entries.filter(e=>e.date<fromD&&(!branchId||getEntryBranchId(e)===branchId)).forEach(e=>e.lines.filter(l=>l.accId===a.id).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
-      entries.filter(e=>(!fromD||e.date>=fromD)&&(!toD||e.date<=toD)&&(!branchId||getEntryBranchId(e)===branchId)).forEach(e=>e.lines.filter(l=>l.accId===a.id).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
+      if(fromD)entries.filter(e=>e.date<fromD&&(!branchId||getEntryBranchId(e)===branchId)).forEach(e=>e.lines.filter(l=>l.accId===a.id&&lineOk(l)).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
+      entries.filter(e=>(!fromD||e.date>=fromD)&&(!toD||e.date<=toD)&&(!branchId||getEntryBranchId(e)===branchId)).forEach(e=>e.lines.filter(l=>l.accId===a.id&&lineOk(l)).forEach(l=>{b+=(l.debit||0)-(l.credit||0);}));
       // كان يُحسَب من أسطر مسنَدة لهذا الحساب مباشرة فقط، متجاهلاً أرصدة أبنائه بالكامل — أي حساب
       // أب (بمستوى وسيط بشجرة الحسابات) بلا ترحيل مباشر عليه (الوضع الطبيعي، فالترحيل الفعلي على
       // الحسابات الطرفية دوماً) كان يظهر رصيده صفراً زوراً بمجرد تفعيل فلتر تاريخ أو فرع، فيختل
@@ -5998,10 +6145,19 @@ function getCFPeriod(){
 function getCashAccounts(){
   return accounts.filter(a=>isLeaf(a.id)&&a.type==="asset"&&/نقد|صندوق|بنك|cash|bank/i.test(a.name));
 }
-// التصنيف الافتراضي للحساب حسب قائمة التدفقات النقدية (تشغيلية/استثمارية/تمويلية)،
-// يُستخدم عندما لا يكون هناك تصنيف يدوي محفوظ على الحساب نفسه (a.cfActivity)
+// حساب مصروف الإهلاك المرتبط فعلياً بأصل ثابت (عبر assets[].depExpAccId) — بند غير نقدي
+function isDepreciationAcc(a){
+  return !!(a&&typeof assets!=="undefined"&&assets.some(function(as){return as.depExpAccId===a.id;}));
+}
+// التصنيف الافتراضي للحساب حسب قائمة التدفقات النقدية (تشغيلية/استثمارية/تمويلية/بند غير نقدي)،
+// يُستخدم عندما لا يكون هناك تصنيف يدوي محفوظ على الحساب نفسه (a.cfActivity). حسابات الإهلاك
+// والمخصصات تُصنَّف تلقائياً "بند غير نقدي" (كسابق عهدها بقائمة التدفقات) لكنها الآن قابلة
+// للتعديل اليدوي كباقي التصنيفات، ويمكن تعميم نفس التصنيف يدوياً على أي حساب آخر مشابه
+// (كإطفاء الأصول غير الملموسة أو خسائر إعادة تقييم غير محققة)
 function getDefaultCFActivity(a){
   if(!a) return "operating";
+  if((a.type==="expense"||a.type==="cost")&&isDepreciationAcc(a)) return "noncash";
+  if(isProvisionAcc(a)) return "noncash";
   if(a.type==="revenue"||a.type==="expense"||a.type==="cost") return "operating";
   if(a.type==="equity") return "financing";
   if(a.type==="asset"){
@@ -6041,31 +6197,36 @@ function getEffectiveBSClass(a){
   return (a&&a.bsClass)||getDefaultBSClass(a);
 }
 // حسابات المخصصات (كمخصص مكافأة نهاية الخدمة أو مخصص ديون مشكوك بتحصيلها) — بند غير نقدي
-// بطبيعته مثل الإهلاك تماماً: يُخفِّض صافي الربح عبر مصروف دون أي خروج نقدي فعلي بنفس الفترة،
-// فتجب إضافته مرة أخرى ضمن الأنشطة التشغيلية بقائمة التدفقات النقدية (كما يحدث بالإهلاك) بدل
-// تركه ضائعاً ضمن "الالتزامات التشغيلية الأخرى" العامة بلا أي بند مستقل يُظهره بوضوح للقارئ
+// بطبيعته مثل الإهلاك تماماً: يُخفِّض صافي الربح عبر مصروف دون أي خروج نقدي فعلي بنفس الفترة
 function isProvisionAcc(a){return a&&/مخصص/i.test(a.name);}
 function computeCashFlow(){
   const {from,to}=getCFPeriod();
   const branchId=parseInt((document.getElementById("cf-branch")||{}).value)||0;
   const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to&&(!branchId||getEntryBranchId(e)===branchId));
-  const depAccIds=new Set(assets.map(a=>a.depExpAccId).filter(Boolean));
   const cashAccIds=new Set(getCashAccounts().map(a=>a.id));
 
-  let revenue=0,expense=0,depExpense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,operatingLiabChange=0,provisionChange=0,actualCashChange=0;
+  // بنود غير نقدية (نشاط تدفقات "noncash" — إهلاك/مخصصات تلقائياً، أو أي حساب آخر صُنِّف يدوياً
+  // بنفس التصنيف من دليل الحسابات) تُجمَع هنا بمفردها لكل حساب على حدة بدل بندين ثابتين مسبقاً
+  // (إهلاك + مخصصات فقط)، فتُضاف مرة أخرى ضمن الأنشطة التشغيلية بقائمة التدفقات النقدية بدل
+  // ضياعها ضمن "الالتزامات التشغيلية الأخرى" العامة بلا أي بند مستقل يُظهرها بوضوح للقارئ
+  const noncashMap={};
+  let revenue=0,expense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,operatingLiabChange=0,actualCashChange=0;
   periodEntries.forEach(e=>{
     e.lines.forEach(l=>{
       const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
       const dr=l.debit||0,cr=l.credit||0;
-      if(acc.type==="revenue")revenue+=cr-dr;
-      if(acc.type==="expense"||acc.type==="cost"){expense+=dr-cr;if(depAccIds.has(acc.id))depExpense+=dr-cr;}
-      if(acc.type==="equity")equityChange+=cr-dr;
       if(cashAccIds.has(acc.id))actualCashChange+=dr-cr;
-      // المخصصات (مكافأة نهاية الخدمة، ديون مشكوك بتحصيلها...) بند غير نقدي كالإهلاك تماماً —
-      // تُستبعَد هنا من مسارَي الذمم الدائنة العامة/الأصول لتُضاف بندها الخاص أدناه بدل ضياعها
-      // ضمن "التزامات تشغيلية أخرى" عامة بلا أي بند مستقل يُظهرها بوضوح (سواء كانت مخصص التزام
-      // من نوع liability، أو مخصص مقابل أصل contra-asset من نوع asset — كلاهما يزيد بجهة الدائن)
-      if(isProvisionAcc(acc)){provisionChange+=cr-dr;return;}
+      if(getEffectiveCFActivity(acc)==="noncash"){
+        const amt=(NORM[acc.type]==="dr")?(dr-cr):(cr-dr);
+        if(!noncashMap[acc.id])noncashMap[acc.id]={name:acc.name,amt:0};
+        noncashMap[acc.id].amt+=amt;
+        if(acc.type==="expense"||acc.type==="cost")expense+=dr-cr;
+        if(acc.type==="revenue")revenue+=cr-dr;
+        return;
+      }
+      if(acc.type==="revenue")revenue+=cr-dr;
+      if(acc.type==="expense"||acc.type==="cost")expense+=dr-cr;
+      if(acc.type==="equity")equityChange+=cr-dr;
       if(l.subId){
         const sub=subLedger.find(s=>s.id===l.subId);
         if(sub&&sub.type==="customer")arChange+=dr-cr;
@@ -6079,7 +6240,9 @@ function computeCashFlow(){
     });
   });
   const netIncome=revenue-expense;
-  const operating=netIncome+depExpense+provisionChange-arChange+apChange+operatingLiabChange;
+  const noncashItems=Object.values(noncashMap).filter(x=>Math.abs(x.amt)>0.005);
+  const noncashTotal=noncashItems.reduce((s,x)=>s+x.amt,0);
+  const operating=netIncome+noncashTotal-arChange+apChange+operatingLiabChange;
   // سجل الأصول الثابتة (assets[]) غير مرتبط بفرع إطلاقاً (لا يوجد بند شراء أصل مُسنَد لقيد
   // بعينه يمكن تصنيفه)، فيُستبعَد بالكامل عند تفعيل فلتر الفرع بدل تضمين رقم غير مصفّى يخلط
   // ببيانات مصفّاة، ما كان سيَكسر مطابقة صافي التغيّر مع التغيّر الفعلي بأرصدة النقدية بلا سبب حقيقي
@@ -6088,7 +6251,7 @@ function computeCashFlow(){
   const netChange=operating+investing+financing;
   const cashAccountNames=getCashAccounts().map(a=>a.code+" — "+a.name);
   const reconciled=Math.abs(netChange-actualCashChange)<0.01;
-  return {from,to,netIncome,depExpense,provisionChange,arChange,apChange,operatingLiabChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
+  return {from,to,netIncome,noncashItems,noncashTotal,arChange,apChange,operatingLiabChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
 }
 function cfRow(label,val,indent,bold){
   return `<tr${bold?' style="font-weight:800;background:var(--g50)"':''}>
@@ -6118,8 +6281,7 @@ function renderCashFlow(){
     <div class="fs-sec">
       <div class="fs-hdr">الأنشطة التشغيلية</div>
       ${cfr("صافي الربح",cf.netIncome)}
-      ${cfr("+ إهلاك الأصول (بند غير نقدي)",cf.depExpense)}
-      ${cf.provisionChange?cfr((cf.provisionChange>=0?"+ الزيادة":"- الانخفاض")+" في المخصصات (بند غير نقدي)",cf.provisionChange):''}
+      ${cf.noncashItems.map(x=>cfr((x.amt>=0?"+ ":"- ")+x.name+" (بند غير نقدي)",x.amt)).join('')}
       ${cfr((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
       ${cfr((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
       ${cf.operatingLiabChange?cfr((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى (مستحقات، ضرائب...)",cf.operatingLiabChange):''}
@@ -6147,8 +6309,7 @@ function printCashFlow(){
     <div style="text-align:center;font-size:10.5px;color:#64748b;margin-bottom:12px">من ${fmtDate(cf.from)} إلى ${fmtDate(cf.to)}</div>
     <table><tbody>
     ${cfRow("صافي الربح",cf.netIncome)}
-    ${cfRow("+ إهلاك الأصول",cf.depExpense)}
-    ${cf.provisionChange?cfRow((cf.provisionChange>=0?"+ الزيادة":"- الانخفاض")+" في المخصصات",cf.provisionChange):''}
+    ${cf.noncashItems.map(x=>cfRow((x.amt>=0?"+ ":"- ")+x.name+" (بند غير نقدي)",x.amt)).join('')}
     ${cfRow((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
     ${cfRow((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
     ${cf.operatingLiabChange?cfRow((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى",cf.operatingLiabChange):''}
@@ -11842,6 +12003,32 @@ function populateTrDimSelects(){
     branchSel.innerHTML='<option value="">— كل الفروع —</option>'
       +(branches||[]).filter(b=>b.active!==false).map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
     branchSel.value=cur;
+  }
+}
+function populateKpiDimSelects(){
+  const row=document.getElementById("kpi-dim-row");if(!row)return;
+  const hasDims=(costCenters&&costCenters.length)||(projects&&projects.length)||(branches&&branches.length);
+  row.style.display=hasDims?"grid":"none";
+  const branchSel=document.getElementById("kpi-branch");
+  if(branchSel){
+    const cur=branchSel.value;
+    branchSel.innerHTML='<option value="">— كل الفروع —</option>'
+      +(branches||[]).filter(b=>b.active!==false).map(b=>`<option value="${b.id}">${b.name}</option>`).join("");
+    branchSel.value=cur;
+  }
+  const projSel=document.getElementById("kpi-proj");
+  if(projSel){
+    const cur=projSel.value;
+    projSel.innerHTML='<option value="">— كل المشاريع —</option>'
+      +(projects||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+    projSel.value=cur;
+  }
+  const ccSel=document.getElementById("kpi-cc");
+  if(ccSel){
+    const cur=ccSel.value;
+    ccSel.innerHTML='<option value="">— كل مراكز التكلفة —</option>'
+      +(costCenters||[]).filter(c=>c.active!==false).map(c=>`<option value="${c.id}">${c.name}</option>`).join("");
+    ccSel.value=cur;
   }
 }
 function trAccSearch(val){
