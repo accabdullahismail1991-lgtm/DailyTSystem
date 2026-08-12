@@ -425,6 +425,12 @@ tbody tr:hover{background:var(--g50)}
 .sb-grp.collapsed .sb-arrow{transform:rotate(-90deg)}
 .sb-grp-body{overflow:hidden;max-height:500px;transition:max-height .25s ease}
 .sb-grp.collapsed .sb-grp-body{max-height:0}
+
+/* ─── تأكيد/تغميق الأرقام المالية (إعداد اختياري) ───
+   الأرقام المالية عبر النظام بأكمله (مدين/دائن/أرصدة/إجماليات) تُكتَب دوماً بـ
+   style="direction:ltr..." (اتجاه الأرقام بصفحة RTL) — نمط ثابت في +250 موضعاً، فيُستخدَم هنا
+   كمحدِّد CSS واحد يشمل كل مكان تقريباً بلا حاجة لتعديل كل موضع على حدة */
+html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
 </style>
 </head>
 <body>
@@ -485,7 +491,14 @@ tbody tr:hover{background:var(--g50)}
 <input type="hidden" id="ee-id">
 <div class="fg" style="grid-template-columns:repeat(4,1fr)">
  <div class="fgrp"><label>التاريخ *</label><input id="ee-date" type="date"></div>
- <div class="fgrp s2"><label>البيان *</label><input id="ee-desc" type="text"></div>
+ <div class="fgrp s2"><label>البيان *</label>
+  <div class="asw" style="display:flex;gap:4px">
+   <input id="ee-desc" type="text" style="flex:1">
+   <button type="button" class="btn bo bxs" title="اختيار من الأوصاف المحفوظة" onclick="openDescTemplatePicker('ee-desc')">📋</button>
+   <button type="button" class="btn bo bxs" title="حفظ كوصف متكرر" onclick="saveDescTemplate('ee-desc')">💾</button>
+   <div class="asp" id="ee-desc-tpl-p"></div>
+  </div>
+ </div>
  <div class="fgrp"><label>المرجع</label><input id="ee-ref" type="text"></div>
  <div class="fgrp" id="ee-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="ee-branch"><option value="">تلقائي (افتراضي)</option></select></div>
 </div>
@@ -701,11 +714,6 @@ tbody tr:hover{background:var(--g50)}
  <div style="color:rgba(255,255,255,.35);font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:6px">🎨 لون النظام</div>
  <div id="theme-swatches" style="display:flex;gap:6px;flex-wrap:wrap"></div>
 </div>
-<div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,.06)">
- <div style="color:rgba(255,255,255,.35);font-size:9px;font-weight:700;letter-spacing:1px;margin-bottom:6px">🔤 خط النظام</div>
- <select id="font-select" onchange="applyFont(this.value)"
-   style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;font-size:11px;font-family:inherit"></select>
-</div>
 <div class="sb-ft">
  <div>النظام المحاسبي الشامل</div>
  <div id="sb-cur-badge" style="color:rgba(255,255,255,.3);font-size:9px;margin-top:2px"></div>
@@ -862,6 +870,38 @@ tbody tr:hover{background:var(--g50)}
     <button class="btn bd bsm" onclick="removeLogo()">🗑 حذف الشعار</button>
   </div>
  </div>
+<div class="set-card">
+  <h3>🔤 المظهر والخطوط</h3>
+  <div class="fgrp" style="margin-bottom:9px">
+    <label>خط النظام</label>
+    <select id="font-select" onchange="applyFont(this.value)"></select>
+  </div>
+  <div class="fgrp" style="margin-bottom:9px">
+    <label>حجم الخط بالشاشة</label>
+    <div style="display:flex;gap:6px" id="ui-fontsize-btns">
+      <button type="button" class="btn bo bsm" onclick="setUiFontSize('sm')" id="ui-fs-sm">صغير</button>
+      <button type="button" class="btn bo bsm" onclick="setUiFontSize('md')" id="ui-fs-md">متوسط</button>
+      <button type="button" class="btn bo bsm" onclick="setUiFontSize('lg')" id="ui-fs-lg">كبير</button>
+    </div>
+  </div>
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px">
+    <input type="checkbox" id="num-emphasis-toggle" onchange="applyNumEmphasis(this.checked)" style="width:15px;height:15px">
+    تأكيد/تغميق الأرقام المالية (مدين، دائن، الإجماليات) بخط أثقل لوضوح أكبر
+  </label>
+</div>
+<div class="set-card">
+  <h3>🔔 التنبيهات</h3>
+  <p style="font-size:10.5px;color:var(--g5);margin:-4px 0 9px">فعِّل أو أوقف كل نوع تنبيه على حدة — يؤثر على جرس الإشعارات وشاشة "الإشعارات" معاً</p>
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;margin-bottom:7px"><input type="checkbox" id="notif-lowStock" onchange="saveNotifSettings()" style="width:15px;height:15px"> 📦 مخزون منخفض</label>
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;margin-bottom:7px"><input type="checkbox" id="notif-openCustody" onchange="saveNotifSettings()" style="width:15px;height:15px"> 🗂️ عهد مالية قائمة</label>
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;margin-bottom:7px"><input type="checkbox" id="notif-draftSalesInv" onchange="saveNotifSettings()" style="width:15px;height:15px"> 🟢 فواتير مبيعات مسودة</label>
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px;margin-bottom:7px"><input type="checkbox" id="notif-draftPurchaseInv" onchange="saveNotifSettings()" style="width:15px;height:15px"> 🔴 فواتير مشتريات مسودة</label>
+  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11.5px"><input type="checkbox" id="notif-unbalancedEntries" onchange="saveNotifSettings()" style="width:15px;height:15px"> ⚠️ قيود غير متوازنة</label>
+  <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--g200)">
+    <label style="font-size:11px;font-weight:700;display:block;margin-bottom:6px">📦 عتبة المخزون المنخفض لكل صنف (الكمية التي يظهر عندها التنبيه)</label>
+    <div id="notif-item-thresholds" style="max-height:180px;overflow-y:auto"></div>
+  </div>
+</div>
 <!-- Tax Preferences in Settings -->
 <div style="margin:14px 16px 0;padding:14px 16px;background:#f8fafc;border:1.5px solid var(--g200);border-radius:var(--r)">
  <div style="font-weight:700;font-size:12.5px;margin-bottom:10px">⚙️ إعدادات الضريبة على مستوى الشركة</div>
@@ -1009,7 +1049,14 @@ tbody tr:hover{background:var(--g50)}
  </div>
  <div class="fg" style="grid-template-columns:repeat(4,1fr)">
   <div class="fgrp"><label>التاريخ *</label><input id="en-dt" type="date"></div>
-  <div class="fgrp s2"><label>البيان *</label><input id="en-desc" type="text" placeholder="وصف القيد..."></div>
+  <div class="fgrp s2"><label>البيان *</label>
+   <div class="asw" style="display:flex;gap:4px">
+    <input id="en-desc" type="text" placeholder="وصف القيد..." style="flex:1">
+    <button type="button" class="btn bo bxs" title="اختيار من الأوصاف المحفوظة" onclick="openDescTemplatePicker('en-desc')">📋</button>
+    <button type="button" class="btn bo bxs" title="حفظ كوصف متكرر" onclick="saveDescTemplate('en-desc')">💾</button>
+    <div class="asp" id="en-desc-tpl-p"></div>
+   </div>
+  </div>
   <div class="fgrp"><label>المرجع</label><input id="en-ref" type="text" placeholder="INV-001"></div>
   <div class="fgrp" id="en-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="en-branch"><option value="">تلقائي (افتراضي)</option></select></div>
  </div>
@@ -2742,6 +2789,90 @@ function renderFontSelect(activeId){
   applyFont(savedFont,false);
 })();
 
+// حجم الخط بالشاشة (أزرار صغير/متوسط/كبير) — واجهة أبسط فوق آلية التكبير/التصغير zoom
+// الموجودة أصلاً بالنظام (currentZoom/applyZoom بأسفل الملف)، بلا حالة تخزين منفصلة: sys_zoom
+// (تُحفَظ أصلاً داخل applyZoom) تبقى المصدر الوحيد للقيمة الحالية، فتتزامن تلقائياً مع أزرار +/-
+// التكبير القديمة أيضاً بصرف النظر عن أيّهما استُخدم آخراً. تعريف الدالة هنا hoisted فيعمل رغم
+// أن currentZoom/applyZoom تُعرَّفان لاحقاً بالملف — التطبيق الفعلي عند التحميل يحدث بعد ذلك
+const UI_FONTSIZE_ZOOM={sm:85,md:100,lg:115};
+function setUiFontSize(size){
+  if(!UI_FONTSIZE_ZOOM[size])return;
+  currentZoom=UI_FONTSIZE_ZOOM[size];
+  applyZoom();
+  updateUiFontSizeButtons(size);
+}
+function updateUiFontSizeButtons(activeSize){
+  ['sm','md','lg'].forEach(function(s){
+    const btn=document.getElementById('ui-fs-'+s);if(!btn)return;
+    btn.classList.toggle('bp',s===activeSize);btn.classList.toggle('bo',s!==activeSize);
+  });
+}
+// يُستدعى من loadSettings() (كل مرة تُفتَح شاشة الإعدادات) ليُبرِز الزر المطابق لحجم التكبير
+// الفعلي الحالي إن كان أحد الأحجام الجاهزة الثلاثة تحديداً، وإلا يبقى بلا زر بارز (تكبير مخصص
+// عبر +/- لا يطابق أياً منها بالضبط)
+function syncUiFontSizeButtons(){
+  const match=Object.keys(UI_FONTSIZE_ZOOM).find(function(s){return UI_FONTSIZE_ZOOM[s]===currentZoom;});
+  updateUiFontSizeButtons(match||null);
+}
+const NUM_EMPHASIS_KEY='acct_num_emphasis_v1';
+function applyNumEmphasis(checked,persist){
+  document.documentElement.classList.toggle('num-emphasis',!!checked);
+  if(persist!==false){try{localStorage.setItem(NUM_EMPHASIS_KEY,checked?'1':'0');}catch(e){}}
+  const cb=document.getElementById('num-emphasis-toggle');if(cb)cb.checked=!!checked;
+}
+(function(){
+  let saved=false;
+  try{saved=localStorage.getItem(NUM_EMPHASIS_KEY)==='1';}catch(e){}
+  applyNumEmphasis(saved,false);
+})();
+
+// إعدادات تفعيل/إيقاف كل نوع تنبيه على حدة — تفضيل شخصي بهذا الجهاز (بنفس نمط FONT_KEY)، وليس
+// جزءاً من بيانات الشركة. تُفعَّل كل الأنواع افتراضياً (نفس السلوك السابق قبل هذا الإعداد)
+const NOTIF_SETTINGS_KEY='acct_notif_settings_v1';
+const NOTIF_TYPE_DEFAULTS={lowStock:true,openCustody:true,draftSalesInv:true,draftPurchaseInv:true,unbalancedEntries:true};
+let notifSettings=Object.assign({},NOTIF_TYPE_DEFAULTS);
+(function(){
+  try{
+    const raw=localStorage.getItem(NOTIF_SETTINGS_KEY);
+    if(raw)notifSettings=Object.assign({},NOTIF_TYPE_DEFAULTS,JSON.parse(raw));
+  }catch(e){}
+})();
+function notifEnabled(type){return notifSettings[type]!==false;}
+// يُستدعى من loadSettings() ليُظهر حالة صناديق الاختيار الحالية عند فتح شاشة الإعدادات
+function loadNotifSettings(){
+  Object.keys(NOTIF_TYPE_DEFAULTS).forEach(function(k){
+    const cb=document.getElementById('notif-'+k);
+    if(cb)cb.checked=notifEnabled(k);
+  });
+}
+function saveNotifSettings(){
+  Object.keys(NOTIF_TYPE_DEFAULTS).forEach(function(k){
+    const cb=document.getElementById('notif-'+k);
+    if(cb)notifSettings[k]=cb.checked;
+  });
+  try{localStorage.setItem(NOTIF_SETTINGS_KEY,JSON.stringify(notifSettings));}catch(e){}
+  updateNotifBadge();
+}
+// قائمة أصناف المخزون بعتبة المخزون المنخفض minQty القابلة للتعديل مباشرة — عتبة كل صنف
+// مستقلة أصلاً (وليست قيمة عامة ثابتة)، تُدار عادة من "تعريف الأصناف"؛ هذه القائمة تجميعية
+// سريعة بشاشة الإعدادات لمراجعة/تعديل عتبات عدة أصناف دفعة واحدة دون فتح كل صنف على حدة
+function renderNotifThresholds(){
+  const el=document.getElementById('notif-item-thresholds');if(!el)return;
+  if(!inventory||!inventory.length){el.innerHTML='<div style="font-size:10.5px;color:var(--g4)">لا توجد أصناف معرَّفة بعد</div>';return;}
+  el.innerHTML=inventory.slice().sort(function(a,b){return(a.name||'').localeCompare(b.name||'');}).map(function(i){
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--g100);font-size:11px">'
+      +'<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+i.name+' <small style="color:var(--g4)">(الحالي: '+(i.qty||0)+')</small></span>'
+      +'<input type="number" min="0" step="1" value="'+(i.minQty||0)+'" style="width:70px;font-size:11px;padding:3px 6px" onchange="updateItemMinQty('+i.id+',this.value)">'
+      +'</div>';
+  }).join('');
+}
+function updateItemMinQty(itemId,val){
+  const item=(inventory||[]).find(function(i){return i.id===itemId;});if(!item)return;
+  item.minQty=parseFloat(val)||0;
+  updateNotifBadge();
+  showAlert('تم تحديث عتبة المخزون المنخفض ✓');
+}
+
 let costCenters=[], nxtCCId=1;
 let docTemplates=[], nxtDocTplId=1;
 let projects=[], nxtProjId=1;
@@ -2750,6 +2881,9 @@ let projects=[], nxtProjId=1;
 // ووصفه، فلا يُخزَّن على القيد إطلاقاً — هذا يضمن بقاءه محدَّثاً تلقائياً مع أي تغيير لاحق (إعادة
 // استيراد، مطابقة كشف مركز تكلفة، تعديل اسم مركز تكلفة...) دون أي عملية ترحيل/تصحيح يدوية
 let branches=[{id:1,name:"الرياض",active:true},{id:2,name:"جدة",active:true}], nxtBranchId=3;
+// أوصاف قيود محفوظة قابلة لإعادة الاستخدام (وليست تفضيلاً شخصياً كالخط/التنبيهات — بيانات عمل
+// مشتركة، لذا جزء من buildPersistData وتُزامَن سحابياً كباقي بيانات الشركة)
+let descTemplates=[], nxtDescTplId=1;
 // قاعدة التصنيف التلقائي كما حدَّدها المستخدم: أي قيد بأحد أطرافه مركز تكلفة "بلاك نايت" أو
 // "الرياض" (بصرف النظر عمّن أسنده — استيراد أولي أو مطابقة كشف لاحقة)، أو بوصفه (أو وصف أي سطر
 // به) ذكر لـ"ابراهيم" (حركات عهدته) ← فرع الرياض. غير ذلك ← فرع جدة (الفرع الافتراضي للباقي)
@@ -3316,6 +3450,47 @@ function clrEnt(){
 function openNewEntryModal(){
   clrEnt();
   document.getElementById("m-new-ent").style.display="flex";
+}
+// أوصاف قيود متكررة — تُستدعى وتُلحَق ببيان القيد الجاري إنشاؤه أو تعديله، بدل إعادة كتابتها من
+// الصفر كل مرة لعمليات متشابهة تتكرر بانتظام (كإيجار شهري، عمولة بنكية...إلخ)
+function openDescTemplatePicker(targetId){
+  const pop=document.getElementById(targetId+"-tpl-p");if(!pop)return;
+  if(pop.classList.contains("open")){pop.classList.remove("open");return;}
+  document.querySelectorAll(".asp").forEach(function(p){p.classList.remove("open");});
+  renderDescTemplatePicker(targetId);
+  pop.classList.add("open");
+}
+function renderDescTemplatePicker(targetId){
+  const pop=document.getElementById(targetId+"-tpl-p");if(!pop)return;
+  if(!descTemplates.length){
+    pop.innerHTML='<div class="ao" style="color:var(--g4);cursor:default">لا توجد أوصاف محفوظة بعد — اكتب وصفاً واضغط 💾 لحفظه</div>';
+    return;
+  }
+  pop.innerHTML=descTemplates.map(function(t){
+    return '<div class="ao" style="justify-content:space-between">'
+      +'<span onclick="insertDescTemplate(\''+targetId+'\','+t.id+')" style="flex:1;cursor:pointer">'+t.desc+'</span>'
+      +'<span onclick="event.stopPropagation();deleteDescTemplate('+t.id+',\''+targetId+'\')" style="cursor:pointer;color:var(--rd);flex-shrink:0" title="حذف">✕</span>'
+      +'</div>';
+  }).join('');
+}
+function insertDescTemplate(targetId,tplId){
+  const t=descTemplates.find(function(x){return x.id===tplId;});if(!t)return;
+  const input=document.getElementById(targetId);if(!input)return;
+  input.value=t.desc;
+  const pop=document.getElementById(targetId+"-tpl-p");if(pop)pop.classList.remove("open");
+}
+function saveDescTemplate(targetId){
+  const input=document.getElementById(targetId);if(!input)return;
+  const desc=input.value.trim();
+  if(!desc){showAlert("اكتب وصفاً أولاً قبل الحفظ","err");return;}
+  if(descTemplates.some(function(t){return t.desc===desc;})){showAlert("هذا الوصف محفوظ مسبقاً","warn");return;}
+  descTemplates.push({id:nxtDescTplId++,desc:desc});
+  showAlert("تم حفظ الوصف للاستخدام المتكرر ✓");
+}
+function deleteDescTemplate(id,targetId){
+  descTemplates=descTemplates.filter(function(t){return t.id!==id;});
+  if(targetId)renderDescTemplatePicker(targetId);
+  showAlert("تم حذف الوصف المحفوظ","warn");
 }
 function saveEnt(){
   if(!can('edit')){showAlert('⛔ لا تملك صلاحية إضافة أو تعديل القيود','err');return;}
@@ -3885,19 +4060,19 @@ function tbSearchGo(id){
 }
 function getNotifItems(){
   const items=[];
-  (inventory||[]).filter(i=>i.minQty>0&&i.qty<=i.minQty).forEach(i=>{
+  if(notifEnabled('lowStock'))(inventory||[]).filter(i=>i.minQty>0&&i.qty<=i.minQty).forEach(i=>{
     items.push({icon:'📦',color:'red',title:'مخزون منخفض: '+i.name,sub:'الكمية الحالية: '+i.qty,go:'wh'});
   });
-  (custodians||[]).filter(c=>c.status==='open').forEach(c=>{
+  if(notifEnabled('openCustody'))(custodians||[]).filter(c=>c.status==='open').forEach(c=>{
     items.push({icon:'🗂️',color:'amber',title:'عهدة مالية قائمة: '+c.empName,sub:fmtDisp(c.amount)+' '+cur(),go:'cust'});
   });
-  (salesInvoices||[]).filter(i=>i.status==='draft').forEach(i=>{
+  if(notifEnabled('draftSalesInv'))(salesInvoices||[]).filter(i=>i.status==='draft').forEach(i=>{
     items.push({icon:'🟢',color:'blue',title:'فاتورة مبيعات مسودة',sub:i.ref||('#'+i.id),go:'sinv'});
   });
-  (purchaseInvoices||[]).filter(i=>i.status==='draft').forEach(i=>{
+  if(notifEnabled('draftPurchaseInv'))(purchaseInvoices||[]).filter(i=>i.status==='draft').forEach(i=>{
     items.push({icon:'🔴',color:'blue',title:'فاتورة مشتريات مسودة',sub:i.ref||('#'+i.id),go:'pinv'});
   });
-  (entries||[]).filter(function(e){return e.isDraft;}).forEach(function(e){
+  if(notifEnabled('unbalancedEntries'))(entries||[]).filter(function(e){return e.isDraft;}).forEach(function(e){
     items.push({icon:'⚠️',color:'red',title:'قيد غير متوازن: #'+e.id,sub:e.desc||'—',go:'audit'});
   });
   return items;
@@ -3925,12 +4100,7 @@ function closeNotifAndGo(id){
 }
 function updateNotifBadge(){
   const badge=document.getElementById('tb-bell-bdg');if(!badge)return;
-  let count=0;
-  count+=(inventory||[]).filter(i=>i.minQty>0&&i.qty<=i.minQty).length;
-  count+=(custodians||[]).filter(c=>c.status==='open').length;
-  count+=(salesInvoices||[]).filter(i=>i.status==='draft').length;
-  count+=(purchaseInvoices||[]).filter(i=>i.status==='draft').length;
-  count+=(entries||[]).filter(function(e){return e.isDraft;}).length;
+  const count=getNotifItems().length;
   badge.style.display=count>0?'flex':'none';
   badge.textContent=count>99?'99+':count;
 }
@@ -4102,6 +4272,13 @@ function loadSettings(){
   if(rptF)rptF.value=String(CFG.rptFontSize||9);
   const logoP=document.getElementById("logo-preview");
   if(logoP&&CFG.logo)logoP.src=CFG.logo;
+  // إعدادات العرض الشخصية (خط/حجم/تأكيد أرقام) وإعدادات التنبيهات — لا علاقة لها بـCFG، تُزامَن هنا فقط لأن عناصرها ضمن هذه الشاشة تحديداً
+  renderFontSelect((function(){try{return localStorage.getItem(FONT_KEY)||'tajawal';}catch(e){return'tajawal';}})());
+  syncUiFontSizeButtons();
+  const numEmphCb=document.getElementById("num-emphasis-toggle");
+  if(numEmphCb)numEmphCb.checked=document.documentElement.classList.contains('num-emphasis');
+  loadNotifSettings();
+  renderNotifThresholds();
 }
 function saveSettings(){
   CFG.name=document.getElementById("st-name").value.trim();
@@ -8690,7 +8867,7 @@ function saveStockMove(){
   CM("m-stk");renderInventory();
   showAlert((type==="in"?"تم إدخال ":"تم إخراج ")+qty+" "+item.unit+" من "+item.name+(mv.entryId?" — قيد #"+mv.entryId:"")+" ✓");
   // Alert if low stock
-  if(item.qty<=item.minQty&&item.minQty>0){
+  if(item.qty<=item.minQty&&item.minQty>0&&notifEnabled('lowStock')){
     setTimeout(function(){notify("⚠️ تنبيه: مخزون "+item.name+" منخفض ("+item.qty+" "+item.unit+")","warn",6000);},500);
   }
 }
@@ -10878,12 +11055,22 @@ function postAllDrafts(type){
 function renderNotifications(){
   const el=document.getElementById("notifs-cards");if(!el)return;
   const cards=[];
-  const lowStock=inventory.filter(function(i){return i.minQty>0&&i.qty<=i.minQty;});
-  if(lowStock.length) cards.push({icon:"📦",color:"rd",title:"مخزون منخفض",body:lowStock.map(function(i){return i.name+" ("+i.qty+")";}).join("<br>"),count:lowStock.length});
-  const openCust=custodians.filter(function(c){return c.status==="open";});
-  if(openCust.length) cards.push({icon:"🗂️",color:"am",title:"عهد مالية قائمة",body:openCust.map(function(c){return c.empName+" — "+fmtDisp(c.amount);}).join("<br>"),count:openCust.length});
-  const drafts=salesInvoices.filter(function(i){return i.status==="draft";}).length+purchaseInvoices.filter(function(i){return i.status==="draft";}).length;
+  if(notifEnabled('lowStock')){
+    const lowStock=inventory.filter(function(i){return i.minQty>0&&i.qty<=i.minQty;});
+    if(lowStock.length) cards.push({icon:"📦",color:"rd",title:"مخزون منخفض",body:lowStock.map(function(i){return i.name+" ("+i.qty+")";}).join("<br>"),count:lowStock.length});
+  }
+  if(notifEnabled('openCustody')){
+    const openCust=custodians.filter(function(c){return c.status==="open";});
+    if(openCust.length) cards.push({icon:"🗂️",color:"am",title:"عهد مالية قائمة",body:openCust.map(function(c){return c.empName+" — "+fmtDisp(c.amount);}).join("<br>"),count:openCust.length});
+  }
+  const salesDraftCount=notifEnabled('draftSalesInv')?salesInvoices.filter(function(i){return i.status==="draft";}).length:0;
+  const purchDraftCount=notifEnabled('draftPurchaseInv')?purchaseInvoices.filter(function(i){return i.status==="draft";}).length:0;
+  const drafts=salesDraftCount+purchDraftCount;
   if(drafts) cards.push({icon:"📄",color:"bl",title:"فواتير مسودة",body:drafts+" فاتورة تنتظر الترحيل",count:drafts});
+  if(notifEnabled('unbalancedEntries')){
+    const unbal=entries.filter(function(e){return e.isDraft;});
+    if(unbal.length) cards.push({icon:"⚠️",color:"rd",title:"قيود غير متوازنة",body:unbal.map(function(e){return "#"+e.id+" — "+(e.desc||"—");}).join("<br>"),count:unbal.length});
+  }
   if(!cards.length){el.innerHTML='<div class="empty" style="grid-column:1/-1"><span class="ei">✅</span><p>لا توجد تنبيهات</p></div>';return;}
   const colorMap={rd:'red',am:'amber',bl:'blue'};
   el.innerHTML=cards.map(function(c){
@@ -14108,7 +14295,7 @@ function renderCompanySwitcher(){
 }
 
 function buildPersistData(){
-  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId,auxImportLog,nxtAuxLogId,journalCCImportLog,nxtJournalCCLogId,docTemplates,nxtDocTplId,branches,nxtBranchId};
+  return {CFG,CY,accounts,nxtAccId,entries,yearHist,nxtEntId,nxtLineId,subLedger,nxtSubId,invoices,nxtInvId,vouchers,nxtVchId,assets,nxtAssetId,rents,nxtRentId,salesInvoices,nxtSaleInvId,purchaseInvoices,nxtPurInvId,inventory,nxtItemId,stockMovements,nxtMoveId,taxRates,nxtTaxId,taxTransactions,warehouses,nxtWhId,goodsReceipts,nxtGRId,stockIssues,inventoryMethod,subNextNum,custodians,nxtCustId,costCenters,nxtCCId,projects,nxtProjId,invAdjustments,nxtInvAdjId,ccImportLog,nxtCCLogId,auxImportLog,nxtAuxLogId,journalCCImportLog,nxtJournalCCLogId,docTemplates,nxtDocTplId,branches,nxtBranchId,descTemplates,nxtDescTplId};
 }
 // شعار الشركة (CFG.logo) ومرفقات القيود (entries[].attachment) صور/ملفات base64 — غالباً أكبر
 // حجماً بأضعاف من كل بيانات القيود والحسابات مجتمعة، وتُعاد كاملة في كل مزامنة سحابية طالما
@@ -14228,6 +14415,8 @@ function applyPersistedData(d){
     if(d.nxtJournalCCLogId!==undefined)nxtJournalCCLogId=d.nxtJournalCCLogId;
     if(d.branches!==undefined)branches=d.branches;
     if(d.nxtBranchId!==undefined)nxtBranchId=d.nxtBranchId;
+    if(d.descTemplates!==undefined)descTemplates=d.descTemplates;
+    if(d.nxtDescTplId!==undefined)nxtDescTplId=d.nxtDescTplId;
     if(d.docTemplates!==undefined)docTemplates=d.docTemplates;
     if(d.nxtDocTplId!==undefined)nxtDocTplId=d.nxtDocTplId;
   }catch(e){console.error('applyPersistedData:',e);}
