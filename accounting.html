@@ -179,6 +179,26 @@ tbody tr:hover{background:var(--g50)}
 .sc2.c-amber .sc2-ic{background:#fef3c7;color:#b45309}
 .sc2.c-teal .sc2-ic{background:var(--tp);color:var(--tl2)}
 .sc2.c-indigo .sc2-ic{background:#e0e7ff;color:#4338ca}
+/* ── Interactive dashboard: draggable/reorderable tiles + cross-filter chips ── */
+.idash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.idash-tile{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:12px 14px;cursor:default;transition:box-shadow .15s,opacity .15s}
+.idash-tile.dragging{opacity:.4}
+.idash-tile[data-span="2"]{grid-column:span 2}
+.idash-drag-handle{cursor:grab;color:var(--g4);font-size:13px;user-select:none}
+.idash-drag-handle:active{cursor:grabbing}
+.idash-thd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.idash-lbl{font-size:11px;font-weight:700;color:var(--g5)}
+.idash-val{font-size:19px;font-weight:800;color:var(--g9);white-space:nowrap}
+.idash-sub{font-size:9.5px;color:var(--g4);margin-top:2px}
+.idash-spark-pt{cursor:pointer}
+.idash-spark-pt:hover{r:4.5}
+.idash-bar-row{display:flex;align-items:center;gap:6px;font-size:10.5px;margin-top:5px;cursor:pointer;padding:2px 3px;border-radius:4px}
+.idash-bar-row:hover{background:var(--g50)}
+.idash-bar-row .idash-bar-track{flex:1;height:7px;background:var(--g100);border-radius:4px;overflow:hidden}
+.idash-bar-row .idash-bar-fill{height:100%;border-radius:4px}
+.idash-bar-row.active{background:var(--tp)}
+.idash-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:20px;background:var(--tp);color:var(--tl2);cursor:pointer}
+.idash-chip .x{opacity:.7}
 /* ── Tabs ── */
 .tabs{display:flex;gap:2px;margin-bottom:12px;border-bottom:2px solid var(--g200)}
 .tab{padding:6px 14px;font-size:11.5px;font-weight:600;cursor:pointer;border:none;background:none;color:var(--g5);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .11s;font-family:inherit}
@@ -230,6 +250,15 @@ tbody tr:hover{background:var(--g50)}
 .fs-r.s2{padding-right:38px;color:var(--g5);font-size:11px}
 .fs-r.tot{font-weight:800;background:var(--g50);border-top:1.5px solid var(--g300);margin-top:2px}
 .fs-r.grand{font-weight:800;font-size:13.5px;background:var(--tp);color:var(--teal);border-top:3px double var(--tl2);border-bottom:1px solid var(--tl2);margin-top:4px}
+/* ── Collapsible cash-flow line-item detail (drill down to the underlying transactions) ── */
+details.cf-detail{border-bottom:1px solid var(--g100)}
+details.cf-detail summary{cursor:pointer;list-style:none;border-bottom:none}
+details.cf-detail summary::-webkit-details-marker{display:none}
+details.cf-detail summary::before{content:"▸";display:inline-block;width:12px;color:var(--g4);transition:transform .15s;margin-left:4px}
+details.cf-detail[open] summary::before{transform:rotate(90deg)}
+.cf-detail-body{padding:2px 12px 6px 12px;background:var(--g50)}
+.cf-detail-row{display:flex;justify-content:space-between;gap:10px;padding:3px 0 3px 24px;font-size:10.5px;color:var(--g5);border-bottom:1px dashed var(--g200)}
+.cf-detail-row:last-child{border-bottom:none}
 .fs-2col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
 .fs-2col .fs-sec{padding:14px;background:var(--w);border:1px solid var(--g200);border-radius:var(--r)}
 .fs-balcheck{display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;padding:7px;border-radius:var(--rs);margin-top:10px}
@@ -695,6 +724,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
  <div class="sb-grp-body">
   <button class="nb" onclick="SS('rpt',this)"><span class="nb-ic">📊</span><span class="nb-txt">مركز التقارير</span></button>
   <button class="nb" onclick="SS('kpi',this)"><span class="nb-ic">📈</span><span class="nb-txt">مؤشرات الأداء</span></button>
+  <button class="nb" onclick="SS('idash',this)"><span class="nb-ic">🧩</span><span class="nb-txt">لوحة تفاعلية</span></button>
  </div>
 </div>
 
@@ -738,6 +768,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
  <div class="tb-r">
   <button class="btn bo bxs no-print" onclick="SSNew(currentSection||'dash')" title="فتح القسم الحالي في تبويب جديد" style="font-size:11px">↗️ تبويب</button>
   <button class="btn bp bxs no-print" onclick="forceSyncNow()" title="حفظ ومزامنة كل البيانات فوراً مع قاعدة البيانات السحابية بدون انتظار" style="font-size:11px">🔄 حفظ الآن</button>
+  <button class="btn ba bxs no-print" onclick="pullAndRefreshNow()" title="سحب أحدث البيانات من السحابة وإعادة عرض كل التقارير بها فوراً — بما فيها لوحة التحكم الرئيسية" style="font-size:11px">🔃 تحديث البيانات</button>
   <button class="btn bg bxs no-print" onclick="syncAllToGSheets()" title="مزامنة مع Google Sheets" style="font-size:11px">🟢 GS</button>
   <button class="btn bo bxs no-print" onclick="openGSSettings()" title="إعداد Google Sheets" style="font-size:11px">⚙️</button>
   <span id="gs-last-sync" style="font-size:9.5px;color:var(--g4)"></span>
@@ -777,9 +808,14 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
      <select id="dch-period" onchange="dashChartPeriodChange()" style="width:88px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
       <option value="year">السنة كاملة</option>
+      <option value="half">نصف سنوي</option>
       <option value="quarter">ربع سنوي</option>
       <option value="month">شهر محدد</option>
       <option value="range">فترة محددة</option>
+     </select>
+     <select id="dch-half" onchange="renderDash()" style="display:none;width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
+      <option value="1">النصف الأول (يناير–يونيو)</option>
+      <option value="2">النصف الثاني (يوليو–ديسمبر)</option>
      </select>
      <select id="dch-quarter" onchange="renderDash()" style="display:none;width:150px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
       <option value="1">الربع الأول (يناير–مارس)</option>
@@ -1110,6 +1146,9 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div class="fgrp" id="lg-cc-wrap" style="display:none"><label>🏷️ مركز التكلفة</label><select id="lg-cc" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
   <div class="fgrp" id="lg-proj-wrap" style="display:none"><label>🏗️ المشروع</label><select id="lg-proj" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
   <div class="fgrp" id="lg-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="lg-branch" onchange="renderLg()" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
+  <button class="btn bo bsm" onclick="setReportPeriod('lg-from','lg-to','year',renderLg)" style="align-self:flex-end">📅 السنة الحالية</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('lg-from','lg-to','half1',renderLg)" style="align-self:flex-end">📅 النصف الأول</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('lg-from','lg-to','half2',renderLg)" style="align-self:flex-end">📅 النصف الثاني</button>
   <button class="btn bo bsm" onclick="clrLg()" style="align-self:flex-end">↺ مسح</button>
  </div>
 </div>
@@ -1165,6 +1204,11 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
     الطرفية فقط
    </label>
   </div>
+ </div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+  <button class="btn bo bsm" onclick="setReportPeriod('tr-from','tr-to','year',renderTr)">📅 السنة الحالية</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('tr-from','tr-to','half1',renderTr)">📅 النصف الأول</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('tr-from','tr-to','half2',renderTr)">📅 النصف الثاني</button>
  </div>
  <div style="display:grid;grid-template-columns:1.5fr 1.5fr auto;gap:10px;align-items:flex-end;padding:14px 16px;background:#f8fafc;border:1px solid var(--g200);border-radius:var(--r);margin-bottom:14px">
   <div class="fgrp">
@@ -1227,6 +1271,9 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div class="fgrp"><label>📅 من تاريخ</label><input id="fs-from" type="date" onchange="renderFS(fsTab)"></div>
   <div class="fgrp"><label>📅 إلى تاريخ</label><input id="fs-to" type="date" onchange="renderFS(fsTab)"></div>
   <div class="fgrp" id="fs-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="fs-branch" onchange="renderFS(fsTab)" style="font-size:11px;padding:6px 8px;border:1px solid var(--g200);border-radius:var(--rs)"><option value="">— الكل —</option></select></div>
+  <button class="btn bo bsm" onclick="setReportPeriod('fs-from','fs-to','year',function(){renderFS(fsTab);})" style="align-self:flex-end">📅 السنة الحالية</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('fs-from','fs-to','half1',function(){renderFS(fsTab);})" style="align-self:flex-end">📅 النصف الأول</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('fs-from','fs-to','half2',function(){renderFS(fsTab);})" style="align-self:flex-end">📅 النصف الثاني</button>
   <button class="btn bo bsm" onclick="document.getElementById('fs-from').value='';document.getElementById('fs-to').value='';document.getElementById('fs-branch').value='';renderFS(fsTab)" style="align-self:flex-end">↺ كل الفترة</button>
   <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--g6);cursor:pointer;align-self:flex-end;padding:7px 4px">
    <input type="checkbox" id="fs-hide-zero" onchange="renderFS(fsTab)">إخفاء الأرصدة الصفرية
@@ -1261,6 +1308,8 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div class="fgrp"><label>من تاريخ</label><input id="kpi-from" type="date" onchange="renderKpi()"></div>
   <div class="fgrp"><label>إلى تاريخ</label><input id="kpi-to" type="date" onchange="renderKpi()"></div>
   <button class="btn bo bsm" onclick="setKpiPeriod('month')" style="align-self:flex-end">📅 هذا الشهر</button>
+  <button class="btn bo bsm" onclick="setKpiPeriod('half1')" style="align-self:flex-end">📅 النصف الأول</button>
+  <button class="btn bo bsm" onclick="setKpiPeriod('half2')" style="align-self:flex-end">📅 النصف الثاني</button>
   <button class="btn bo bsm" onclick="setKpiPeriod('year')" style="align-self:flex-end">📅 السنة الحالية</button>
   <button class="btn bo bsm" onclick="setKpiPeriod('all')" style="align-self:flex-end">📅 كل الفترات</button>
  </div>
@@ -1287,6 +1336,26 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
  </div>
 </div>
 <div id="kpi-body"></div>
+</div>
+
+<!-- ══════════ INTERACTIVE DASHBOARD (cross-filtering + sparklines + drag-reorder) ══════════ -->
+<div id="sec-idash" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">🧩</div>لوحة تفاعلية</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bp bsm" onclick="renderIdash()">🔄 عرض</button>
+   <button class="btn bo bsm" onclick="idashResetOrder()">↺ إعادة الترتيب الافتراضي</button>
+  </div>
+ </div>
+ <p style="font-size:11px;color:var(--g5);margin:-4px 0 10px;line-height:1.7">
+  اسحب أي بطاقة من مقبضها ⠿ لإعادة ترتيبها كما تفضّل (يُحفظ الترتيب على هذا الجهاز). انقر أي نقطة على
+  الخط البياني لتصفية كل البطاقات بذلك الشهر، أو أي عمود بتوزيع الفروع/مراكز التكلفة للتصفية به —
+  والنقر مجدداً على نفس التصفية يلغيها.
+ </p>
+ <div id="idash-filter-chips" style="display:none;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
+ <div id="idash-grid" class="idash-grid"></div>
+</div>
 </div>
 
 <!-- SYSTEM AUDIT / INTEGRITY CHECK -->
@@ -2037,6 +2106,9 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div style="display:flex;gap:6px;align-items:center">
    <input id="tax-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderTaxReport()">
    <input id="tax-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderTaxReport()">
+   <button class="btn bo bsm" onclick="setReportPeriod('tax-from','tax-to','year',renderTaxReport)">📅 السنة الحالية</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('tax-from','tax-to','half1',renderTaxReport)">📅 النصف الأول</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('tax-from','tax-to','half2',renderTaxReport)">📅 النصف الثاني</button>
    <button class="btn bp bsm" onclick="renderTaxReport()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('tax-from').value='';document.getElementById('tax-to').value='';renderTaxReport()">↺</button>
   </div>
@@ -2077,6 +2149,9 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    <input id="cf-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
    <input id="cf-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCashFlow()">
    <select id="cf-branch" onchange="renderCashFlow()" style="display:none;font-size:11px;padding:5px 8px;border:1px solid var(--g200);border-radius:5px"><option value="">🏢 كل الفروع</option></select>
+   <button class="btn bo bsm" onclick="setReportPeriod('cf-from','cf-to','year',renderCashFlow)">📅 السنة الحالية</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('cf-from','cf-to','half1',renderCashFlow)">📅 النصف الأول</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('cf-from','cf-to','half2',renderCashFlow)">📅 النصف الثاني</button>
    <button class="btn bp bsm" onclick="renderCashFlow()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';renderCashFlow()">↺</button>
    <button class="btn bo bsm" onclick="printCashFlow()">🖨️ طباعة</button>
@@ -2097,6 +2172,9 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div style="display:flex;gap:6px;align-items:center">
    <input id="ccrpt-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCCProjReport()">
    <input id="ccrpt-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderCCProjReport()">
+   <button class="btn bo bsm" onclick="setReportPeriod('ccrpt-from','ccrpt-to','year',renderCCProjReport)">📅 السنة الحالية</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('ccrpt-from','ccrpt-to','half1',renderCCProjReport)">📅 النصف الأول</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('ccrpt-from','ccrpt-to','half2',renderCCProjReport)">📅 النصف الثاني</button>
    <button class="btn bp bsm" onclick="renderCCProjReport()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('ccrpt-from').value='';document.getElementById('ccrpt-to').value='';renderCCProjReport()">↺</button>
    <button class="btn bg bsm" onclick="expCCProjXL()">📊 Excel</button>
@@ -2121,6 +2199,9 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div style="display:flex;gap:6px;align-items:center">
    <input id="branchrpt-from" type="date" style="font-size:11px;padding:5px 8px" onchange="renderBranchReport()">
    <input id="branchrpt-to" type="date" style="font-size:11px;padding:5px 8px" onchange="renderBranchReport()">
+   <button class="btn bo bsm" onclick="setReportPeriod('branchrpt-from','branchrpt-to','year',renderBranchReport)">📅 السنة الحالية</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('branchrpt-from','branchrpt-to','half1',renderBranchReport)">📅 النصف الأول</button>
+   <button class="btn bo bsm" onclick="setReportPeriod('branchrpt-from','branchrpt-to','half2',renderBranchReport)">📅 النصف الثاني</button>
    <button class="btn bp bsm" onclick="renderBranchReport()">🔄 عرض</button>
    <button class="btn bo bsm" onclick="document.getElementById('branchrpt-from').value='';document.getElementById('branchrpt-to').value='';renderBranchReport()">↺</button>
    <button class="btn bg bsm" onclick="expBranchXL()">📊 Excel</button>
@@ -2161,6 +2242,11 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div style="display:flex;flex-direction:column;gap:4px">
    <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="stkrep-posted" checked onchange="renderStkRep()"> المرحّلة فقط</label>
   </div>
+ </div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+  <button class="btn bo bsm" onclick="setReportPeriod('stkrep-from','stkrep-to','year',renderStkRep)">📅 السنة الحالية</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('stkrep-from','stkrep-to','half1',renderStkRep)">📅 النصف الأول</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('stkrep-from','stkrep-to','half2',renderStkRep)">📅 النصف الثاني</button>
  </div>
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px" id="stkrep-summary"></div>
  <div id="stkrep-body"></div>
@@ -2377,6 +2463,11 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div style="display:flex;flex-direction:column;gap:4px">
    <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="stkout-unposted" onchange="renderStkOut()"> إظهار غير المرحّلة</label>
   </div>
+ </div>
+ <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+  <button class="btn bo bsm" onclick="setReportPeriod('stkout-from','stkout-to','year',renderStkOut)">📅 السنة الحالية</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('stkout-from','stkout-to','half1',renderStkOut)">📅 النصف الأول</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('stkout-from','stkout-to','half2',renderStkOut)">📅 النصف الثاني</button>
  </div>
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px" id="stkout-summary"></div>
  <div id="stkout-body"></div>
@@ -3706,6 +3797,22 @@ const fmtNum=(n,d)=>(parseFloat(n)||0).toFixed(d!==undefined?d:CFG.dec);
 const fmtDisp=(n)=>{const v=parseFloat(n)||0;return v.toLocaleString("en-US",{minimumFractionDigits:CFG.dec,maximumFractionDigits:CFG.dec});};
 const cur=()=>CFG.curSym||CFG.cur;
 const today=()=>new Date().toISOString().split("T")[0];
+// نطاقات فترات جاهزة (السنة الحالية/النصف الأول/النصف الثاني) تُستخدَم كأزرار تصفية سريعة
+// موحَّدة عبر كل التقارير ذات الفترة الزمنية (من/إلى)، بدل تكرار حساب التواريخ بكل شاشة على حدة
+function quickPeriodRange(mode){
+  const y=CY;
+  if(mode==="year") return {from:y+"-01-01",to:y+"-12-31"};
+  if(mode==="half1") return {from:y+"-01-01",to:y+"-06-30"};
+  if(mode==="half2") return {from:y+"-07-01",to:y+"-12-31"};
+  return {from:"",to:""};
+}
+function setReportPeriod(fromId,toId,mode,renderFn){
+  const r=quickPeriodRange(mode);
+  const fromEl=document.getElementById(fromId),toEl=document.getElementById(toId);
+  if(fromEl)fromEl.value=r.from;
+  if(toEl)toEl.value=r.to;
+  if(typeof renderFn==="function")renderFn();
+}
 function nowStr(){
   // en-US صراحةً لضمان أرقام إنجليزية (وليس أرقاماً هندية) في ختم التاريخ/الوقت المطبوع
   const d=new Date();
@@ -3885,6 +3992,7 @@ const PGS={
   rpt:["مركز التقارير","جميع تقارير النظام مجمّعة حسب القسم"],
   audit:["فحص وتدقيق البيانات","اكتشاف القيود غير المتوازنة وفوارق ميزان المراجعة"],
   kpi:["مؤشرات الأداء والتوجهات العامة","نظرة شاملة على أداء كل موديول مع الرسوم البيانية"],
+  idash:["لوحة تفاعلية","بطاقات قابلة للسحب والترتيب، انقر أي شهر أو فرع لتصفية باقي البطاقات معاً"],
   ccimport:["استيراد بيانات خارجية","استيراد دليل حسابات ومطابقة كشوفات مراكز التكلفة من أنظمة أخرى"],
 };
 
@@ -4230,6 +4338,7 @@ function SS(id,btn){
   if(id==="rpt")  renderRptHub();
   if(id==="audit")renderAudit();
   if(id==="kpi")  {populateKpiDimSelects();renderKpi();}
+  if(id==="idash") renderIdash();
   if(id==="ccimport")renderCCImportLog();
   if(id==="ent")  {renderEnts();if(!entLines.length)initLines();}
   if(id==="lg")   renderLg();
@@ -4561,7 +4670,7 @@ function populateDashChartFilters(){
 function dashChartPeriodChange(){
   const v=(document.getElementById('dch-period')||{}).value||'year';
   const show=(id,on)=>{const el=document.getElementById(id);if(el)el.style.display=on?'inline-block':'none';};
-  show('dch-quarter',v==='quarter');show('dch-month',v==='month');show('dch-from',v==='range');show('dch-to',v==='range');
+  show('dch-half',v==='half');show('dch-quarter',v==='quarter');show('dch-month',v==='month');show('dch-from',v==='range');show('dch-to',v==='range');
   renderDash();
 }
 // يُحدِّد قائمة الأشهر (بصيغة YYYY-MM) المطلوب عرضها بالرسم البياني حسب نوع الفترة المختار،
@@ -4569,7 +4678,10 @@ function dashChartPeriodChange(){
 function getDashChartFilter(){
   const periodType=(document.getElementById('dch-period')||{}).value||'year';
   const months=[];
-  if(periodType==='quarter'){
+  if(periodType==='half'){
+    const h=parseInt((document.getElementById('dch-half')||{}).value)||1;
+    for(let m=(h-1)*6+1;m<=h*6;m++)months.push(CY+'-'+String(m).padStart(2,'0'));
+  } else if(periodType==='quarter'){
     const q=parseInt((document.getElementById('dch-quarter')||{}).value)||1;
     for(let m=(q-1)*3+1;m<=q*3;m++)months.push(CY+'-'+String(m).padStart(2,'0'));
   } else if(periodType==='month'){
@@ -4803,9 +4915,9 @@ function setKpiPeriod(mode){
   if(mode==='month'){
     fromEl.value=CY+'-'+String(now.getMonth()+1).padStart(2,'0')+'-01';
     toEl.value=today();
-  } else if(mode==='year'){
-    fromEl.value=CY+'-01-01';
-    toEl.value=CY+'-12-31';
+  } else if(mode==='year'||mode==='half1'||mode==='half2'){
+    const r=quickPeriodRange(mode);
+    fromEl.value=r.from;toEl.value=r.to;
   } else {
     fromEl.value='';toEl.value='';
   }
@@ -4993,6 +5105,225 @@ function expKpiXL(){
   ];
   k.topCustomers.forEach(function(x){data.push([x[0],x[1]]);});
   XLSX.writeFile(mkWB('مؤشرات الأداء',data,[{wch:32},{wch:18}]),'kpi_'+CY+'.xlsx');showAlert('تم التصدير Excel');
+}
+
+// ═══ INTERACTIVE DASHBOARD (بطاقات قابلة للسحب والترتيب + تصفية متبادلة + مؤشرات صغيرة) ═══
+// يُعاد استخدام getKpiData()/kpiInvoiceMatchesDim() نفسها المبنية أصلاً لشاشة مؤشرات الأداء —
+// فكل بطاقة هنا مجرد عرض تفاعلي بديل لنفس البيانات، لا مصدر بيانات مستقل يحتاج صيانة منفصلة
+const IDASH_WIDGETS=[
+  {key:'netProfit',label:'💰 صافي الربح',color:'#16a34a',type:'flow'},
+  {key:'sales',label:'🟢 المبيعات',color:'#22c55e',type:'flow'},
+  {key:'purchases',label:'🔴 المشتريات',color:'#ef4444',type:'flow'},
+  {key:'cash',label:'🏦 النقدية',color:'#2563eb',type:'balance'},
+  {key:'ar',label:'👤 الذمم المدينة',color:'#d97706',type:'balance'},
+  {key:'ap',label:'🏭 الذمم الدائنة',color:'#7c3aed',type:'balance'},
+  {key:'inventory',label:'📦 قيمة المخزون',color:'#0d9488',type:'balance'},
+  {key:'branches',label:'🏢 توزيع الفروع (انقر عموداً للتصفية)',color:'#2563eb',type:'breakdown',span:2},
+  {key:'topCust',label:'🥇 أعلى العملاء',color:'#6366f1',type:'breakdown',span:2},
+];
+const IDASH_ORDER_KEY='acct_idash_order_v1';
+let idashFilter={month:null,branchId:null,ccId:null,projId:null};
+let idashOrder=null;
+function idashLoadOrder(){
+  let saved=null;
+  try{saved=JSON.parse(localStorage.getItem(IDASH_ORDER_KEY)||'null');}catch(e){}
+  const known=IDASH_WIDGETS.map(function(w){return w.key;});
+  if(!Array.isArray(saved))return known.slice();
+  const valid=saved.filter(function(k){return known.indexOf(k)!==-1;});
+  known.forEach(function(k){if(valid.indexOf(k)===-1)valid.push(k);});
+  return valid;
+}
+function idashResetOrder(){
+  idashOrder=IDASH_WIDGETS.map(function(w){return w.key;});
+  try{localStorage.removeItem(IDASH_ORDER_KEY);}catch(e){}
+  renderIdash();
+}
+function idashSetMonthFilter(m){
+  idashFilter.month=(idashFilter.month===m)?null:m;
+  renderIdash();
+}
+function idashSetDimFilter(kind,id){
+  idashFilter[kind]=(idashFilter[kind]===id)?null:id;
+  renderIdash();
+}
+function idashClearFilters(){
+  idashFilter={month:null,branchId:null,ccId:null,projId:null};
+  renderIdash();
+}
+// سلسلة شهرية (مبيعات/مشتريات/صافي ربح) على مدار السنة المالية الحالية بالكامل — تُستخدَم للخط
+// البياني الصغير (sparkline) بكل بطاقة تدفق، بنفس منطق الرسم البياني الشهري بلوحة التحكم الرئيسية
+function getIdashMonthlySeries(ccId,projId,branchId){
+  const months=[];for(let m=1;m<=12;m++)months.push(CY+'-'+String(m).padStart(2,'0'));
+  const sales={},purchases={},revByMonth={},expByMonth={};
+  months.forEach(function(m){sales[m]=0;purchases[m]=0;revByMonth[m]=0;expByMonth[m]=0;});
+  const invoiceEntryIds=new Set();
+  salesInvoices.forEach(function(i){if(i.entryId)invoiceEntryIds.add(i.entryId);});
+  purchaseInvoices.forEach(function(i){if(i.entryId)invoiceEntryIds.add(i.entryId);});
+  salesInvoices.filter(function(i){return i.status==='posted'&&kpiInvoiceMatchesDim(i,ccId,projId,branchId);}).forEach(function(i){
+    const mk=(i.date||'').slice(0,7);if(!(mk in sales))return;
+    sales[mk]+=i.isReturn?-i.total:i.total;
+  });
+  purchaseInvoices.filter(function(i){return i.status==='posted'&&kpiInvoiceMatchesDim(i,ccId,projId,branchId);}).forEach(function(i){
+    const mk=(i.date||'').slice(0,7);if(!(mk in purchases))return;
+    purchases[mk]+=i.isReturn?-i.total:i.total;
+  });
+  postedEntries().filter(function(e){return !branchId||getEntryBranchId(e)===branchId;}).forEach(function(e){
+    const mk=(e.date||'').slice(0,7);if(!(mk in revByMonth))return;
+    const isManual=!invoiceEntryIds.has(e.id);
+    e.lines.forEach(function(l){
+      if(ccId&&l.costCenterId!==ccId)return;
+      if(projId&&l.projectId!==projId)return;
+      const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
+      if(acc.type==='revenue'){const amt=(l.credit||0)-(l.debit||0);revByMonth[mk]+=amt;if(isManual)sales[mk]+=amt;}
+      if(acc.type==='expense'||acc.type==='cost'){const amt=(l.debit||0)-(l.credit||0);expByMonth[mk]+=amt;if(isManual)purchases[mk]+=amt;}
+    });
+  });
+  return months.map(function(m){return {month:m,sales:sales[m],purchases:purchases[m],netProfit:revByMonth[m]-expByMonth[m]};});
+}
+// إجمالي الإيرادات لكل فرع خلال الفترة — بطاقة توزيع الفروع القابلة للنقر للتصفية بها
+function getIdashBranchBreakdown(fromD,toD,ccId,projId){
+  if(!branches||!branches.length)return [];
+  const totals={};
+  branches.forEach(function(b){totals[b.id]=0;});
+  postedEntries().filter(function(e){return (!fromD||e.date>=fromD)&&(!toD||e.date<=toD);}).forEach(function(e){
+    const bId=getEntryBranchId(e);
+    if(!bId||!(bId in totals))return;
+    e.lines.forEach(function(l){
+      if(ccId&&l.costCenterId!==ccId)return;
+      if(projId&&l.projectId!==projId)return;
+      const acc=accounts.find(function(a){return a.id===l.accId;});if(!acc)return;
+      if(acc.type==='revenue')totals[bId]+=(l.credit||0)-(l.debit||0);
+    });
+  });
+  return branches.filter(function(b){return b.active!==false;}).map(function(b){return {id:b.id,name:b.name,val:totals[b.id]||0};});
+}
+// خط بياني صغير (SVG) بنقاط قابلة للنقر لكل شهر — النقر يُفعِّل/يُلغي تصفية كل البطاقات بذلك الشهر
+function idashSparkline(series,valueKey,w,h,color){
+  w=w||180;h=h||36;
+  const vals=series.map(function(s){return s[valueKey];});
+  const max=Math.max.apply(null,vals.concat([0])),min=Math.min.apply(null,vals.concat([0]));
+  const range=(max-min)||1;
+  const n=vals.length;
+  const step=n>1?w/(n-1):0;
+  const pts=vals.map(function(v,i){return [i*step,h-((v-min)/range)*(h-6)-3];});
+  const path=pts.map(function(p,i){return (i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ');
+  const circles=pts.map(function(p,i){
+    const m=series[i].month;
+    const isActive=idashFilter.month===m;
+    return '<circle class="idash-spark-pt" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isActive?4.5:2.5)+'" '
+      +'fill="'+(isActive?'#fff':color)+'" stroke="'+color+'" stroke-width="'+(isActive?2.5:0)+'" '
+      +'onclick="idashSetMonthFilter(\''+m+'\')"><title>'+m+': '+fmtDisp(vals[i])+' '+cur()+'</title></circle>';
+  }).join('');
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" preserveAspectRatio="none" style="display:block;overflow:visible">'
+    +'<path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+circles+'</svg>';
+}
+function idashTileValueHTML(w,k,series,fromD,toD){
+  if(w.type==='flow'){
+    const val=w.key==='netProfit'?k.netProfit:(w.key==='sales'?k.salesTotal:k.purTotal);
+    const isNeg=w.key==='netProfit'&&val<0;
+    return '<div class="idash-val" style="color:'+(isNeg?'var(--rd)':'inherit')+'">'+fmtDisp(Math.abs(val))
+      +' <span style="font-size:11px;font-weight:600;color:var(--g4)">'+cur()+'</span></div>'
+      +'<div style="margin-top:6px">'+idashSparkline(series,w.key,180,36,w.color)+'</div>';
+  }
+  if(w.type==='balance'){
+    const val=w.key==='cash'?k.cashBalance:(w.key==='ar'?k.arTotal:(w.key==='ap'?k.apTotal:k.invValue));
+    return '<div class="idash-val">'+fmtDisp(val)+' <span style="font-size:11px;font-weight:600;color:var(--g4)">'+cur()+'</span></div>'
+      +'<div class="idash-sub">رصيد حالي — إجمالي على مستوى الشركة</div>';
+  }
+  if(w.key==='branches'){
+    const items=getIdashBranchBreakdown(fromD,toD,idashFilter.ccId,idashFilter.projId);
+    const max=Math.max.apply(null,items.map(function(x){return Math.abs(x.val);}).concat([1]));
+    return items.map(function(b){
+      const pct=Math.round(Math.abs(b.val)/max*100);
+      const active=idashFilter.branchId===b.id;
+      return '<div class="idash-bar-row'+(active?' active':'')+'" onclick="idashSetDimFilter(\'branchId\','+b.id+')">'
+        +'<span style="width:70px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+b.name+'</span>'
+        +'<span class="idash-bar-track"><span class="idash-bar-fill" style="width:'+pct+'%;background:'+w.color+'"></span></span>'
+        +'<span style="width:75px;text-align:left;direction:ltr;flex-shrink:0">'+fmtDisp(b.val)+'</span></div>';
+    }).join('')||'<div style="font-size:10.5px;color:var(--g4)">لا توجد فروع</div>';
+  }
+  if(w.key==='topCust'){
+    const items=k.topCustomers||[];
+    const max=Math.max.apply(null,items.map(function(x){return x[1];}).concat([1]));
+    return items.map(function(x){
+      const pct=Math.round(x[1]/max*100);
+      return '<div class="idash-bar-row">'
+        +'<span style="width:90px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+x[0]+'</span>'
+        +'<span class="idash-bar-track"><span class="idash-bar-fill" style="width:'+pct+'%;background:'+w.color+'"></span></span>'
+        +'<span style="width:75px;text-align:left;direction:ltr;flex-shrink:0">'+fmtDisp(x[1])+'</span></div>';
+    }).join('')||'<div style="font-size:10.5px;color:var(--g4)">لا توجد بيانات مبيعات بالفترة</div>';
+  }
+  return '';
+}
+function renderIdash(){
+  if(!idashOrder)idashOrder=idashLoadOrder();
+  const chipsEl=document.getElementById('idash-filter-chips');
+  const gridEl=document.getElementById('idash-grid');
+  if(!gridEl)return;
+
+  let fromD,toD;
+  if(idashFilter.month){
+    fromD=idashFilter.month+'-01';
+    const parts=idashFilter.month.split('-').map(Number);
+    const lastDay=new Date(parts[0],parts[1],0).getDate();
+    toD=idashFilter.month+'-'+String(lastDay).padStart(2,'0');
+  }else{
+    fromD=CY+'-01-01';toD=CY+'-12-31';
+  }
+  const k=getKpiData(fromD,toD,idashFilter.ccId,idashFilter.projId,idashFilter.branchId);
+  const series=getIdashMonthlySeries(idashFilter.ccId,idashFilter.projId,idashFilter.branchId);
+
+  const chips=[];
+  if(idashFilter.month)chips.push({label:'📅 '+idashFilter.month,onclick:"idashSetMonthFilter('"+idashFilter.month+"')"});
+  if(idashFilter.branchId){const b=branches.find(function(x){return x.id===idashFilter.branchId;});chips.push({label:'🏢 '+(b?b.name:''),onclick:"idashSetDimFilter('branchId',"+idashFilter.branchId+")"});}
+  if(idashFilter.ccId){const c=costCenters.find(function(x){return x.id===idashFilter.ccId;});chips.push({label:'🏷️ '+(c?c.name:''),onclick:"idashSetDimFilter('ccId',"+idashFilter.ccId+")"});}
+  if(idashFilter.projId){const p=projects.find(function(x){return x.id===idashFilter.projId;});chips.push({label:'🏗️ '+(p?p.name:''),onclick:"idashSetDimFilter('projId',"+idashFilter.projId+")"});}
+  if(chipsEl){
+    if(chips.length){
+      chipsEl.style.display='flex';
+      chipsEl.innerHTML=chips.map(function(c){return '<span class="idash-chip" onclick="'+c.onclick+'">'+c.label+' <span class="x">✕</span></span>';}).join('')
+        +'<span class="idash-chip" style="background:var(--g100);color:var(--g6)" onclick="idashClearFilters()">مسح الكل ✕</span>';
+    }else{chipsEl.style.display='none';chipsEl.innerHTML='';}
+  }
+
+  const widgetsByKey={};IDASH_WIDGETS.forEach(function(w){widgetsByKey[w.key]=w;});
+  gridEl.innerHTML=idashOrder.map(function(key){
+    const w=widgetsByKey[key];if(!w)return '';
+    const body=idashTileValueHTML(w,k,series,fromD,toD);
+    return '<div class="idash-tile" data-key="'+w.key+'"'+(w.span?' data-span="'+w.span+'"':'')+' draggable="true" '
+      +'ondragstart="idashDragStart(event)" ondragover="idashDragOver(event)" ondrop="idashDrop(event)" ondragend="idashDragEnd(event)">'
+      +'<div class="idash-thd"><span class="idash-lbl">'+w.label+'</span><span class="idash-drag-handle" title="اسحب لإعادة الترتيب">⠿</span></div>'
+      +body+'</div>';
+  }).join('');
+}
+function idashDragStart(e){
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+  try{e.dataTransfer.setData('text/plain',e.currentTarget.dataset.key);}catch(err){}
+}
+function idashDragEnd(e){e.currentTarget.classList.remove('dragging');}
+function idashDragOver(e){
+  e.preventDefault();
+  const grid=document.getElementById('idash-grid');if(!grid)return;
+  const dragging=grid.querySelector('.idash-tile.dragging');if(!dragging)return;
+  const after=idashDragAfterElement(grid,e.clientX,e.clientY);
+  if(after==null)grid.appendChild(dragging);else grid.insertBefore(dragging,after);
+}
+function idashDrop(e){
+  e.preventDefault();
+  const grid=document.getElementById('idash-grid');if(!grid)return;
+  idashOrder=Array.from(grid.querySelectorAll('.idash-tile')).map(function(el){return el.dataset.key;});
+  try{localStorage.setItem(IDASH_ORDER_KEY,JSON.stringify(idashOrder));}catch(err){}
+}
+function idashDragAfterElement(container,x,y){
+  const els=Array.prototype.slice.call(container.querySelectorAll('.idash-tile:not(.dragging)'));
+  let closest={dist:-Infinity,element:null};
+  els.forEach(function(child){
+    const box=child.getBoundingClientRect();
+    const offset=y-(box.top+box.height/2);
+    if(offset<0&&offset>closest.dist)closest={dist:offset,element:child};
+  });
+  return closest.element;
 }
 
 // ═══ ACCOUNTS ═══
@@ -6209,49 +6540,101 @@ function computeCashFlow(){
   // بنفس التصنيف من دليل الحسابات) تُجمَع هنا بمفردها لكل حساب على حدة بدل بندين ثابتين مسبقاً
   // (إهلاك + مخصصات فقط)، فتُضاف مرة أخرى ضمن الأنشطة التشغيلية بقائمة التدفقات النقدية بدل
   // ضياعها ضمن "الالتزامات التشغيلية الأخرى" العامة بلا أي بند مستقل يُظهرها بوضوح للقارئ
+  // كل بند إجمالي بالقائمة (غير نقدي/ذمم مدينة/ذمم دائنة/التزامات تشغيلية أخرى/تمويلية) يُرافقه
+  // سجل بالحركات الفعلية المكوِّنة له (تاريخ/مرجع/بيان/مبلغ) — تُعرَض قابلة للطي بواجهة الشاشة
+  // لمراجعة الرقم الإجمالي والتأكد من العمليات المكوِّنة له، بدل رقم إجمالي مغلق بلا تفصيل
   const noncashMap={};
+  const arItems=[],apItems=[],otherOpLiabMap={},financingMap={};
   let revenue=0,expense=0,arChange=0,apChange=0,equityChange=0,financingLiabChange=0,operatingLiabChange=0,actualCashChange=0;
   periodEntries.forEach(e=>{
     e.lines.forEach(l=>{
       const acc=accounts.find(a=>a.id===l.accId);if(!acc)return;
       const dr=l.debit||0,cr=l.credit||0;
+      if(Math.abs(dr-cr)<0.005)return;
+      const txn={date:e.date,ref:e.ref||"",desc:l.desc||e.desc||""};
       if(cashAccIds.has(acc.id))actualCashChange+=dr-cr;
       if(getEffectiveCFActivity(acc)==="noncash"){
         const amt=(NORM[acc.type]==="dr")?(dr-cr):(cr-dr);
-        if(!noncashMap[acc.id])noncashMap[acc.id]={name:acc.name,amt:0};
+        if(!noncashMap[acc.id])noncashMap[acc.id]={name:acc.name,amt:0,txns:[]};
         noncashMap[acc.id].amt+=amt;
+        noncashMap[acc.id].txns.push(Object.assign({amt},txn));
         if(acc.type==="expense"||acc.type==="cost")expense+=dr-cr;
         if(acc.type==="revenue")revenue+=cr-dr;
         return;
       }
       if(acc.type==="revenue")revenue+=cr-dr;
       if(acc.type==="expense"||acc.type==="cost")expense+=dr-cr;
-      if(acc.type==="equity")equityChange+=cr-dr;
+      if(acc.type==="equity"){
+        equityChange+=cr-dr;
+        if(!financingMap[acc.id])financingMap[acc.id]={name:acc.name,amt:0,txns:[]};
+        financingMap[acc.id].amt+=cr-dr;
+        financingMap[acc.id].txns.push(Object.assign({amt:cr-dr},txn));
+      }
       if(l.subId){
         const sub=subLedger.find(s=>s.id===l.subId);
-        if(sub&&sub.type==="customer")arChange+=dr-cr;
-        if(sub&&sub.type==="vendor")apChange+=cr-dr;
+        if(sub&&sub.type==="customer"){arChange+=dr-cr;arItems.push(Object.assign({amt:dr-cr,name:sub.name},txn));}
+        if(sub&&sub.type==="vendor"){apChange+=cr-dr;apItems.push(Object.assign({amt:cr-dr,name:sub.name},txn));}
       }else if(acc.type==="liability"){
         // تصنيف كل حساب التزام حسب تبويبه في التدفقات النقدية (تلقائي أو مُعدَّل يدوياً من دليل الحسابات):
         // التزامات تمويلية (قروض) → أنشطة تمويلية | التزامات تشغيلية (مستحقات، ضرائب...) → ضمن رأس المال العامل التشغيلي
-        if(getEffectiveCFActivity(acc)==="financing") financingLiabChange+=cr-dr;
-        else operatingLiabChange+=cr-dr;
+        if(getEffectiveCFActivity(acc)==="financing"){
+          financingLiabChange+=cr-dr;
+          if(!financingMap[acc.id])financingMap[acc.id]={name:acc.name,amt:0,txns:[]};
+          financingMap[acc.id].amt+=cr-dr;
+          financingMap[acc.id].txns.push(Object.assign({amt:cr-dr},txn));
+        } else {
+          operatingLiabChange+=cr-dr;
+          if(!otherOpLiabMap[acc.id])otherOpLiabMap[acc.id]={name:acc.name,amt:0,txns:[]};
+          otherOpLiabMap[acc.id].amt+=cr-dr;
+          otherOpLiabMap[acc.id].txns.push(Object.assign({amt:cr-dr},txn));
+        }
       }
     });
   });
   const netIncome=revenue-expense;
   const noncashItems=Object.values(noncashMap).filter(x=>Math.abs(x.amt)>0.005);
   const noncashTotal=noncashItems.reduce((s,x)=>s+x.amt,0);
+  const otherOpLiabItems=Object.values(otherOpLiabMap).filter(x=>Math.abs(x.amt)>0.005);
+  const financingItems=Object.values(financingMap).filter(x=>Math.abs(x.amt)>0.005);
   const operating=netIncome+noncashTotal-arChange+apChange+operatingLiabChange;
   // سجل الأصول الثابتة (assets[]) غير مرتبط بفرع إطلاقاً (لا يوجد بند شراء أصل مُسنَد لقيد
   // بعينه يمكن تصنيفه)، فيُستبعَد بالكامل عند تفعيل فلتر الفرع بدل تضمين رقم غير مصفّى يخلط
   // ببيانات مصفّاة، ما كان سيَكسر مطابقة صافي التغيّر مع التغيّر الفعلي بأرصدة النقدية بلا سبب حقيقي
-  const investing=branchId?0:-assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to).reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
+  const investingAssets=branchId?[]:assets.filter(a=>a.purchaseDate>=from&&a.purchaseDate<=to);
+  const investingItems=investingAssets.map(a=>({date:a.purchaseDate,ref:a.code||"",desc:a.name,amt:-(parseFloat(a.purchaseCost)||0)}));
+  const investing=-investingAssets.reduce((s,a)=>s+(parseFloat(a.purchaseCost)||0),0);
   const financing=equityChange+financingLiabChange;
   const netChange=operating+investing+financing;
   const cashAccountNames=getCashAccounts().map(a=>a.code+" — "+a.name);
   const reconciled=Math.abs(netChange-actualCashChange)<0.01;
-  return {from,to,netIncome,noncashItems,noncashTotal,arChange,apChange,operatingLiabChange,operating,investing,financing,netChange,actualCashChange,cashAccountNames,reconciled};
+  return {from,to,netIncome,noncashItems,noncashTotal,arChange,arItems,apChange,apItems,operatingLiabChange,otherOpLiabItems,
+    operating,investing,investingItems,financing,financingItems,netChange,actualCashChange,cashAccountNames,reconciled};
+}
+// بند إجمالي بقائمة التدفقات النقدية قابل للطي لعرض الحركات الفعلية المكوِّنة له (تاريخ/مرجع/بيان/
+// طرف تحليلي/مبلغ) — يُستخدَم للمراجعة والتأكد من العمليات وراء كل رقم إجمالي بدل رقم مغلق بلا
+// تفصيل. بلا حركات (items فارغة) يُعرَض كصف عادي غير قابل للطي، كسابق عهد الصف قبل هذه الميزة
+function cfRowDetail(label,val,items){
+  const cls=val<0?'var(--rd)':'var(--g8)';
+  const valStr=(val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val))+' '+cur();
+  if(!items||!items.length){
+    return `<div class="fs-r s1"><span>${label}</span><span style="direction:ltr;color:${cls}">${valStr}</span></div>`;
+  }
+  const rows=items.map(function(it){
+    const iCls=it.amt<0?'var(--rd)':'var(--g6)';
+    const iVal=(it.amt<0?'('+fmtDisp(Math.abs(it.amt))+')':fmtDisp(it.amt))+' '+cur();
+    const parts=[it.date?fmtDate(it.date):'',it.ref||'',it.name||'',it.desc||''].filter(Boolean);
+    return `<div class="cf-detail-row"><span>${parts.join(' — ')}</span><span style="direction:ltr">${iVal}</span></div>`;
+  }).join('');
+  return `<details class="cf-detail">
+    <summary class="fs-r s1"><span>${label}</span><span style="direction:ltr;color:${cls}">${valStr}</span></summary>
+    <div class="cf-detail-body">${rows}</div>
+  </details>`;
+}
+function toggleAllCfDetails(){
+  const body=document.getElementById("cashflow-body");if(!body)return;
+  const dets=body.querySelectorAll("details.cf-detail");
+  const anyClosed=Array.from(dets).some(function(d){return !d.open;});
+  dets.forEach(function(d){d.open=anyClosed;});
 }
 function cfRow(label,val,indent,bold){
   return `<tr${bold?' style="font-weight:800;background:var(--g50)"':''}>
@@ -6275,22 +6658,25 @@ function renderCashFlow(){
   const cf=computeCashFlow();
   const body=document.getElementById("cashflow-body");if(!body)return;
   const branchActive=!!parseInt((document.getElementById("cf-branch")||{}).value);
-  const cfr=(label,val)=>`<div class="fs-r s1"><span>${label}</span><span style="direction:ltr;color:${val<0?'var(--rd)':'var(--g8)'}">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)} ${cur()}</span></div>`;
   const cft=(label,val)=>`<div class="fs-r tot"><span>${label}</span><span style="direction:ltr;color:${val<0?'var(--rd)':'var(--gn)'}">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)} ${cur()}</span></div>`;
+  const negItems=items=>items.map(x=>Object.assign({},x,{amt:-x.amt}));
   body.innerHTML=fsLetterhead("قائمة التدفقات النقدية",cf.from,cf.to)+`
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+      <button class="btn bo bsm no-print" onclick="toggleAllCfDetails()">🔍 إظهار/إخفاء كل التفاصيل</button>
+    </div>
     <div class="fs-sec">
       <div class="fs-hdr">الأنشطة التشغيلية</div>
-      ${cfr("صافي الربح",cf.netIncome)}
-      ${cf.noncashItems.map(x=>cfr((x.amt>=0?"+ ":"- ")+x.name+" (بند غير نقدي)",x.amt)).join('')}
-      ${cfr((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange)}
-      ${cfr((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange)}
-      ${cf.operatingLiabChange?cfr((cf.operatingLiabChange>=0?"+ الزيادة":"- الانخفاض")+" في الالتزامات التشغيلية الأخرى (مستحقات، ضرائب...)",cf.operatingLiabChange):''}
+      ${cfRowDetail("صافي الربح",cf.netIncome)}
+      ${cf.noncashItems.map(x=>cfRowDetail((x.amt>=0?"+ ":"- ")+x.name+" (بند غير نقدي)",x.amt,x.txns)).join('')}
+      ${cfRowDetail((cf.arChange>=0?"- الزيادة":"+ الانخفاض")+" في الذمم المدينة",-cf.arChange,negItems(cf.arItems))}
+      ${cfRowDetail((cf.apChange>=0?"+ الزيادة":"- الانخفاض")+" في الذمم الدائنة",cf.apChange,cf.apItems)}
+      ${cf.operatingLiabChange?cf.otherOpLiabItems.map(x=>cfRowDetail((x.amt>=0?"+ الزيادة":"- الانخفاض")+" في "+x.name+" (التزامات تشغيلية أخرى)",x.amt,x.txns)).join(''):''}
       ${cft("صافي النقد من الأنشطة التشغيلية",cf.operating)}
       <div class="fs-hdr" style="margin-top:10px">الأنشطة الاستثمارية${branchActive?' <span style="font-weight:400;font-size:9.5px;color:var(--g5)">(سجل الأصول الثابتة غير مرتبط بفرع — مُستبعَد أثناء التصفية بفرع)</span>':''}</div>
-      ${cfr("شراء أصول ثابتة",cf.investing)}
+      ${cfRowDetail("شراء أصول ثابتة",cf.investing,cf.investingItems)}
       ${cft("صافي النقد من الأنشطة الاستثمارية",cf.investing)}
       <div class="fs-hdr" style="margin-top:10px">الأنشطة التمويلية</div>
-      ${cfr("التغيّر في حقوق الملكية والقروض",cf.financing)}
+      ${cf.financingItems.length?cf.financingItems.map(x=>cfRowDetail((x.amt>=0?"+ ":"- ")+x.name,x.amt,x.txns)).join(''):cfRowDetail("التغيّر في حقوق الملكية والقروض",cf.financing)}
       ${cft("صافي النقد من الأنشطة التمويلية",cf.financing)}
       <div class="fs-r grand"><span>صافي التغيّر في النقدية (محسوب)</span><span style="direction:ltr">${cf.netChange<0?'('+fmtDisp(Math.abs(cf.netChange))+')':fmtDisp(cf.netChange)} ${cur()}</span></div>
     </div>
@@ -14547,6 +14933,39 @@ function forceSyncNow(){
       showAlert('✅ تم الحفظ محلياً (المزامنة السحابية غير مُفعَّلة على هذا الجهاز)');
     }
   }catch(e){console.error('forceSyncNow:',e);showAlert('⚠ حدث خطأ أثناء الحفظ','err');}
+}
+// زر تحديث عام (بشريط الأدوات العلوي، متاح من أي شاشة): يسحب أحدث نسخة من البيانات السحابية —
+// كتغييرات أُجريت من جهاز/تبويب آخر — ثم يُعيد رسم الشاشة الحالية بالكامل من جديد (بما فيها لوحة
+// التحكم الرئيسية وكل التقارير)، بنفس منطق الدمج المستخدم عند تحميل الصفحة أول مرة (استعادة شعار
+// الشركة/مرفقات القيود من النسخة المحلية، فهي مُستبعَدة عمداً من الحمولة السحابية لتخفيف حجمها)
+function pullAndRefreshNow(){
+  if(!(window.CloudSync&&CloudSync.load)){
+    if(window.currentSection)SS(window.currentSection,null);
+    showAlert('✅ تم تحديث العرض (المزامنة السحابية غير مُفعَّلة على هذا الجهاز)');
+    return;
+  }
+  showAlert('⏳ جارٍ سحب أحدث البيانات...','info');
+  CloudSync.load(CLOUD_DOC_NAME).then(function(remote){
+    if(remote){
+      if(remote.CFG&&CFG&&CFG.logo&&!remote.CFG.logo)remote.CFG=Object.assign({},remote.CFG,{logo:CFG.logo});
+      if(Array.isArray(remote.entries)&&Array.isArray(entries)){
+        const localAtt=new Map();
+        entries.forEach(function(e){if(e.attachment)localAtt.set(e.id,e.attachment);});
+        if(localAtt.size)remote.entries=remote.entries.map(function(e){
+          return(!e.attachment&&localAtt.has(e.id))?Object.assign({},e,{attachment:localAtt.get(e.id)}):e;
+        });
+      }
+      applyPersistedData(remote);
+      try{localStorage.setItem(PERSIST_KEY,JSON.stringify(buildPersistData()));}catch(e){}
+      __lastCloudSyncJson=JSON.stringify(buildCloudSyncPayload(buildPersistData()));
+    }
+    renderAll();
+    if(window.currentSection)SS(window.currentSection,null);
+    showAlert('✅ تم تحديث كل التقارير بأحدث البيانات');
+  }).catch(function(){
+    if(window.currentSection)SS(window.currentSection,null);
+    showAlert('⚠ تعذّر سحب البيانات السحابية — أُعيد عرض البيانات المحلية الحالية','warn');
+  });
 }
 function applyPersistedData(d){
   try{
