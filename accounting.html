@@ -179,6 +179,35 @@ tbody tr:hover{background:var(--g50)}
 .sc2.c-amber .sc2-ic{background:#fef3c7;color:#b45309}
 .sc2.c-teal .sc2-ic{background:var(--tp);color:var(--tl2)}
 .sc2.c-indigo .sc2-ic{background:#e0e7ff;color:#4338ca}
+/* ── Dashboard hero stat cards (solid gradient tiles, home page only) ── */
+.sg3{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:13px;margin-bottom:16px}
+.sc3{border-radius:16px;padding:16px 17px;color:#fff;position:relative;overflow:hidden;box-shadow:0 6px 16px -6px rgba(0,0,0,.18);transition:transform .15s,box-shadow .15s;cursor:default}
+.sc3:hover{transform:translateY(-3px);box-shadow:0 10px 20px -6px rgba(0,0,0,.24)}
+.sc3-ic{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:12px}
+.sc3-vl{font-size:20px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc3-lb{font-size:10.5px;opacity:.92;font-weight:700;margin:2px 0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sc3-more{font-size:9.5px;font-weight:700;color:#fff;display:inline-flex;align-items:center;gap:3px;cursor:pointer;background:rgba(255,255,255,.2);padding:4px 10px;border-radius:20px;border:none;font-family:inherit}
+.sc3-more:hover{background:rgba(255,255,255,.32)}
+.sc3.g-teal{background:linear-gradient(135deg,#0f766e,#2dd4bf)}
+.sc3.g-amber{background:linear-gradient(135deg,#b45309,#fbbf24)}
+.sc3.g-purple{background:linear-gradient(135deg,#6d28d9,#c4b5fd)}
+.sc3.g-green{background:linear-gradient(135deg,#15803d,#4ade80)}
+.sc3.g-red{background:linear-gradient(135deg,#b91c1c,#f87171)}
+.sc3.g-blue{background:linear-gradient(135deg,#1d4ed8,#7dd3fc)}
+/* ── Dashboard "Shortcuts" quick actions: bold solid pill buttons (was subtle icon rows) ── */
+.qa-list{display:flex;flex-direction:column;gap:8px}
+.qa-item{display:flex;align-items:center;gap:11px;width:100%;padding:12px 14px;border-radius:14px;border:none;cursor:pointer;font-family:inherit;text-align:right;font-size:12.5px;font-weight:800;color:#fff;transition:transform .12s,box-shadow .12s;box-shadow:0 3px 8px -3px rgba(0,0,0,.2)}
+.qa-item:hover{transform:translateY(-2px);box-shadow:0 6px 14px -4px rgba(0,0,0,.28)}
+.qa-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;background:rgba(255,255,255,.24)}
+.qa-item.c-blue{background:linear-gradient(135deg,#1d4ed8,#3b82f6)}
+.qa-item.c-green{background:linear-gradient(135deg,#15803d,#22c55e)}
+.qa-item.c-red{background:linear-gradient(135deg,#b91c1c,#ef4444)}
+.qa-item.c-purple{background:linear-gradient(135deg,#6d28d9,#8b5cf6)}
+.qa-item.c-amber{background:linear-gradient(135deg,#b45309,#f59e0b)}
+.qa-item.c-teal{background:linear-gradient(135deg,#0f766e,#14b8a6)}
+.qa-item .qa-chev{margin-right:auto;color:rgba(255,255,255,.85);font-size:13px}
+/* ── Dashboard chart cards: colored right-accent (RTL) per topic ── */
+.dc-card{border-right:4px solid var(--accent,var(--teal));border-radius:var(--rl)}
 /* ── Interactive dashboard: draggable/reorderable tiles + cross-filter chips ── */
 .idash-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
 .idash-tile{background:var(--w);border:1px solid var(--g200);border-radius:var(--r);padding:12px 14px;cursor:default;transition:box-shadow .15s,opacity .15s}
@@ -289,18 +318,6 @@ details.cf-detail[open] summary::before{transform:rotate(90deg)}
 .dch-kpi-lbl{font-size:9.5px;font-weight:700;color:var(--g4);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
 .dch-kpi-val{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1}
 .dch-kpi-sub{font-size:9px;color:var(--g4);margin-top:2px}
-/* ── Quick actions (vertical list) ── */
-.qa-list{display:flex;flex-direction:column;gap:4px}
-.qa-item{display:flex;align-items:center;gap:11px;width:100%;padding:9px 10px;border-radius:var(--rs);border:1px solid transparent;background:transparent;cursor:pointer;font-family:inherit;text-align:right;font-size:12px;font-weight:600;color:var(--g7);transition:background .12s,border-color .12s}
-.qa-item:hover{background:var(--g50);border-color:var(--g200)}
-.qa-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
-.qa-item.c-blue .qa-ic{background:#dbeafe;color:#1d4ed8}
-.qa-item.c-green .qa-ic{background:#dcfce7;color:#15803d}
-.qa-item.c-red .qa-ic{background:#fee2e2;color:#b91c1c}
-.qa-item.c-purple .qa-ic{background:#ede9fe;color:#6d28d9}
-.qa-item.c-amber .qa-ic{background:#fef3c7;color:#b45309}
-.qa-item.c-teal .qa-ic{background:var(--tp);color:var(--tl2)}
-.qa-item .qa-chev{margin-right:auto;color:var(--g4);font-size:11px}
 /* ── Settings ── */
 .set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
 .set-card{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:16px}
@@ -787,10 +804,10 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
 
 <!-- DASHBOARD -->
 <div id="sec-dash" class="sec active">
- <div class="sg2" id="d-grid"></div>
+ <div class="sg3" id="d-grid"></div>
  <div style="display:grid;grid-template-columns:250px 1fr;gap:14px;margin-bottom:14px;align-items:start" id="d-main-row">
-  <div class="card" style="padding-bottom:8px">
-   <div class="chd"><div class="ct"><div class="ti">⚡</div>عمليات سريعة</div></div>
+  <div class="card dc-card" style="padding-bottom:8px;--accent:#8b5cf6">
+   <div class="chd"><div class="ct"><div class="ti">⚡</div>اختصارات سريعة</div></div>
    <div class="qa-list">
     <button class="qa-item c-purple" onclick="openNewEntryModal()"><span class="qa-ic">📝</span><span>قيد يومية جديد</span><span class="qa-chev">‹</span></button>
     <button class="qa-item c-green" onclick="openSaleInvForm()"><span class="qa-ic">🟢</span><span>فاتورة مبيعات</span><span class="qa-chev">‹</span></button>
@@ -803,7 +820,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    </div>
   </div>
   <div style="display:flex;flex-direction:column;gap:14px">
-   <div class="card">
+   <div class="card dc-card" style="--accent:#0d9488">
     <div class="chd"><div class="ct"><div class="ti">📊</div>الإيرادات والمصروفات الشهرية</div></div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
      <select id="dch-period" onchange="dashChartPeriodChange()" style="width:88px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
@@ -833,7 +850,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
     <div id="dch-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:11.5px;font-weight:700"></div>
     <canvas id="d-bar-chart" height="190" style="width:100%"></canvas>
    </div>
-   <div class="card">
+   <div class="card dc-card" style="--accent:#7c3aed">
     <div class="chd"><div class="ct"><div class="ti">🥧</div>الأصول والخصوم وحقوق الملكية</div></div>
     <div style="display:flex;align-items:center;gap:14px">
      <canvas id="d-donut-chart" width="150" height="150" style="flex-shrink:0"></canvas>
@@ -842,7 +859,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    </div>
   </div>
  </div>
- <div class="card"><div class="chd"><div class="ct"><div class="ti">🕐</div>آخر القيود</div><button class="btn bo bsm" onclick="SS('ent',null)">عرض الكل ←</button></div><div id="d-rec"></div></div>
+ <div class="card dc-card" style="--accent:#2563eb"><div class="chd"><div class="ct"><div class="ti">🕐</div>آخر القيود</div><button class="btn bo bsm" onclick="SS('ent',null)">عرض الكل ←</button></div><div id="d-rec"></div></div>
 </div>
 
 <!-- SETTINGS -->
@@ -4825,14 +4842,14 @@ function renderDash(){
   const tX=rX.reduce((s,a)=>s+getBalance(a.id,true),0);
   const np=tR-tX;
   document.getElementById("d-grid").innerHTML=[
-    ["🏦","إجمالي الأصول",tA,"blue"],["💳","إجمالي الخصوم",tL,"amber"],["💼","حقوق الملكية",tE,"purple"],
-    ["📈","إجمالي الإيرادات",tR,"green"],["📉","إجمالي المصروفات",tX,"red"],
-    ["💰",np>=0?"صافي الربح":"صافي الخسارة",Math.abs(np),np>=0?"green":"red"],
-    ["📝","القيود",entries.length,"teal"],["📋","الحسابات",accounts.length,"blue"],
-  ].map(([ic,lb,vl,cl])=>`<div class="sc2 c-${cl}"><div class="sc2-ic">${ic}</div>
-    <div class="sc2-body"><div class="sc2-lb">${lb}</div>
-    <div class="sc2-vl">${typeof vl==="number"&&vl>100?fmtDisp(vl):vl}</div>
-    <div class="sc2-sub">${typeof vl==="number"&&vl>100?cur():"—"}</div></div></div>`).join("");
+    ["🏦","إجمالي الأصول",tA,"blue","chartGoBS()"],["💳","إجمالي الخصوم",tL,"amber","chartGoBS()"],["💼","حقوق الملكية",tE,"purple","chartGoBS()"],
+    ["📈","إجمالي الإيرادات",tR,"green","SS('kpi',null)"],["📉","إجمالي المصروفات",tX,"red","SS('kpi',null)"],
+    ["💰",np>=0?"صافي الربح":"صافي الخسارة",Math.abs(np),np>=0?"green":"red","SS('kpi',null)"],
+    ["📝","القيود",entries.length,"teal","SS('ent',null)"],["📋","الحسابات",accounts.length,"blue","SS('acc',null)"],
+  ].map(([ic,lb,vl,cl,go])=>`<div class="sc3 g-${cl}"><div class="sc3-ic">${ic}</div>
+    <div class="sc3-vl">${typeof vl==="number"&&vl>100?fmtDisp(vl):vl}</div>
+    <div class="sc3-lb">${lb}${typeof vl==="number"&&vl>100?' ('+cur()+')':''}</div>
+    <button class="sc3-more" onclick="${go}">التفاصيل ←</button></div>`).join("");
   renderDashCharts(tA,tL,tE);
   const rec=entries.slice(-6).reverse();
   document.getElementById("d-rec").innerHTML=!rec.length
