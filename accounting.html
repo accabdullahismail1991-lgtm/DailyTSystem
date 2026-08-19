@@ -822,6 +822,37 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
 
 <!-- DASHBOARD -->
 <div id="sec-dash" class="sec active">
+ <div class="card dc-card no-print" style="--accent:#2563eb;margin-bottom:14px">
+  <div class="chd"><div class="ct"><div class="ti">🔎</div>فلاتر لوحة التحكم</div>
+   <button class="btn bo bsm" onclick="dashFilterClearAll()">↺ مسح كل الفلاتر</button>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <select id="dch-period" onchange="dashChartPeriodChange()" style="width:88px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
+    <option value="year">السنة كاملة</option>
+    <option value="half">نصف سنوي</option>
+    <option value="quarter">ربع سنوي</option>
+    <option value="month">شهر محدد</option>
+    <option value="range">فترة محددة</option>
+   </select>
+   <select id="dch-half" onchange="renderDash()" style="display:none;width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
+    <option value="1">النصف الأول (يناير–يونيو)</option>
+    <option value="2">النصف الثاني (يوليو–ديسمبر)</option>
+   </select>
+   <select id="dch-quarter" onchange="renderDash()" style="display:none;width:150px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
+    <option value="1">الربع الأول (يناير–مارس)</option>
+    <option value="2">الربع الثاني (أبريل–يونيو)</option>
+    <option value="3">الربع الثالث (يوليو–سبتمبر)</option>
+    <option value="4">الربع الرابع (أكتوبر–ديسمبر)</option>
+   </select>
+   <input id="dch-month" type="month" onchange="renderDash()" style="display:none;width:118px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px">
+   <input id="dch-from" type="date" onchange="renderDash()" style="display:none;width:118px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px">
+   <input id="dch-to" type="date" onchange="renderDash()" style="display:none;width:118px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px">
+   <select id="dch-proj" onchange="renderDash()" style="max-width:150px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل المشاريع</option></select>
+   <select id="dch-cc" onchange="renderDash()" style="max-width:150px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل مراكز التكلفة</option></select>
+   <select id="dch-branch" onchange="renderDash()" style="max-width:150px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل الفروع</option></select>
+  </div>
+  <div id="dash-filter-chips" style="display:none;gap:6px;flex-wrap:wrap;margin-top:9px"></div>
+ </div>
  <div class="sg3" id="d-grid"></div>
  <div style="display:grid;grid-template-columns:250px 1fr;gap:14px;margin-bottom:14px;align-items:start" id="d-main-row">
   <div class="card dc-card" style="padding-bottom:8px;--accent:#8b5cf6">
@@ -831,31 +862,6 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div style="display:flex;flex-direction:column;gap:14px">
    <div class="card dc-card" style="--accent:#0d9488">
     <div class="chd"><div class="ct"><div class="ti">📊</div>الإيرادات والمصروفات الشهرية</div></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:9px">
-     <select id="dch-period" onchange="dashChartPeriodChange()" style="width:88px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
-      <option value="year">السنة كاملة</option>
-      <option value="half">نصف سنوي</option>
-      <option value="quarter">ربع سنوي</option>
-      <option value="month">شهر محدد</option>
-      <option value="range">فترة محددة</option>
-     </select>
-     <select id="dch-half" onchange="renderDash()" style="display:none;width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
-      <option value="1">النصف الأول (يناير–يونيو)</option>
-      <option value="2">النصف الثاني (يوليو–ديسمبر)</option>
-     </select>
-     <select id="dch-quarter" onchange="renderDash()" style="display:none;width:150px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)">
-      <option value="1">الربع الأول (يناير–مارس)</option>
-      <option value="2">الربع الثاني (أبريل–يونيو)</option>
-      <option value="3">الربع الثالث (يوليو–سبتمبر)</option>
-      <option value="4">الربع الرابع (أكتوبر–ديسمبر)</option>
-     </select>
-     <input id="dch-month" type="month" onchange="renderDash()" style="display:none;width:118px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px">
-     <input id="dch-from" type="date" onchange="renderDash()" style="display:none;width:118px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px">
-     <input id="dch-to" type="date" onchange="renderDash()" style="display:none;width:118px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px">
-     <select id="dch-proj" onchange="renderDash()" style="max-width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل المشاريع</option></select>
-     <select id="dch-cc" onchange="renderDash()" style="max-width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل مراكز التكلفة</option></select>
-     <select id="dch-branch" onchange="renderDash()" style="max-width:130px;font-size:10.5px;padding:4px 5px;border:1px solid var(--g200);border-radius:5px;background:var(--w)"><option value="">كل الفروع</option></select>
-    </div>
     <div id="dch-summary" style="display:flex;gap:16px;margin-bottom:8px;font-size:11.5px;font-weight:700"></div>
     <canvas id="d-bar-chart" height="190" style="width:100%"></canvas>
    </div>
@@ -3341,6 +3347,7 @@ const SVG_ICONS={
   mapPin:'<path d="M12 21C12 21 19 14.5 19 9.5C19 5.4 15.9 2 12 2C8.1 2 5 5.4 5 9.5C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.6" stroke="currentColor" stroke-width="2"/>',
   award:'<circle cx="12" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/><path d="M9 13L7.5 21L12 18.5L16.5 21L15 13" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 8.5L11.2 10.2L14.7 6.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
   box:'<path d="M3 8L12 4L21 8L12 12L3 8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 8V16L12 20M21 8V16L12 20M12 12V20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  filter:'<path d="M4 5H20L14 12.5V18.5L10 20.5V12.5L4 5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
 };
 function svgIcon(name,size,color){
   const body=SVG_ICONS[name]||'';
@@ -4965,32 +4972,73 @@ function renderQuickActions(){
     return '<button class="qa-item c-'+a.cl+'" onclick="'+a.go+'"><span class="qa-ic">'+svgIcon(a.ic,16)+'</span><span>'+a.lb+'</span><span class="qa-chev">‹</span></button>';
   }).join("");
 }
+// يُحوِّل قائمة أشهر فلتر لوحة التحكم (YYYY-MM) إلى فترة تاريخ فعلية (أول يوم بأول شهر —
+// آخر يوم بآخر شهر) يمكن تمريرها مباشرة لـgetKpiData/getTree، فمصدر الفترة الوحيد يبقى
+// عناصر dch-* نفسها بلا ازدواج منطق بين فلتر الرسم البياني وفلتر بطاقات الأرقام
+function dashPeriodRange(months){
+  if(!months||!months.length)return{fromD:'',toD:''};
+  const first=months[0],last=months[months.length-1];
+  const fromD=first+'-01';
+  const parts=last.split('-').map(Number);
+  const lastDay=new Date(parts[0],parts[1],0).getDate();
+  const toD=last+'-'+String(lastDay).padStart(2,'0');
+  return{fromD,toD};
+}
+function dashFilterClearAll(){
+  const periodSel=document.getElementById('dch-period');if(periodSel)periodSel.value='year';
+  ['dch-month','dch-from','dch-to'].forEach(function(id){const el=document.getElementById(id);if(el)el.value='';});
+  ['dch-proj','dch-cc','dch-branch'].forEach(function(id){const el=document.getElementById(id);if(el)el.value='';});
+  dashChartPeriodChange();
+}
+function renderDashFilterChips(){
+  const el=document.getElementById('dash-filter-chips');if(!el)return;
+  const periodType=(document.getElementById('dch-period')||{}).value||'year';
+  const chips=[];
+  if(periodType!=='year'){
+    const labels={half:'نصف سنوي',quarter:'ربع سنوي',month:'شهر محدد',range:'فترة محددة'};
+    chips.push({label:'📅 '+(labels[periodType]||periodType),onclick:"document.getElementById('dch-period').value='year';dashChartPeriodChange();"});
+  }
+  const projId=parseInt((document.getElementById('dch-proj')||{}).value)||0;
+  if(projId){const p=projects.find(function(x){return x.id===projId;});chips.push({label:'🏗️ '+(p?p.name:''),onclick:"document.getElementById('dch-proj').value='';renderDash();"});}
+  const ccId=parseInt((document.getElementById('dch-cc')||{}).value)||0;
+  if(ccId){const c=costCenters.find(function(x){return x.id===ccId;});chips.push({label:'🏷️ '+(c?c.name:''),onclick:"document.getElementById('dch-cc').value='';renderDash();"});}
+  const branchId=parseInt((document.getElementById('dch-branch')||{}).value)||0;
+  if(branchId){const b=branches.find(function(x){return x.id===branchId;});chips.push({label:'🏢 '+(b?b.name:''),onclick:"document.getElementById('dch-branch').value='';renderDash();"});}
+  if(chips.length){
+    el.style.display='flex';
+    el.innerHTML=chips.map(function(c){return '<span class="idash-chip" onclick="'+c.onclick+'">'+c.label+' <span class="x">✕</span></span>';}).join('')
+      +'<span class="idash-chip" style="background:var(--g100);color:var(--g6)" onclick="dashFilterClearAll()">مسح الكل ✕</span>';
+  } else { el.style.display='none'; el.innerHTML=''; }
+}
 function renderDash(){
   try{
 
-  const rA=accounts.filter(a=>a.type==="asset"&&!a.par);
-  const rL=accounts.filter(a=>a.type==="liability"&&!a.par);
-  const rE=accounts.filter(a=>a.type==="equity"&&!a.par);
-  const rR=accounts.filter(a=>a.type==="revenue"&&!a.par);
-  const rX=accounts.filter(a=>(a.type==="expense"||a.type==="cost")&&!a.par);
-  const tA=rA.reduce((s,a)=>s+getBalance(a.id,true),0);
-  const tL=rL.reduce((s,a)=>s+Math.abs(getBalance(a.id,true)),0);
-  const tE=rE.reduce((s,a)=>s+Math.abs(getBalance(a.id,true)),0);
-  const tR=rR.reduce((s,a)=>s+Math.abs(getBalance(a.id,true)),0);
-  const tX=rX.reduce((s,a)=>s+getBalance(a.id,true),0);
-  const np=tR-tX;
+  populateDashChartFilters();
+  const {months,projId,ccId,branchId}=getDashChartFilter();
+  const {fromD,toD}=dashPeriodRange(months);
+  const k=getKpiData(fromD,toD,ccId,projId,branchId);
+  const tA=k.tA,tL=k.tL,tE=k.tE,tR=k.revenue,tX=k.expense,np=k.netProfit;
+  const filteredEntries=entries.filter(function(e){
+    if(fromD&&e.date<fromD)return false;
+    if(toD&&e.date>toD)return false;
+    if(branchId&&getEntryBranchId(e)!==branchId)return false;
+    if(ccId&&!(e.lines||[]).some(function(l){return l.costCenterId===ccId;}))return false;
+    if(projId&&!(e.lines||[]).some(function(l){return l.projectId===projId;}))return false;
+    return true;
+  });
   document.getElementById("d-grid").innerHTML=[
     ["bank","إجمالي الأصول",tA,"blue","chartGoBS()"],["receiptMinus","إجمالي الخصوم",tL,"amber","chartGoBS()"],["scale","حقوق الملكية",tE,"purple","chartGoBS()"],
     ["trendUp","إجمالي الإيرادات",tR,"green","SS('kpi',null)"],["trendDown","إجمالي المصروفات",tX,"red","SS('kpi',null)"],
     ["coin",np>=0?"صافي الربح":"صافي الخسارة",Math.abs(np),np>=0?"green":"red","SS('kpi',null)"],
-    ["penNote","القيود",entries.length,"teal","SS('ent',null)"],["ledger","الحسابات",accounts.length,"blue","SS('acc',null)"],
+    ["penNote","القيود",filteredEntries.length,"teal","SS('ent',null)"],["ledger","الحسابات",accounts.length,"blue","SS('acc',null)"],
   ].map(([ic,lb,vl,cl,go])=>`<div class="sc3 g-${cl}"><div class="sc3-ic">${svgIcon(ic,20,'#fff')}</div>
     <div class="sc3-vl">${typeof vl==="number"&&vl>100?fmtDisp(vl):vl}</div>
     <div class="sc3-lb">${lb}${typeof vl==="number"&&vl>100?' ('+cur()+')':''}</div>
     <button class="sc3-more" onclick="${go}">التفاصيل ←</button></div>`).join("");
   renderQuickActions();
   renderDashCharts(tA,tL,tE);
-  const rec=entries.slice(-6).reverse();
+  renderDashFilterChips();
+  const rec=filteredEntries.slice(-6).reverse();
   document.getElementById("d-rec").innerHTML=!rec.length
     ?'<div class="empty"><span class="ei">📄</span><p>لا توجد قيود بعد</p></div>'
     :`<div class="tw"><table><thead><tr><th>#</th><th>التاريخ</th><th>البيان</th><th>المرجع</th><th>المبلغ</th></tr></thead><tbody>
