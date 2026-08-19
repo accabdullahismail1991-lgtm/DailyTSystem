@@ -216,7 +216,17 @@ tbody tr:hover{background:var(--g50)}
 .idash-drag-handle{cursor:grab;color:var(--g4);font-size:13px;user-select:none}
 .idash-drag-handle:active{cursor:grabbing}
 .idash-thd{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.idash-lbl{font-size:11px;font-weight:700;color:var(--g5)}
+.idash-lbl{font-size:11px;font-weight:700;color:var(--g5);display:flex;align-items:center;gap:5px}
+.idash-ic{display:inline-flex;align-items:center}
+/* ── Financial Snapshot card ── */
+.snap-card{background:var(--g50);border:1px solid var(--g200);border-radius:var(--rl);padding:15px 17px;margin-bottom:12px}
+.snap-title{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;color:var(--g8);margin-bottom:9px}
+.snap-narrative{font-size:12px;line-height:1.9;color:var(--g7);margin-bottom:13px}
+.snap-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px}
+.snap-stat{display:flex;align-items:center;gap:8px;background:var(--card-bg,#fff);border:1px solid var(--g200);border-radius:var(--r);padding:8px 10px}
+.snap-stat-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.snap-stat-lb{font-size:9.5px;color:var(--g5)}
+.snap-stat-vl{font-size:12.5px;font-weight:800;color:var(--g9);white-space:nowrap}
 .idash-val{font-size:19px;font-weight:800;color:var(--g9);white-space:nowrap}
 .idash-sub{font-size:9.5px;color:var(--g4);margin-top:2px}
 .idash-spark-pt{cursor:pointer}
@@ -742,6 +752,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <button class="nb" onclick="SS('rpt',this)"><span class="nb-ic">📊</span><span class="nb-txt">مركز التقارير</span></button>
   <button class="nb" onclick="SS('kpi',this)"><span class="nb-ic">📈</span><span class="nb-txt">مؤشرات الأداء</span></button>
   <button class="nb" onclick="SS('idash',this)"><span class="nb-ic">🧩</span><span class="nb-txt">لوحة تفاعلية</span></button>
+  <button class="nb" onclick="SS('snapshot',this)"><span class="nb-ic">📸</span><span class="nb-txt">اللقطة المالية</span></button>
  </div>
 </div>
 
@@ -1294,6 +1305,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    <input type="checkbox" id="fs-hide-zero" onchange="renderFS(fsTab)">إخفاء الأرصدة الصفرية
   </label>
  </div>
+ <div id="fs-snapshot"></div>
  <div class="tabs">
   <button class="tab active" onclick="switchFS('is',this)">📈 قائمة الدخل</button>
   <button class="tab" onclick="switchFS('bs',this)">📋 الميزانية العمومية</button>
@@ -1370,6 +1382,33 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
  </p>
  <div id="idash-filter-chips" style="display:none;gap:6px;flex-wrap:wrap;margin-bottom:10px"></div>
  <div id="idash-grid" class="idash-grid"></div>
+</div>
+</div>
+
+<!-- ══════════ FINANCIAL SNAPSHOT (شاشة مخصصة تجمع ملخصات القوائم كلها بصفحة واحدة قابلة للطباعة/المشاركة) ══════════ -->
+<div id="sec-snapshot" class="sec">
+<div class="card">
+ <div class="chd">
+  <div class="ct"><div class="ti">📸</div>اللقطة المالية</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+   <button class="btn bp bsm" onclick="renderSnapshotPage()">🔄 عرض</button>
+   <button class="btn bo bsm no-print" onclick="window.print()">🖨️ طباعة / مشاركة</button>
+  </div>
+ </div>
+ <p class="no-print" style="font-size:11px;color:var(--g5);margin:-4px 0 10px;line-height:1.7">
+  صفحة واحدة موجزة بلغة مبسّطة تلخّص أهم أرقام الشركة خلال الفترة المختارة — تصلح للمشاركة مع الإدارة
+  أو أي جهة غير محاسبية دون الحاجة لقراءة القوائم المالية التفصيلية.
+ </p>
+ <div class="fg-row no-print">
+  <div class="fgrp"><label>من تاريخ</label><input id="snap-from" type="date" onchange="renderSnapshotPage()"></div>
+  <div class="fgrp"><label>إلى تاريخ</label><input id="snap-to" type="date" onchange="renderSnapshotPage()"></div>
+  <button class="btn bo bsm" onclick="setReportPeriod('snap-from','snap-to','year',renderSnapshotPage)" style="align-self:flex-end">📅 السنة الحالية</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('snap-from','snap-to','half1',renderSnapshotPage)" style="align-self:flex-end">📅 النصف الأول</button>
+  <button class="btn bo bsm" onclick="setReportPeriod('snap-from','snap-to','half2',renderSnapshotPage)" style="align-self:flex-end">📅 النصف الثاني</button>
+  <div class="fgrp" id="snap-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="snap-branch" onchange="renderSnapshotPage()"><option value="">🏢 كل الفروع</option></select></div>
+  <button class="btn bo bsm" onclick="document.getElementById('snap-from').value='';document.getElementById('snap-to').value='';renderSnapshotPage()" style="align-self:flex-end">↺ مسح</button>
+ </div>
+ <div id="snapshot-body"></div>
 </div>
 </div>
 
@@ -2176,6 +2215,7 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   <div class="fgrp" id="cf-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="cf-branch" onchange="renderCashFlow()"><option value="">🏢 كل الفروع</option></select></div>
   <button class="btn bo bsm" onclick="document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';renderCashFlow()" style="align-self:flex-end">↺ مسح</button>
  </div>
+ <div id="cf-snapshot"></div>
  <div style="margin-bottom:10px;padding:9px 12px;background:#fefce8;border:1px solid #fcd34d;border-radius:var(--r);font-size:11px;color:#92400e">
   ℹ️ الطريقة غير المباشرة: تبدأ من صافي الربح وتُعدّل بالبنود غير النقدية والتغيّر في رأس المال العامل. لأغراض التحليل الإداري وليست بديلاً عن مراجعة محاسبية رسمية.
  </div>
@@ -3298,6 +3338,9 @@ const SVG_ICONS={
   personCircle:'<rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="9.5" r="3" stroke="currentColor" stroke-width="2"/><path d="M6.5 17.5C6.5 15.3 8.9 14 12 14C15.1 14 17.5 15.3 17.5 17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
   ticketPercent:'<path d="M4 5H20V10C18.9 10 18 10.9 18 12C18 13.1 18.9 14 20 14V19H4V14C5.1 14 6 13.1 6 12C6 10.9 5.1 10 4 10V5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 15L15 9M9.3 9.3H9.31M14.7 14.7H14.71" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
   cashFlow:'<rect x="2.5" y="6.5" width="19" height="11" rx="3" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/><path d="M12 3.5V6.5M12 17.5V20.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-dasharray="1 2.4"/>',
+  mapPin:'<path d="M12 21C12 21 19 14.5 19 9.5C19 5.4 15.9 2 12 2C8.1 2 5 5.4 5 9.5C5 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="12" cy="9.5" r="2.6" stroke="currentColor" stroke-width="2"/>',
+  award:'<circle cx="12" cy="8.5" r="5.5" stroke="currentColor" stroke-width="2"/><path d="M9 13L7.5 21L12 18.5L16.5 21L15 13" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 8.5L11.2 10.2L14.7 6.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>',
+  box:'<path d="M3 8L12 4L21 8L12 12L3 8Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3 8V16L12 20M21 8V16L12 20M12 12V20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
 };
 function svgIcon(name,size,color){
   const body=SVG_ICONS[name]||'';
@@ -4045,6 +4088,7 @@ const PGS={
   audit:["فحص وتدقيق البيانات","اكتشاف القيود غير المتوازنة وفوارق ميزان المراجعة"],
   kpi:["مؤشرات الأداء والتوجهات العامة","نظرة شاملة على أداء كل موديول مع الرسوم البيانية"],
   idash:["لوحة تفاعلية","بطاقات قابلة للسحب والترتيب، انقر أي شهر أو فرع لتصفية باقي البطاقات معاً"],
+  snapshot:["اللقطة المالية","ملخص سردي بلغة مبسّطة لأهم الأرقام يصلح للمشاركة مع غير المحاسبين"],
   ccimport:["استيراد بيانات خارجية","استيراد دليل حسابات ومطابقة كشوفات مراكز التكلفة من أنظمة أخرى"],
 };
 
@@ -4055,7 +4099,7 @@ const PAGE_GROUP={
   pinv:'🔴 إدارة أنظمة المشتريات',pret:'🔴 إدارة أنظمة المشتريات',
   wh:'📦 إدارة أنظمة المخزون',items:'📦 إدارة أنظمة المخزون',gr:'📦 إدارة أنظمة المخزون',stkout:'📦 إدارة أنظمة المخزون',stkadj:'📦 إدارة أنظمة المخزون',stkbal:'📦 إدارة أنظمة المخزون',
   ast:'🏭 الأصول والإيجارات والعهد',rent:'🏭 الأصول والإيجارات والعهد',cust:'🏭 الأصول والإيجارات والعهد',
-  rpt:'📊 التقارير',kpi:'📊 التقارير',lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',taxrpt:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',branchrpt:'📊 التقارير',stkrep:'📊 التقارير',whrpt:'📊 التقارير',depsched:'📊 التقارير',
+  rpt:'📊 التقارير',kpi:'📊 التقارير',lg:'📊 التقارير',tr:'📊 التقارير',fs:'📊 التقارير',taxrpt:'📊 التقارير',cashflow:'📊 التقارير',ccrpt:'📊 التقارير',branchrpt:'📊 التقارير',stkrep:'📊 التقارير',whrpt:'📊 التقارير',depsched:'📊 التقارير',snapshot:'📊 التقارير',
   audit:'🔧 إدارة النظام',ccimport:'🔧 إدارة النظام',
   notifs:'🔧 إدارة النظام',yr:'🔧 إدارة النظام',bk:'🔧 إدارة النظام',int:'🔧 إدارة النظام',
 };
@@ -4316,6 +4360,7 @@ const QUICK_REPORTS=[
   {id:"account",lb:"كشف حساب",key:"a",ic:"personCircle",cl:"#4f46e5"},
   {id:"tax",lb:"ضريبة القيمة المضافة",key:"t",ic:"ticketPercent",cl:"#b45309"},
   {id:"cash",lb:"حركة النقدية",key:"c",ic:"cashFlow",cl:"#0f766e"},
+  {id:"snapshot",lb:"اللقطة المالية",key:"s",ic:"gauge",cl:"#7c3aed"},
 ];
 function openQuickReport(id){
   document.querySelectorAll(".asp").forEach(function(p){p.classList.remove("open");});
@@ -4324,6 +4369,7 @@ function openQuickReport(id){
   else if(id==="account"){SS("lg",null);}
   else if(id==="tax"){SS("taxrpt",null);}
   else if(id==="cash"){SS("cashflow",null);}
+  else if(id==="snapshot"){SS("snapshot",null);}
 }
 function renderQuickReportsPanel(){
   const p=document.getElementById("quick-reports-panel");if(!p)return;
@@ -4477,6 +4523,7 @@ function SS(id,btn){
   if(id==="audit")renderAudit();
   if(id==="kpi")  {populateKpiDimSelects();renderKpi();}
   if(id==="idash") renderIdash();
+  if(id==="snapshot") renderSnapshotPage();
   if(id==="ccimport")renderCCImportLog();
   if(id==="ent")  {renderEnts();if(!entLines.length)initLines();}
   if(id==="lg")   renderLg();
@@ -5280,15 +5327,15 @@ function expKpiXL(){
 // يُعاد استخدام getKpiData()/kpiInvoiceMatchesDim() نفسها المبنية أصلاً لشاشة مؤشرات الأداء —
 // فكل بطاقة هنا مجرد عرض تفاعلي بديل لنفس البيانات، لا مصدر بيانات مستقل يحتاج صيانة منفصلة
 const IDASH_WIDGETS=[
-  {key:'netProfit',label:'💰 صافي الربح',color:'#16a34a',type:'flow'},
-  {key:'sales',label:'🟢 المبيعات',color:'#22c55e',type:'flow'},
-  {key:'purchases',label:'🔴 المشتريات',color:'#ef4444',type:'flow'},
-  {key:'cash',label:'🏦 النقدية',color:'#2563eb',type:'balance'},
-  {key:'ar',label:'👤 الذمم المدينة',color:'#d97706',type:'balance'},
-  {key:'ap',label:'🏭 الذمم الدائنة',color:'#7c3aed',type:'balance'},
-  {key:'inventory',label:'📦 قيمة المخزون',color:'#0d9488',type:'balance'},
-  {key:'branches',label:'🏢 توزيع الفروع (انقر عموداً للتصفية)',color:'#2563eb',type:'breakdown',span:2},
-  {key:'topCust',label:'🥇 أعلى العملاء',color:'#6366f1',type:'breakdown',span:2},
+  {key:'netProfit',label:'صافي الربح',ic:'coin',color:'#16a34a',type:'flow'},
+  {key:'sales',label:'المبيعات',ic:'trendUp',color:'#22c55e',type:'flow'},
+  {key:'purchases',label:'المشتريات',ic:'trendDown',color:'#ef4444',type:'flow'},
+  {key:'cash',label:'النقدية',ic:'bank',color:'#2563eb',type:'balance'},
+  {key:'ar',label:'الذمم المدينة',ic:'personCircle',color:'#d97706',type:'balance'},
+  {key:'ap',label:'الذمم الدائنة',ic:'receiptMinus',color:'#7c3aed',type:'balance'},
+  {key:'inventory',label:'قيمة المخزون',ic:'box',color:'#0d9488',type:'balance'},
+  {key:'branches',label:'توزيع الفروع (انقر عموداً للتصفية)',ic:'mapPin',color:'#2563eb',type:'breakdown',span:2},
+  {key:'topCust',label:'أعلى العملاء',ic:'award',color:'#6366f1',type:'breakdown',span:2},
 ];
 const IDASH_ORDER_KEY='acct_idash_order_v1';
 let idashFilter={month:null,branchId:null,ccId:null,projId:null};
@@ -5366,25 +5413,68 @@ function getIdashBranchBreakdown(fromD,toD,ccId,projId){
   });
   return branches.filter(function(b){return b.active!==false;}).map(function(b){return {id:b.id,name:b.name,val:totals[b.id]||0};});
 }
-// خط بياني صغير (SVG) بنقاط قابلة للنقر لكل شهر — النقر يُفعِّل/يُلغي تصفية كل البطاقات بذلك الشهر
-function idashSparkline(series,valueKey,w,h,color){
-  w=w||180;h=h||36;
+// مسار مُنحنٍ ناعم عبر نقاط بيانات (Quadratic Bezier عبر نقاط المنتصف) بدل خطوط مستقيمة حادة —
+// يمر قريباً جداً من كل نقطة فعلية مع منحنى مريح بصرياً، بلا تعقيد حساب Catmull-Rom الكامل
+function idashSmoothPath(pts){
+  if(pts.length<2)return '';
+  if(pts.length===2)return 'M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1)+' L'+pts[1][0].toFixed(1)+','+pts[1][1].toFixed(1);
+  let d='M'+pts[0][0].toFixed(1)+','+pts[0][1].toFixed(1)+' ';
+  for(let i=1;i<pts.length-1;i++){
+    const midX=(pts[i][0]+pts[i+1][0])/2,midY=(pts[i][1]+pts[i+1][1])/2;
+    d+='Q'+pts[i][0].toFixed(1)+','+pts[i][1].toFixed(1)+' '+midX.toFixed(1)+','+midY.toFixed(1)+' ';
+  }
+  const last=pts[pts.length-1];
+  d+='L'+last[0].toFixed(1)+','+last[1].toFixed(1);
+  return d;
+}
+function idashSparkTip(evt,month,val){
+  const tip=chartTip();if(!tip)return;
+  const mi=parseInt(month.slice(5,7),10)-1;
+  tip.style.display='block';
+  tip.innerHTML=(DASH_MONTH_NAMES[mi]||month)+'<div class="ctt-sub">'+fmtDisp(val)+' '+cur()+'</div>';
+  tip.style.left=(evt.clientX+14)+'px';tip.style.top=(evt.clientY+10)+'px';
+}
+function idashSparkTipHide(){const tip=chartTip();if(tip)tip.style.display='none';}
+// خط بياني صغير (SVG) منحنٍ بتعبئة متدرجة أسفله ونقاط قابلة للنقر لكل شهر — النقر يُفعِّل/يُلغي
+// تصفية كل البطاقات بذلك الشهر، والتمرير فوق أي نقطة يعرض تلميحاً بنفس أسلوب رسوم لوحة التحكم
+// الرئيسية (chartTip) بدل تلميح المتصفح الافتراضي البطيء وغير المنسَّق
+function idashSparkline(series,valueKey,w,h,color,gradId){
+  w=w||190;h=h||46;
+  const padTop=6,padBot=14; // padBot يترك مساحة لتسميات الشهر أول/آخر نقطة
   const vals=series.map(function(s){return s[valueKey];});
   const max=Math.max.apply(null,vals.concat([0])),min=Math.min.apply(null,vals.concat([0]));
   const range=(max-min)||1;
   const n=vals.length;
   const step=n>1?w/(n-1):0;
-  const pts=vals.map(function(v,i){return [i*step,h-((v-min)/range)*(h-6)-3];});
-  const path=pts.map(function(p,i){return (i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ');
+  const plotH=h-padTop-padBot;
+  const pts=vals.map(function(v,i){return [i*step,padTop+plotH-((v-min)/range)*plotH];});
+  const linePath=idashSmoothPath(pts);
+  const baseY=padTop+plotH-((0-min)/range)*plotH;
+  const showZeroLine=min<0&&max>0;
+  const areaPath=linePath+' L'+pts[pts.length-1][0].toFixed(1)+','+(padTop+plotH).toFixed(1)
+    +' L'+pts[0][0].toFixed(1)+','+(padTop+plotH).toFixed(1)+' Z';
+  const gid=gradId||('idashg'+valueKey);
   const circles=pts.map(function(p,i){
     const m=series[i].month;
     const isActive=idashFilter.month===m;
-    return '<circle class="idash-spark-pt" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isActive?4.5:2.5)+'" '
-      +'fill="'+(isActive?'#fff':color)+'" stroke="'+color+'" stroke-width="'+(isActive?2.5:0)+'" '
-      +'onclick="idashSetMonthFilter(\''+m+'\')"><title>'+m+': '+fmtDisp(vals[i])+' '+cur()+'</title></circle>';
+    return '<circle class="idash-spark-pt" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="7" fill="transparent" '
+      +'onmousemove="idashSparkTip(event,\''+m+'\','+vals[i]+')" onmouseleave="idashSparkTipHide()" '
+      +'onclick="idashSetMonthFilter(\''+m+'\')" style="cursor:pointer"/>'
+      +'<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="'+(isActive?4:2.2)+'" '
+      +'fill="'+(isActive?'#fff':color)+'" stroke="'+color+'" stroke-width="'+(isActive?2.5:0)+'" style="pointer-events:none"/>';
   }).join('');
-  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" preserveAspectRatio="none" style="display:block;overflow:visible">'
-    +'<path d="'+path+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'+circles+'</svg>';
+  const monthLbl=function(i){const mi=parseInt(series[i].month.slice(5,7),10)-1;return DASH_MONTH_SHORT[mi]||'';};
+  return '<svg class="idash-spark-svg" viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'" preserveAspectRatio="none" style="display:block;overflow:visible">'
+    +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0%" stop-color="'+color+'" stop-opacity="0.28"/><stop offset="100%" stop-color="'+color+'" stop-opacity="0"/>'
+    +'</linearGradient></defs>'
+    +(showZeroLine?'<line x1="0" y1="'+baseY.toFixed(1)+'" x2="'+w+'" y2="'+baseY.toFixed(1)+'" stroke="var(--g300)" stroke-width="1" stroke-dasharray="2 2"/>':'')
+    +'<path d="'+areaPath+'" fill="url(#'+gid+')" stroke="none"/>'
+    +'<path d="'+linePath+'" fill="none" stroke="'+color+'" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>'
+    +circles
+    +'<text x="0" y="'+h+'" font-size="8" fill="var(--g4)" text-anchor="start">'+monthLbl(0)+'</text>'
+    +'<text x="'+w+'" y="'+h+'" font-size="8" fill="var(--g4)" text-anchor="end">'+monthLbl(n-1)+'</text>'
+    +'</svg>';
 }
 function idashTileValueHTML(w,k,series,fromD,toD){
   if(w.type==='flow'){
@@ -5392,7 +5482,8 @@ function idashTileValueHTML(w,k,series,fromD,toD){
     const isNeg=w.key==='netProfit'&&val<0;
     return '<div class="idash-val" style="color:'+(isNeg?'var(--rd)':'inherit')+'">'+fmtDisp(Math.abs(val))
       +' <span style="font-size:11px;font-weight:600;color:var(--g4)">'+cur()+'</span></div>'
-      +'<div style="margin-top:6px">'+idashSparkline(series,w.key,180,36,w.color)+'</div>';
+      +'<div class="idash-sub" style="margin-bottom:2px">'+CY+' — إجمالي السنة</div>'
+      +'<div style="margin-top:4px">'+idashSparkline(series,w.key,190,48,w.color)+'</div>';
   }
   if(w.type==='balance'){
     const val=w.key==='cash'?k.cashBalance:(w.key==='ar'?k.arTotal:(w.key==='ap'?k.apTotal:k.invValue));
@@ -5461,7 +5552,7 @@ function renderIdash(){
     const body=idashTileValueHTML(w,k,series,fromD,toD);
     return '<div class="idash-tile" data-key="'+w.key+'"'+(w.span?' data-span="'+w.span+'"':'')+' draggable="true" '
       +'ondragstart="idashDragStart(event)" ondragover="idashDragOver(event)" ondrop="idashDrop(event)" ondragend="idashDragEnd(event)">'
-      +'<div class="idash-thd"><span class="idash-lbl">'+w.label+'</span><span class="idash-drag-handle" title="اسحب لإعادة الترتيب">⠿</span></div>'
+      +'<div class="idash-thd"><span class="idash-lbl">'+(w.ic?'<span class="idash-ic" style="color:'+w.color+'">'+svgIcon(w.ic,15,w.color)+'</span>':'')+w.label+'</span><span class="idash-drag-handle" title="اسحب لإعادة الترتيب">⠿</span></div>'
       +body+'</div>';
   }).join('');
 }
@@ -5844,6 +5935,60 @@ function fsLetterhead(title,fromD,toD){
     <div class="fs-lh-cur">جميع المبالغ بـ${cur()}</div>
   </div>`;
 }
+// ════════════════════════════════════════════════════════════════
+// اللقطة المالية (Financial Snapshot) — ملخص سردي بلغة مبسّطة + أهم الأرقام
+// ════════════════════════════════════════════════════════════════
+function getFinancialSnapshotData(fromD,toD,branchId){
+  branchId=branchId||0;
+  const revN=getTree("revenue",null,fromD,toD,branchId),expN=getTree("expense",null,fromD,toD,branchId),costN=getTree("cost",null,fromD,toD,branchId);
+  const asN=getTree("asset",null,fromD,toD,branchId),laN=getTree("liability",null,fromD,toD,branchId),eqN=getTree("equity",null,fromD,toD,branchId);
+  const tR=revN.reduce((s,n)=>s+Math.abs(n.bal),0);
+  const tC=costN.reduce((s,n)=>s+n.bal,0);
+  const tX=expN.reduce((s,n)=>s+n.bal,0);
+  const gp=tR-tC;
+  const np=gp-tX;
+  const tA=asN.reduce((s,n)=>s+n.bal,0);
+  const tL=laN.reduce((s,n)=>s+Math.abs(n.bal),0);
+  const tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0)+(np>=0?np:0);
+  const asSplit=fsSplitTreeByClass(asN),laSplit=fsSplitTreeByClass(laN);
+  const asCur=asSplit.current.reduce((s,n)=>s+n.bal,0);
+  const laCur=laSplit.current.reduce((s,n)=>s+Math.abs(n.bal),0);
+  const currentRatio=laCur>0.005?asCur/laCur:null;
+  const profitMargin=tR>0.005?(np/tR)*100:null;
+  const cf=computeCashFlow(fromD||(CY+"-01-01"),toD||(CY+"-12-31"),branchId);
+  return {fromD,toD,branchId,tR,tC,tX,gp,np,tA,tL,tE,asCur,laCur,currentRatio,profitMargin,cf};
+}
+function buildSnapshotNarrative(d){
+  const sign=d.np>=0;
+  const marginTxt=d.profitMargin!=null?` بهامش ربح ${fmtDisp(Math.abs(d.profitMargin))}%`:'';
+  const ratioTxt=d.currentRatio!=null?`نسبة تداول ${d.currentRatio.toFixed(2)}`:'دون التزامات متداولة تُذكر';
+  const cfTxt=d.cf.reconciled?' وتُطابق فعلياً التغيّر الحقيقي في أرصدة النقدية':'';
+  const periodTxt=d.fromD||d.toD?`خلال الفترة من ${fmtDate(d.fromD||(CY+"-01-01"))} إلى ${fmtDate(d.toD||(CY+"-12-31"))}`:`للسنة المالية ${CY}`;
+  return `حقّقت ${CFG.name||'الشركة'} ${periodTxt} إيرادات إجمالية بلغت ${fmtDisp(d.tR)} ${cur()}، `
+    +`مقابل ${fmtDisp(d.tC+d.tX)} ${cur()} تكاليف ومصروفات، لتحقق صافي ${sign?'ربح':'خسارة'} قدره ${fmtDisp(Math.abs(d.np))} ${cur()}${marginTxt}. `
+    +`بلغ إجمالي الأصول ${fmtDisp(d.tA)} ${cur()} مقابل ${fmtDisp(d.tL)} ${cur()} خصوم و${fmtDisp(d.tE)} ${cur()} حقوق ملكية، ب${ratioTxt}. `
+    +`وحقق النشاط التشغيلي تدفقاً نقدياً ${d.cf.operating>=0?'موجباً':'سالباً'} قدره ${fmtDisp(Math.abs(d.cf.operating))} ${cur()}${cfTxt}.`;
+}
+function snapshotCardHTML(d,opts){
+  opts=opts||{};
+  const stats=[
+    ['coin',d.np>=0?'صافي الربح':'صافي الخسارة',Math.abs(d.np),d.np>=0?'#16a34a':'#ef4444'],
+    ['trendUp','الإيرادات',d.tR,'#22c55e'],
+    ['trendDown','المصروفات والتكاليف',d.tC+d.tX,'#ef4444'],
+    ['bank','إجمالي الأصول',d.tA,'#2563eb'],
+    ['receiptMinus','إجمالي الخصوم',d.tL,'#d97706'],
+    ['scale','حقوق الملكية',d.tE,'#7c3aed'],
+    ['cashFlow','صافي النقد التشغيلي',d.cf.operating,d.cf.operating>=0?'#0d9488':'#ef4444'],
+  ];
+  return '<div class="snap-card">'
+    +(opts.title?'<div class="snap-title">'+svgIcon(opts.icon||'gauge',16,'currentColor')+' <span>'+opts.title+'</span></div>':'')
+    +'<div class="snap-narrative">'+buildSnapshotNarrative(d)+'</div>'
+    +'<div class="snap-stats">'+stats.map(function(s){
+      const val=s[2]<0?'('+fmtDisp(Math.abs(s[2]))+')':fmtDisp(s[2]);
+      return '<div class="snap-stat"><span class="snap-stat-ic" style="background:'+s[3]+'1f;color:'+s[3]+'">'+svgIcon(s[0],16,s[3])+'</span>'
+        +'<div><div class="snap-stat-lb">'+s[1]+'</div><div class="snap-stat-vl">'+val+' <span style="font-size:9px;font-weight:600;color:var(--g4)">'+cur()+'</span></div></div></div>';
+    }).join('')+'</div></div>';
+}
 function renderFS(tab){
   fsTab=tab;
   const fromD=document.getElementById("fs-from")?document.getElementById("fs-from").value:"";
@@ -5870,6 +6015,11 @@ function renderFS(tab){
   const tE=eqN.reduce((s,n)=>s+Math.abs(n.bal),0);
   const openEq=branchId?0:eqN.reduce((s,n)=>s+(parseFloat(n.a.open)||0),0);
   if(hideZero){revN=fsFilterZero(revN);expN=fsFilterZero(expN);costN=fsFilterZero(costN);asN=fsFilterZero(asN);laN=fsFilterZero(laN);eqN=fsFilterZero(eqN);}
+  const snapEl=document.getElementById("fs-snapshot");
+  if(snapEl){
+    const snapD=getFinancialSnapshotData(fromD,toD,branchId);
+    snapEl.innerHTML=snapshotCardHTML(snapD,{title:"لقطة سريعة",icon:"gauge"});
+  }
   let html="";
   if(tab==="is"){
     html+=fsLetterhead("قائمة الدخل",fromD,toD);
@@ -6736,9 +6886,9 @@ function getEffectiveBSClass(a){
 // حسابات المخصصات (كمخصص مكافأة نهاية الخدمة أو مخصص ديون مشكوك بتحصيلها) — بند غير نقدي
 // بطبيعته مثل الإهلاك تماماً: يُخفِّض صافي الربح عبر مصروف دون أي خروج نقدي فعلي بنفس الفترة
 function isProvisionAcc(a){return a&&/مخصص/i.test(a.name);}
-function computeCashFlow(){
-  const {from,to}=getCFPeriod();
-  const branchId=parseInt((document.getElementById("cf-branch")||{}).value)||0;
+function computeCashFlow(ovFrom,ovTo,ovBranchId){
+  const {from,to}=(ovFrom&&ovTo)?{from:ovFrom,to:ovTo}:getCFPeriod();
+  const branchId=(ovBranchId!=null)?ovBranchId:(parseInt((document.getElementById("cf-branch")||{}).value)||0);
   const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to&&(!branchId||getEntryBranchId(e)===branchId));
   const cashAccIds=new Set(getCashAccounts().map(a=>a.id));
 
@@ -6865,6 +7015,11 @@ function renderCashFlow(){
   const cf=computeCashFlow();
   const body=document.getElementById("cashflow-body");if(!body)return;
   const branchActive=!!parseInt((document.getElementById("cf-branch")||{}).value);
+  const cfSnapEl=document.getElementById("cf-snapshot");
+  if(cfSnapEl){
+    const snapD=getFinancialSnapshotData(cf.from,cf.to,parseInt((document.getElementById("cf-branch")||{}).value)||0);
+    cfSnapEl.innerHTML=snapshotCardHTML(snapD,{title:"لقطة سريعة",icon:"gauge"});
+  }
   const cft=(label,val)=>`<div class="fs-r tot"><span>${label}</span><span style="direction:ltr;color:${val<0?'var(--rd)':'var(--gn)'}">${val<0?'('+fmtDisp(Math.abs(val))+')':fmtDisp(val)} ${cur()}</span></div>`;
   const negItems=items=>items.map(x=>Object.assign({},x,{amt:-x.amt}));
   body.innerHTML=fsLetterhead("قائمة التدفقات النقدية",cf.from,cf.to)+`
@@ -6916,6 +7071,26 @@ function printCashFlow(){
     </tbody></table>
     <div style="margin-top:8px;font-size:10px;color:#64748b">الحسابات المرتبطة تلقائياً: ${cf.cashAccountNames.length?cf.cashAccountNames.join('، '):'لا توجد'}</div>`;
   printA4(html);
+}
+function renderSnapshotPage(){
+  const fromEl=document.getElementById("snap-from"),toEl=document.getElementById("snap-to");
+  if(fromEl&&toEl&&!fromEl.value&&!toEl.value){
+    const r=quickPeriodRange("year");fromEl.value=r.from;toEl.value=r.to;
+  }
+  const fromD=fromEl?fromEl.value:"",toD=toEl?toEl.value:"";
+  const branchWrap=document.getElementById("snap-branch-wrap");
+  if(branchWrap)branchWrap.style.display=(branches&&branches.length)?"flex":"none";
+  const branchSel=document.getElementById("snap-branch");
+  if(branchSel&&branches&&branches.length){
+    const curB=branchSel.value;
+    branchSel.innerHTML='<option value="">🏢 كل الفروع</option>'+branches.filter(function(b){return b.active!==false;}).map(function(b){return '<option value="'+b.id+'">'+b.name+'</option>';}).join("");
+    branchSel.value=curB;
+  }
+  const branchId=parseInt((document.getElementById("snap-branch")||{}).value)||0;
+  const body=document.getElementById("snapshot-body");if(!body)return;
+  const d=getFinancialSnapshotData(fromD,toD,branchId);
+  body.innerHTML=fsLetterhead("اللقطة المالية",fromD,toD)+snapshotCardHTML(d,{})
+    +'<div style="text-align:center;font-size:9.5px;color:var(--g4);margin-top:6px">تم إنشاء هذا الملخص تلقائياً من بيانات النظام بتاريخ '+nowStr()+'</div>';
 }
 
 // ════════════════════════════════════════════════════════════════
