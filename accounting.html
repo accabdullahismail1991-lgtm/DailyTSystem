@@ -227,6 +227,25 @@ tbody tr:hover{background:var(--g50)}
 .snap-stat-ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .snap-stat-lb{font-size:9.5px;color:var(--g5)}
 .snap-stat-vl{font-size:12.5px;font-weight:800;color:var(--g9);white-space:nowrap}
+.snap-trend{display:inline-flex;align-items:center;gap:2px;font-size:9.5px;font-weight:700;margin-top:2px}
+/* ── Snapshot hero banner (اللقطة المالية) ── */
+.snap-hero{position:relative;overflow:hidden;border-radius:var(--rl);padding:22px 24px;margin-bottom:14px;
+  background:linear-gradient(135deg,#0f4c81 0%,#0d9488 100%);color:#fff;box-shadow:0 10px 26px -10px rgba(15,76,129,.4)}
+.snap-hero-bg{position:absolute;inset:0;width:100%;height:100%;opacity:.16;pointer-events:none}
+.snap-hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;position:relative;flex-wrap:wrap}
+.snap-hero-co{display:flex;align-items:center;gap:11px}
+.snap-hero-logo{width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.snap-hero-logo img{width:100%;height:100%;object-fit:cover}
+.snap-hero-name{font-size:15.5px;font-weight:800}
+.snap-hero-sub{font-size:10.5px;opacity:.85;margin-top:1px}
+.snap-hero-period{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;background:rgba(255,255,255,.16);padding:5px 11px;border-radius:20px;white-space:nowrap}
+.snap-hero-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;background:rgba(255,255,255,.16);padding:4px 10px;border-radius:20px;white-space:nowrap}
+.snap-hero-badge .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.snap-hero-headline{margin-top:16px;position:relative}
+.snap-hero-hl-lb{font-size:11px;opacity:.85;margin-bottom:2px}
+.snap-hero-hl-vl{font-size:32px;font-weight:800;letter-spacing:-.5px}
+.snap-hero-hl-cur{font-size:12.5px;font-weight:600;opacity:.85}
+.snap-hero-delta{display:inline-flex;align-items:center;gap:3px;margin-top:5px;font-size:11px;font-weight:700}
 .idash-val{font-size:19px;font-weight:800;color:var(--g9);white-space:nowrap}
 .idash-sub{font-size:9.5px;color:var(--g4);margin-top:2px}
 .idash-spark-pt{cursor:pointer}
@@ -5986,6 +6005,47 @@ function fsLetterhead(title,fromD,toD){
 // ════════════════════════════════════════════════════════════════
 // اللقطة المالية (Financial Snapshot) — ملخص سردي بلغة مبسّطة + أهم الأرقام
 // ════════════════════════════════════════════════════════════════
+// خلفية زخرفية تجريدية (أعمدة تصاعدية + خط اتجاه + حلقات نقدية) — رسوم SVG مُصمَّمة داخلياً
+// بلا أي صور خارجية، تمنح شاشة اللقطة المالية طابعاً بصرياً احترافياً يوحي بالنمو المالي
+const SNAP_HERO_BG_SVG='<svg class="snap-hero-bg" viewBox="0 0 600 200" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">'
+  +'<g fill="#fff"><rect x="380" y="140" width="24" height="60"/><rect x="414" y="120" width="24" height="80"/>'
+  +'<rect x="448" y="95" width="24" height="105"/><rect x="482" y="70" width="24" height="130"/>'
+  +'<rect x="516" y="45" width="24" height="155"/><rect x="550" y="20" width="24" height="180"/></g>'
+  +'<path d="M380 150 L414 128 L448 105 L482 80 L516 55 L574 25" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
+  +'<circle cx="574" cy="25" r="6" fill="#fff"/>'
+  +'<circle cx="58" cy="52" r="34" fill="none" stroke="#fff" stroke-width="3"/><circle cx="58" cy="52" r="19" fill="none" stroke="#fff" stroke-width="2"/>'
+  +'<circle cx="115" cy="145" r="22" fill="none" stroke="#fff" stroke-width="3"/><circle cx="18" cy="150" r="13" fill="none" stroke="#fff" stroke-width="2"/>'
+  +'</svg>';
+function pctChange(curVal,prevVal){
+  if(prevVal==null||Math.abs(prevVal)<0.005)return null;
+  return ((curVal-prevVal)/Math.abs(prevVal))*100;
+}
+function snapshotHealthRating(d){
+  if(d.np<0||(d.currentRatio!=null&&d.currentRatio<1))return{label:'يحتاج مراجعة',color:'#ef4444'};
+  if(d.profitMargin!=null&&d.profitMargin>=15&&(d.currentRatio==null||d.currentRatio>=1.5))return{label:'أداء ممتاز',color:'#22c55e'};
+  return{label:'أداء جيد',color:'#60a5fa'};
+}
+function snapshotHeroHTML(d,prevD){
+  const health=snapshotHealthRating(d);
+  const periodTxt=d.fromD||d.toD?fmtDate(d.fromD||(CY+"-01-01"))+' — '+fmtDate(d.toD||(CY+"-12-31")):'السنة المالية '+CY;
+  const logoHTML=CFG.logo?'<img src="'+CFG.logo+'">':svgIcon('bank',24,'#fff');
+  const npDelta=prevD?pctChange(d.np,prevD.np):null;
+  const deltaHTML=npDelta!=null?'<div class="snap-hero-delta" style="color:'+(npDelta>=0?'#86efac':'#fca5a5')+'">'
+    +(npDelta>=0?'▲':'▼')+' '+fmtDisp(Math.abs(npDelta))+'% عن الفترة السابقة</div>':'';
+  return '<div class="snap-hero">'+SNAP_HERO_BG_SVG
+    +'<div class="snap-hero-top">'
+    +'<div class="snap-hero-co"><div class="snap-hero-logo">'+logoHTML+'</div>'
+    +'<div><div class="snap-hero-name">'+(CFG.name||'الشركة')+'</div><div class="snap-hero-sub">اللقطة المالية</div></div></div>'
+    +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">'
+    +'<span class="snap-hero-period">'+svgIcon('gauge',12,'#fff')+periodTxt+'</span>'
+    +'<span class="snap-hero-badge"><span class="dot" style="background:'+health.color+'"></span>'+health.label+'</span>'
+    +'</div></div>'
+    +'<div class="snap-hero-headline">'
+    +'<div class="snap-hero-hl-lb">'+(d.np>=0?'صافي الربح':'صافي الخسارة')+'</div>'
+    +'<div><span class="snap-hero-hl-vl">'+fmtDisp(Math.abs(d.np))+'</span> <span class="snap-hero-hl-cur">'+cur()+'</span></div>'
+    +deltaHTML
+    +'</div></div>';
+}
 function getFinancialSnapshotData(fromD,toD,branchId){
   branchId=branchId||0;
   const revN=getTree("revenue",null,fromD,toD,branchId),expN=getTree("expense",null,fromD,toD,branchId),costN=getTree("cost",null,fromD,toD,branchId);
@@ -6020,21 +6080,29 @@ function buildSnapshotNarrative(d){
 function snapshotCardHTML(d,opts){
   opts=opts||{};
   const stats=[
-    ['coin',d.np>=0?'صافي الربح':'صافي الخسارة',Math.abs(d.np),d.np>=0?'#16a34a':'#ef4444'],
-    ['trendUp','الإيرادات',d.tR,'#22c55e'],
-    ['trendDown','المصروفات والتكاليف',d.tC+d.tX,'#ef4444'],
-    ['bank','إجمالي الأصول',d.tA,'#2563eb'],
-    ['receiptMinus','إجمالي الخصوم',d.tL,'#d97706'],
-    ['scale','حقوق الملكية',d.tE,'#7c3aed'],
-    ['cashFlow','صافي النقد التشغيلي',d.cf.operating,d.cf.operating>=0?'#0d9488':'#ef4444'],
+    {ic:'coin',lb:d.np>=0?'صافي الربح':'صافي الخسارة',val:Math.abs(d.np),cl:d.np>=0?'#16a34a':'#ef4444',get:function(x){return x.np;}},
+    {ic:'trendUp',lb:'الإيرادات',val:d.tR,cl:'#22c55e',get:function(x){return x.tR;}},
+    {ic:'trendDown',lb:'المصروفات والتكاليف',val:d.tC+d.tX,cl:'#ef4444',get:function(x){return x.tC+x.tX;},invert:true},
+    {ic:'bank',lb:'إجمالي الأصول',val:d.tA,cl:'#2563eb',get:function(x){return x.tA;}},
+    {ic:'receiptMinus',lb:'إجمالي الخصوم',val:d.tL,cl:'#d97706',get:function(x){return x.tL;},invert:true},
+    {ic:'scale',lb:'حقوق الملكية',val:d.tE,cl:'#7c3aed',get:function(x){return x.tE;}},
+    {ic:'cashFlow',lb:'صافي النقد التشغيلي',val:d.cf.operating,cl:d.cf.operating>=0?'#0d9488':'#ef4444',get:function(x){return x.cf.operating;}},
   ];
   return '<div class="snap-card">'
     +(opts.title?'<div class="snap-title">'+svgIcon(opts.icon||'gauge',16,'currentColor')+' <span>'+opts.title+'</span></div>':'')
     +'<div class="snap-narrative">'+buildSnapshotNarrative(d)+'</div>'
     +'<div class="snap-stats">'+stats.map(function(s){
-      const val=s[2]<0?'('+fmtDisp(Math.abs(s[2]))+')':fmtDisp(s[2]);
-      return '<div class="snap-stat"><span class="snap-stat-ic" style="background:'+s[3]+'1f;color:'+s[3]+'">'+svgIcon(s[0],16,s[3])+'</span>'
-        +'<div><div class="snap-stat-lb">'+s[1]+'</div><div class="snap-stat-vl">'+val+' <span style="font-size:9px;font-weight:600;color:var(--g4)">'+cur()+'</span></div></div></div>';
+      const val=s.val<0?'('+fmtDisp(Math.abs(s.val))+')':fmtDisp(s.val);
+      let trendHTML='';
+      if(opts.prevD){
+        const delta=pctChange(s.get(d),s.get(opts.prevD));
+        if(delta!=null&&Math.abs(delta)>=0.05){
+          const isGood=s.invert?delta<0:delta>=0;
+          trendHTML='<div class="snap-trend" style="color:'+(isGood?'#16a34a':'#ef4444')+'">'+(delta>=0?'▲':'▼')+' '+fmtDisp(Math.abs(delta))+'%</div>';
+        }
+      }
+      return '<div class="snap-stat"><span class="snap-stat-ic" style="background:'+s.cl+'1f;color:'+s.cl+'">'+svgIcon(s.ic,16,s.cl)+'</span>'
+        +'<div><div class="snap-stat-lb">'+s.lb+'</div><div class="snap-stat-vl">'+val+' <span style="font-size:9px;font-weight:600;color:var(--g4)">'+cur()+'</span></div>'+trendHTML+'</div></div>';
     }).join('')+'</div></div>';
 }
 function renderFS(tab){
@@ -7137,7 +7205,9 @@ function renderSnapshotPage(){
   const branchId=parseInt((document.getElementById("snap-branch")||{}).value)||0;
   const body=document.getElementById("snapshot-body");if(!body)return;
   const d=getFinancialSnapshotData(fromD,toD,branchId);
-  body.innerHTML=fsLetterhead("اللقطة المالية",fromD,toD)+snapshotCardHTML(d,{})
+  const prevRange=getPrevPeriod(fromD||(CY+"-01-01"),toD||(CY+"-12-31"));
+  const prevD=prevRange?getFinancialSnapshotData(prevRange.from,prevRange.to,branchId):null;
+  body.innerHTML=snapshotHeroHTML(d,prevD)+snapshotCardHTML(d,{prevD:prevD})
     +'<div style="text-align:center;font-size:9.5px;color:var(--g4);margin-top:6px">تم إنشاء هذا الملخص تلقائياً من بيانات النظام بتاريخ '+nowStr()+'</div>';
 }
 
