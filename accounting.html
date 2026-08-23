@@ -100,6 +100,21 @@ canvas.chart-cv{cursor:pointer}
 .fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:9px;margin-bottom:11px}
 .s2{grid-column:span 2}.s3{grid-column:span 3}.s4{grid-column:span 4}
 .fg-row{display:flex;gap:9px;align-items:flex-end;flex-wrap:wrap;margin-bottom:11px}
+/* ── Report filter bar (redesigned: grouped period pills + collapsible advanced filters + chips) ── */
+.rpt-fbar{background:var(--g50);border:1px solid var(--g200);border-radius:var(--r);padding:11px 13px;margin-bottom:11px}
+.rpt-fbar .fg-row{margin-bottom:0}
+.rpt-fquick{display:inline-flex;gap:3px;align-items:center;background:var(--w);padding:3px;border-radius:9px;border:1px solid var(--g200)}
+.rpt-fquick button{border:none;background:transparent;font-size:10.5px;font-weight:600;padding:6px 10px;border-radius:6px;cursor:pointer;color:var(--g6);white-space:nowrap;transition:background .12s,color .12s}
+.rpt-fquick button:hover{background:var(--g100)}
+.rpt-fquick button.active{background:var(--tp);color:var(--tl2)}
+.rpt-fadv-toggle{font-size:10.5px;font-weight:700;color:var(--tl2);cursor:pointer;display:inline-flex;align-items:center;gap:4px;padding:7px 11px;border-radius:8px;background:var(--tp);border:none;white-space:nowrap}
+.rpt-fadv-toggle:hover{filter:brightness(.97)}
+.rpt-fadv-toggle .chev{transition:transform .15s}
+.rpt-fadv-toggle.open .chev{transform:rotate(180deg)}
+.rpt-fadv-panel{display:none;margin-top:10px;padding-top:10px;border-top:1px dashed var(--g300);gap:9px;flex-wrap:wrap;align-items:flex-end}
+.rpt-fadv-panel.open{display:flex}
+.rpt-fchips{display:none;gap:6px;flex-wrap:wrap;margin-top:9px}
+.rpt-fchips.show{display:flex}
 .fgrp{display:flex;flex-direction:column;gap:3px}
 label{font-size:10.5px;font-weight:700;color:var(--g6)}
 input,select,textarea{border:1.5px solid var(--g200);border-radius:var(--rs);padding:7px 10px;font-size:12px;color:var(--g8);background:var(--w);width:100%;transition:border-color .12s,box-shadow .12s;font-family:inherit}
@@ -2186,13 +2201,17 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    <button class="btn bp bsm" onclick="renderTaxReport()">🔄 عرض</button>
   </div>
  </div>
- <div class="fg-row">
-  <div class="fgrp"><label>من تاريخ</label><input id="tax-from" type="date" onchange="renderTaxReport()"></div>
-  <div class="fgrp"><label>إلى تاريخ</label><input id="tax-to" type="date" onchange="renderTaxReport()"></div>
-  <button class="btn bo bsm" onclick="setReportPeriod('tax-from','tax-to','year',renderTaxReport)" style="align-self:flex-end">📅 السنة الحالية</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('tax-from','tax-to','half1',renderTaxReport)" style="align-self:flex-end">📅 النصف الأول</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('tax-from','tax-to','half2',renderTaxReport)" style="align-self:flex-end">📅 النصف الثاني</button>
-  <button class="btn bo bsm" onclick="document.getElementById('tax-from').value='';document.getElementById('tax-to').value='';renderTaxReport()" style="align-self:flex-end">↺ مسح</button>
+ <div class="rpt-fbar">
+  <div class="fg-row">
+   <div class="rpt-fquick">
+    <button class="active" onclick="setReportPeriod('tax-from','tax-to','year',renderTaxReport,this)">السنة الحالية</button>
+    <button onclick="setReportPeriod('tax-from','tax-to','half1',renderTaxReport,this)">النصف الأول</button>
+    <button onclick="setReportPeriod('tax-from','tax-to','half2',renderTaxReport,this)">النصف الثاني</button>
+   </div>
+   <div class="fgrp"><label>من تاريخ</label><input id="tax-from" type="date" onchange="fqClearActive('tax-from');renderTaxReport()"></div>
+   <div class="fgrp"><label>إلى تاريخ</label><input id="tax-to" type="date" onchange="fqClearActive('tax-from');renderTaxReport()"></div>
+   <button class="btn bo bsm" onclick="document.getElementById('tax-from').value='';document.getElementById('tax-to').value='';renderTaxReport()" style="align-self:flex-end">↺ مسح</button>
+  </div>
  </div>
  <div id="tax-report-body"></div>
 </div>
@@ -2231,14 +2250,29 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    <button class="btn bo bsm" onclick="printCashFlow()">🖨️ طباعة</button>
   </div>
  </div>
- <div class="fg-row">
-  <div class="fgrp"><label>من تاريخ</label><input id="cf-from" type="date" onchange="renderCashFlow()"></div>
-  <div class="fgrp"><label>إلى تاريخ</label><input id="cf-to" type="date" onchange="renderCashFlow()"></div>
-  <button class="btn bo bsm" onclick="setReportPeriod('cf-from','cf-to','year',renderCashFlow)" style="align-self:flex-end">📅 السنة الحالية</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('cf-from','cf-to','half1',renderCashFlow)" style="align-self:flex-end">📅 النصف الأول</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('cf-from','cf-to','half2',renderCashFlow)" style="align-self:flex-end">📅 النصف الثاني</button>
-  <div class="fgrp" id="cf-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="cf-branch" onchange="renderCashFlow()"><option value="">🏢 كل الفروع</option></select></div>
-  <button class="btn bo bsm" onclick="document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';renderCashFlow()" style="align-self:flex-end">↺ مسح</button>
+ <div class="rpt-fbar">
+  <div class="fg-row">
+   <div class="rpt-fquick">
+    <button class="active" onclick="setReportPeriod('cf-from','cf-to','year',renderCashFlow,this)">السنة الحالية</button>
+    <button onclick="setReportPeriod('cf-from','cf-to','half1',renderCashFlow,this)">النصف الأول</button>
+    <button onclick="setReportPeriod('cf-from','cf-to','half2',renderCashFlow,this)">النصف الثاني</button>
+   </div>
+   <div class="fgrp"><label>من تاريخ</label><input id="cf-from" type="date" onchange="fqClearActive('cf-from');renderCashFlow()"></div>
+   <div class="fgrp"><label>إلى تاريخ</label><input id="cf-to" type="date" onchange="fqClearActive('cf-from');renderCashFlow()"></div>
+   <div class="fgrp" id="cf-branch-wrap" style="display:none"><label>🏢 الفرع</label><select id="cf-branch" onchange="renderCashFlow()"><option value="">🏢 كل الفروع</option></select></div>
+   <button class="rpt-fadv-toggle" id="cf-adv-toggle" onclick="toggleAdvFilters('cf-adv-toggle','cf-adv-panel')">
+    ⚙️ فلاتر متقدمة <span class="chev">▾</span>
+   </button>
+   <button class="btn bo bsm" onclick="document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';document.getElementById('cf-branch').value='';document.getElementById('cf-cc').value='';document.getElementById('cf-proj').value='';renderCashFlow()" style="align-self:flex-end">↺ مسح الكل</button>
+  </div>
+  <div class="rpt-fadv-panel" id="cf-adv-panel">
+   <div class="fgrp"><label>🏷️ مركز التكلفة</label><select id="cf-cc" onchange="renderCashFlow()"><option value="">كل مراكز التكلفة</option></select></div>
+   <div class="fgrp"><label>🏗️ المشروع</label><select id="cf-proj" onchange="renderCashFlow()"><option value="">كل المشاريع</option></select></div>
+   <div style="font-size:10px;color:var(--g5);align-self:center;max-width:260px;line-height:1.6">
+    ℹ️ فلترة مركز التكلفة/المشروع تُصنِّف القيود التي تخصّه ضمن كل بنود القائمة، لكن "صافي التغيّر الفعلي بالنقدية" يبقى على مستوى الشركة كاملة لأن حركة النقد لا تُنسَب لبُعد تحليلي معيّن.
+   </div>
+  </div>
+  <div class="rpt-fchips" id="cf-filter-chips"></div>
  </div>
  <div id="cf-snapshot"></div>
  <div style="margin-bottom:10px;padding:9px 12px;background:#fefce8;border:1px solid #fcd34d;border-radius:var(--r);font-size:11px;color:#92400e">
@@ -2259,13 +2293,17 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
    <button class="btn bo bsm" onclick="printCCProjReport()">🖨️ طباعة</button>
   </div>
  </div>
- <div class="fg-row">
-  <div class="fgrp"><label>من تاريخ</label><input id="ccrpt-from" type="date" onchange="renderCCProjReport()"></div>
-  <div class="fgrp"><label>إلى تاريخ</label><input id="ccrpt-to" type="date" onchange="renderCCProjReport()"></div>
-  <button class="btn bo bsm" onclick="setReportPeriod('ccrpt-from','ccrpt-to','year',renderCCProjReport)" style="align-self:flex-end">📅 السنة الحالية</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('ccrpt-from','ccrpt-to','half1',renderCCProjReport)" style="align-self:flex-end">📅 النصف الأول</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('ccrpt-from','ccrpt-to','half2',renderCCProjReport)" style="align-self:flex-end">📅 النصف الثاني</button>
-  <button class="btn bo bsm" onclick="document.getElementById('ccrpt-from').value='';document.getElementById('ccrpt-to').value='';renderCCProjReport()" style="align-self:flex-end">↺ مسح</button>
+ <div class="rpt-fbar">
+  <div class="fg-row">
+   <div class="rpt-fquick">
+    <button class="active" onclick="setReportPeriod('ccrpt-from','ccrpt-to','year',renderCCProjReport,this)">السنة الحالية</button>
+    <button onclick="setReportPeriod('ccrpt-from','ccrpt-to','half1',renderCCProjReport,this)">النصف الأول</button>
+    <button onclick="setReportPeriod('ccrpt-from','ccrpt-to','half2',renderCCProjReport,this)">النصف الثاني</button>
+   </div>
+   <div class="fgrp"><label>من تاريخ</label><input id="ccrpt-from" type="date" onchange="fqClearActive('ccrpt-from');renderCCProjReport()"></div>
+   <div class="fgrp"><label>إلى تاريخ</label><input id="ccrpt-to" type="date" onchange="fqClearActive('ccrpt-from');renderCCProjReport()"></div>
+   <button class="btn bo bsm" onclick="document.getElementById('ccrpt-from').value='';document.getElementById('ccrpt-to').value='';renderCCProjReport()" style="align-self:flex-end">↺ مسح</button>
+  </div>
  </div>
  <div style="display:flex;gap:6px;margin-bottom:14px" id="ccrpt-tabs">
   <button class="btn bp bsm ccrpt-tab-btn active" data-dim="cc" onclick="showCCProjTab('cc')">🏷️ مراكز التكلفة</button>
@@ -2292,13 +2330,17 @@ html.num-emphasis [style*="direction:ltr"]{font-weight:800!important}
   حركة العمليات والحسابات على كل فرع — التصنيف حي (غير مخزَّن) بنفس قاعدة شاشة "الفروع": بحسب
   مركز التكلفة/الوصف على كل قيد، فيتحدَّث تلقائياً مع أي تغيير.
  </p>
- <div class="fg-row">
-  <div class="fgrp"><label>من تاريخ</label><input id="branchrpt-from" type="date" onchange="renderBranchReport()"></div>
-  <div class="fgrp"><label>إلى تاريخ</label><input id="branchrpt-to" type="date" onchange="renderBranchReport()"></div>
-  <button class="btn bo bsm" onclick="setReportPeriod('branchrpt-from','branchrpt-to','year',renderBranchReport)" style="align-self:flex-end">📅 السنة الحالية</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('branchrpt-from','branchrpt-to','half1',renderBranchReport)" style="align-self:flex-end">📅 النصف الأول</button>
-  <button class="btn bo bsm" onclick="setReportPeriod('branchrpt-from','branchrpt-to','half2',renderBranchReport)" style="align-self:flex-end">📅 النصف الثاني</button>
-  <button class="btn bo bsm" onclick="document.getElementById('branchrpt-from').value='';document.getElementById('branchrpt-to').value='';renderBranchReport()" style="align-self:flex-end">↺ مسح</button>
+ <div class="rpt-fbar">
+  <div class="fg-row">
+   <div class="rpt-fquick">
+    <button class="active" onclick="setReportPeriod('branchrpt-from','branchrpt-to','year',renderBranchReport,this)">السنة الحالية</button>
+    <button onclick="setReportPeriod('branchrpt-from','branchrpt-to','half1',renderBranchReport,this)">النصف الأول</button>
+    <button onclick="setReportPeriod('branchrpt-from','branchrpt-to','half2',renderBranchReport,this)">النصف الثاني</button>
+   </div>
+   <div class="fgrp"><label>من تاريخ</label><input id="branchrpt-from" type="date" onchange="fqClearActive('branchrpt-from');renderBranchReport()"></div>
+   <div class="fgrp"><label>إلى تاريخ</label><input id="branchrpt-to" type="date" onchange="fqClearActive('branchrpt-from');renderBranchReport()"></div>
+   <button class="btn bo bsm" onclick="document.getElementById('branchrpt-from').value='';document.getElementById('branchrpt-to').value='';renderBranchReport()" style="align-self:flex-end">↺ مسح</button>
+  </div>
  </div>
  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:14px" id="branchrpt-summary"></div>
  <div id="branchrpt-body"></div>
@@ -3927,12 +3969,53 @@ function quickPeriodRange(mode){
   if(mode==="half2") return {from:y+"-07-01",to:y+"-12-31"};
   return {from:"",to:""};
 }
-function setReportPeriod(fromId,toId,mode,renderFn){
+function setReportPeriod(fromId,toId,mode,renderFn,btnEl){
   const r=quickPeriodRange(mode);
   const fromEl=document.getElementById(fromId),toEl=document.getElementById(toId);
   if(fromEl)fromEl.value=r.from;
   if(toEl)toEl.value=r.to;
+  if(btnEl)fqSetActive(btnEl);
   if(typeof renderFn==="function")renderFn();
+}
+function fqSetActive(btn){
+  const group=btn.closest('.rpt-fquick');if(!group)return;
+  Array.prototype.forEach.call(group.querySelectorAll('button'),function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+}
+function fqClearActive(fromId){
+  const el=document.getElementById(fromId);if(!el)return;
+  const group=el.closest('.rpt-fbar');if(!group)return;
+  const quick=group.querySelector('.rpt-fquick');if(!quick)return;
+  Array.prototype.forEach.call(quick.querySelectorAll('button'),function(b){b.classList.remove('active');});
+}
+function toggleAdvFilters(toggleId,panelId){
+  const t=document.getElementById(toggleId),p=document.getElementById(panelId);
+  if(!t||!p)return;
+  const open=!p.classList.contains('open');
+  p.classList.toggle('open',open);
+  t.classList.toggle('open',open);
+}
+// يبني رقاقات الفلاتر النشطة لأي تقرير (فترة/فرع/مركز تكلفة/مشروع) بنمط موحّد قابل لإعادة
+// الاستخدام عبر كل شاشات التقارير، بدل تكرار نفس منطق البناء بكل شاشة على حدة
+function rptFilterChipsHTML(chips,clearOnclick){
+  if(!chips.length)return '';
+  return chips.map(function(c){return '<span class="idash-chip" onclick="'+c.onclick+'">'+c.label+' <span class="x">✕</span></span>';}).join('')
+    +'<span class="idash-chip" style="background:var(--g100);color:var(--g6)" onclick="'+clearOnclick+'">مسح الكل ✕</span>';
+}
+// dims: {branch:{id,list,onclear}, cc:{...}, proj:{...}} — أي بُعد قيمته 0/فارغة يُتجاهَل تلقائياً
+function renderRptFilterChips(elId,dims,clearOnclick){
+  const el=document.getElementById(elId);if(!el)return;
+  const icons={branch:'🏢 ',cc:'🏷️ ',proj:'🏗️ '};
+  const chips=[];
+  Object.keys(dims).forEach(function(k){
+    const d=dims[k];
+    if(d&&d.id){
+      const item=(d.list||[]).find(function(x){return x.id===d.id;});
+      chips.push({label:(icons[k]||'')+(item?item.name:''),onclick:d.onclear});
+    }
+  });
+  if(chips.length){el.classList.add('show');el.innerHTML=rptFilterChipsHTML(chips,clearOnclick);}
+  else{el.classList.remove('show');el.innerHTML='';}
 }
 function nowStr(){
   // en-US صراحةً لضمان أرقام إنجليزية (وليس أرقاماً هندية) في ختم التاريخ/الوقت المطبوع
@@ -6063,7 +6146,7 @@ function getFinancialSnapshotData(fromD,toD,branchId){
   const laCur=laSplit.current.reduce((s,n)=>s+Math.abs(n.bal),0);
   const currentRatio=laCur>0.005?asCur/laCur:null;
   const profitMargin=tR>0.005?(np/tR)*100:null;
-  const cf=computeCashFlow(fromD||(CY+"-01-01"),toD||(CY+"-12-31"),branchId);
+  const cf=computeCashFlow(fromD||(CY+"-01-01"),toD||(CY+"-12-31"),branchId,0,0);
   return {fromD,toD,branchId,tR,tC,tX,gp,np,tA,tL,tE,asCur,laCur,currentRatio,profitMargin,cf};
 }
 function buildSnapshotNarrative(d){
@@ -7002,10 +7085,16 @@ function getEffectiveBSClass(a){
 // حسابات المخصصات (كمخصص مكافأة نهاية الخدمة أو مخصص ديون مشكوك بتحصيلها) — بند غير نقدي
 // بطبيعته مثل الإهلاك تماماً: يُخفِّض صافي الربح عبر مصروف دون أي خروج نقدي فعلي بنفس الفترة
 function isProvisionAcc(a){return a&&/مخصص/i.test(a.name);}
-function computeCashFlow(ovFrom,ovTo,ovBranchId){
+function computeCashFlow(ovFrom,ovTo,ovBranchId,ovCcId,ovProjId){
   const {from,to}=(ovFrom&&ovTo)?{from:ovFrom,to:ovTo}:getCFPeriod();
   const branchId=(ovBranchId!=null)?ovBranchId:(parseInt((document.getElementById("cf-branch")||{}).value)||0);
-  const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to&&(!branchId||getEntryBranchId(e)===branchId));
+  const ccId=(ovCcId!=null)?ovCcId:(parseInt((document.getElementById("cf-cc")||{}).value)||0);
+  const projId=(ovProjId!=null)?ovProjId:(parseInt((document.getElementById("cf-proj")||{}).value)||0);
+  // فلترة مركز التكلفة/المشروع على مستوى القيد كاملاً (يشمل قيد يخصّها إن كان لأحد أسطره تلك
+  // النسبة) بنفس أسلوب فلتر الفرع تماماً — وليس على مستوى السطر المفرد — لأن استبعاد سطر
+  // النقدية المقابل وحده كان سيكسر مطابقة "actualCashChange" مع التغيّر الفعلي بأرصدة النقدية
+  const periodEntries=entries.filter(e=>e.date>=from&&e.date<=to&&(!branchId||getEntryBranchId(e)===branchId)
+    &&(!ccId||(e.lines||[]).some(l=>l.costCenterId===ccId))&&(!projId||(e.lines||[]).some(l=>l.projectId===projId)));
   const cashAccIds=new Set(getCashAccounts().map(a=>a.id));
 
   // بنود غير نقدية (نشاط تدفقات "noncash" — إهلاك/مخصصات تلقائياً، أو أي حساب آخر صُنِّف يدوياً
@@ -7128,7 +7217,16 @@ function renderCashFlow(){
       branchSel.value=cur;
     }
   }
+  const ccSel=document.getElementById("cf-cc");
+  if(ccSel){const cv=ccSel.value;ccSel.innerHTML='<option value="">كل مراكز التكلفة</option>'+(costCenters||[]).map(function(c){return '<option value="'+c.id+'">'+c.name+'</option>';}).join("");ccSel.value=cv;}
+  const projSel=document.getElementById("cf-proj");
+  if(projSel){const cv=projSel.value;projSel.innerHTML='<option value="">كل المشاريع</option>'+(projects||[]).map(function(p){return '<option value="'+p.id+'">'+p.name+'</option>';}).join("");projSel.value=cv;}
   const cf=computeCashFlow();
+  renderRptFilterChips('cf-filter-chips',{
+    branch:{id:parseInt((document.getElementById('cf-branch')||{}).value)||0,list:branches,onclear:"document.getElementById('cf-branch').value='';renderCashFlow();"},
+    cc:{id:parseInt((document.getElementById('cf-cc')||{}).value)||0,list:costCenters,onclear:"document.getElementById('cf-cc').value='';renderCashFlow();"},
+    proj:{id:parseInt((document.getElementById('cf-proj')||{}).value)||0,list:projects,onclear:"document.getElementById('cf-proj').value='';renderCashFlow();"},
+  },"document.getElementById('cf-from').value='';document.getElementById('cf-to').value='';document.getElementById('cf-branch').value='';document.getElementById('cf-cc').value='';document.getElementById('cf-proj').value='';renderCashFlow();");
   const body=document.getElementById("cashflow-body");if(!body)return;
   const branchActive=!!parseInt((document.getElementById("cf-branch")||{}).value);
   const cfSnapEl=document.getElementById("cf-snapshot");
